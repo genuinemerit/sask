@@ -1,6 +1,6 @@
 id = "PR-001"
 title = "Project scaffolding"
-status = "done"
+status = "complete"
 experiment_id = "baseline"
 
 [implements]
