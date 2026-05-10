@@ -1,0 +1,93 @@
+id = "PR-001"
+title = "Project scaffolding"
+status = "ready"
+experiment_id = "baseline"
+
+[implements]
+requirements = ["REQ-SEC-001"]
+adrs = ["ADR-0001"]
+
+[scope]
+in = [
+  "Create directory structure.",
+  "Create flake.nix and verify nix develop works.",
+  "Create CLAUDE.md.",
+  "Create schema files for ADRs, requirements, and PR specs.",
+  "Create ADR-0001 (secrets policy).",
+  "Create initial requirements.",
+  "Create scripts/validate-specs.sh and tools/validate_specs.py.",
+  "Create scripts/dev-shell.sh and scripts/devlog-entry.sh.",
+  "Create docs/devlog.md and docs/references.md with seed entries.",
+  "Create secrets/ directory with .gitignore, README.md, tokens.toml.example.",
+  "Create root .gitignore, README.md, LICENSE.",
+  "Initialize git repo with single commit."
+]
+out = [
+  "Service code (deferred to PR-002).",
+  "Poetry project initialization (deferred to PR-002).",
+  "OpenTofu configuration (deferred to PR-003).",
+  "Ansible playbooks (deferred to PR-004).",
+  "Any actual deployment activity."
+]
+
+[deliverables]
+files = [
+  "flake.nix",
+  "CLAUDE.md",
+  "README.md",
+  "LICENSE",
+  ".gitignore",
+  "decisions/_schema.toml",
+  "decisions/0001-secrets-policy.toml",
+  "requirements/_schema.toml",
+  "requirements/functional.toml",
+  "requirements/operational.toml",
+  "prs/_schema.toml",
+  "prs/0001-scaffolding.toml",
+  "scripts/dev-shell.sh",
+  "scripts/validate-specs.sh",
+  "scripts/devlog-entry.sh",
+  "tools/validate_specs.py",
+  "docs/devlog.md",
+  "docs/references.md",
+  "docs/notes/.gitkeep",
+  "secrets/.gitignore",
+  "secrets/README.md",
+  "secrets/tokens.toml.example"
+]
+tests = [
+  "scripts/validate-specs.sh exits 0 against the seed files."
+]
+
+[acceptance]
+items = [
+  "All listed deliverable files exist.",
+  "nix develop succeeds and produces a shell with python 3.12, poetry, tofu, ansible.",
+  "scripts/validate-specs.sh exits 0.",
+  "git log shows a single initial commit.",
+  "git status is clean.",
+  "CLAUDE.md is readable and accurately describes the structure."
+]
+
+[review]
+focus = [
+  "Schema files: are required fields actually required?",
+  "ADR-0001 wording: is the policy actionable?",
+  "flake.nix: do all listed packages resolve?",
+  "validate-specs.sh: does it catch malformed files?"
+]
+smoke_test = """
+cd ~/Code/sask
+nix develop --command bash -c 'python --version && poetry --version && tofu --version && ansible --version'
+scripts/validate-specs.sh
+"""
+
+[notes]
+for_assistant = """
+This PR is scaffolding only. Do not add service code, infrastructure config,
+or features beyond the listed deliverables. If the validator script needs
+adjustment to handle the seed files cleanly, adjust the validator — do not
+adjust the seed files to match a quirky validator. Surface any case where
+the schema feels wrong rather than working around it.
+"""
+

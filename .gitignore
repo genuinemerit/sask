@@ -1,0 +1,46 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.pytest_cache/
+.mypy_cache/
+
+# Poetry
+poetry.lock      # may be checked in later; gitignore for now in scaffolding
+dist/
+build/
+
+# Nix
+result
+result-*
+
+# OpenTofu
+*.tfstate
+*.tfstate.*
+.terraform/
+.terraform.lock.hcl
+*.tfvars
+!*.tfvars.example
+
+# Ansible
+*.retry
+
+# SQLite
+*.sqlite
+*.db
+
+# Editor
+.idea/
+.vscode/
+*.swp
+*~
+
+# OS
+.DS_Store
+
+# Project secrets safety net
+*.secret
+*.key
+*.pem

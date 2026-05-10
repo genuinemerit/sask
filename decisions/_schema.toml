@@ -1,0 +1,32 @@
+# Schema for ADR files in this directory.
+# Each ADR is a TOML file named NNNN-slug.toml.
+# Required fields are marked. All others are optional but encouraged.
+
+[meta]
+schema_version = "1"
+description = "Architecture Decision Record"
+
+[fields]
+id          = { type = "string", required = true,  pattern = "^ADR-[0-9]{4}$" }
+title       = { type = "string", required = true }
+status      = { type = "string", required = true,  enum = ["proposed", "accepted", "superseded", "rejected"] }
+date        = { type = "string", required = true,  format = "date" }
+
+[fields.context]
+problem      = { type = "string", required = true }
+constraints  = { type = "array",  required = false, items = "string" }
+alternatives = { type = "array",  required = false, items = "string" }
+
+[fields.decision]
+summary   = { type = "string", required = true }
+rationale = { type = "string", required = false }
+
+[fields.consequences]
+positive   = { type = "array", required = false, items = "string" }
+negative   = { type = "array", required = false, items = "string" }
+followups  = { type = "array", required = false, items = "string" }
+
+[fields.links]
+requirements = { type = "array",  required = false, items = "string" }
+supersedes   = { type = "string", required = false }
+

@@ -1,0 +1,28 @@
+[[requirement]]
+id = "REQ-OPS-001"
+title = "Reproducible deploy and destroy"
+category = "operational"
+priority = "must"
+statement = "The full droplet provisioning, service deployment, and teardown shall be executable as scripted operations from the developer's local machine."
+rationale = "Core experiment goal: dev project as code."
+acceptance = [
+  "scripts/deploy.sh provisions a droplet and a running service from scratch.",
+  "scripts/destroy.sh removes the droplet and all associated cloud resources.",
+  "Re-running deploy after destroy yields a working service with no manual steps."
+]
+
+[[requirement]]
+id = "REQ-SEC-001"
+title = "No secrets in repo"
+category = "security"
+priority = "must"
+statement = "No secret material (API tokens, private keys, application tokens) shall be committed to the git repository."
+rationale = "Standard hygiene; prevents accidental disclosure."
+acceptance = [
+  ".gitignore covers all known secret paths.",
+  "secrets/ directory contains only .example files and README.md.",
+  "validate-specs.sh (or pre-commit) flags any committed file matching common secret patterns."
+]
+[requirement.links]
+adrs = ["ADR-0001"]
+

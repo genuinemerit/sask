@@ -1,0 +1,16 @@
+[meta]
+schema_version = "1"
+description = "Requirement definition"
+
+[fields]
+id        = { type = "string", required = true,  pattern = "^REQ-[A-Z]+-[0-9]{3}$" }
+title     = { type = "string", required = true }
+category  = { type = "string", required = true,  enum = ["functional", "operational", "security"] }
+priority  = { type = "string", required = true,  enum = ["must", "should", "may"] }
+statement = { type = "string", required = true }
+rationale = { type = "string", required = false }
+acceptance = { type = "array", required = true,  items = "string" }
+
+[fields.links]
+adrs = { type = "array", required = false, items = "string" }
+

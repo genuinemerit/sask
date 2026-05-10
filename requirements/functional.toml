@@ -1,0 +1,15 @@
+[[requirement]]
+id = "REQ-FUN-001"
+title = "Resource delivery endpoint"
+category = "functional"
+priority = "must"
+statement = "The service shall deliver a requested resource (image, JSON, or audio) over HTTPS in response to an authenticated request."
+rationale = "Core purpose of the project."
+acceptance = [
+  "GET /resource/<id> with valid token returns 200 and the resource bytes.",
+  "GET /resource/<id> with invalid or missing token returns 401.",
+  "GET /resource/<unknown-id> with valid token returns 404."
+]
+[requirement.links]
+adrs = []
+

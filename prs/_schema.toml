@@ -1,0 +1,32 @@
+[meta]
+schema_version = "1"
+description = "PR specification — a unit of implementation work"
+
+[fields]
+id     = { type = "string", required = true,  pattern = "^PR-[0-9]{3}$" }
+title  = { type = "string", required = true }
+status = { type = "string", required = true,  enum = ["draft", "ready", "in_progress", "complete", "abandoned"] }
+experiment_id = { type = "string", required = false, default = "baseline" }
+
+[fields.implements]
+requirements = { type = "array", required = false, items = "string" }
+adrs         = { type = "array", required = false, items = "string" }
+
+[fields.scope]
+in  = { type = "array", required = true, items = "string" }
+out = { type = "array", required = true, items = "string" }
+
+[fields.deliverables]
+files = { type = "array", required = true, items = "string" }
+tests = { type = "array", required = false, items = "string" }
+
+[fields.acceptance]
+items = { type = "array", required = true, items = "string" }
+
+[fields.review]
+focus = { type = "array", required = false, items = "string" }
+smoke_test = { type = "string", required = false }
+
+[fields.notes]
+for_assistant = { type = "string", required = false }
+
