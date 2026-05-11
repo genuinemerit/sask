@@ -1,6 +1,6 @@
 # sask — Development log
 
-Reverse-chronological. Newest entries at top. Hand-written, not auto-generated.
+Reverse-chronological. Newest entries at top. Hand-written or auto-generated.
 
 ## 2026-05-10 — PR-001 done
 

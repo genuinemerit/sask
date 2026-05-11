@@ -1,0 +1,116 @@
+id = "PR-002"
+title = "Local resource service (Flask, token auth, four resource kinds)"
+status = "ready"
+experiment_id = "baseline"
+
+[implements]
+requirements = ["REQ-FUN-001", "REQ-FUN-002"]
+adrs = ["ADR-0002"]
+
+[scope]
+in = [
+  "Initialize Poetry project (pyproject.toml, no poetry.lock yet).",
+  "Add Flask and pytest as dependencies via Poetry.",
+  "Create src/sask/ package with __init__.py, app.py, auth.py, manifest.py, translators.py.",
+  "Implement /health endpoint (no auth, returns {\"status\": \"ok\"}).",
+  "Implement /resource/<kind>/<id> endpoint with bearer-token auth and three supported kinds.",
+  "Implement explicit translator functions in translators.py — no Pydantic, no marshmallow.",
+  "Create resources/ directory with manifest.toml and 3 placeholder files (small PNG, JSON, short audio).",
+  "Read tokens from path given by SASK_TOKENS_PATH (default ~/.config/sask/tokens.toml).",
+  "Read manifest from path given by SASK_MANIFEST_PATH (default ./resources/manifest.toml).",
+  "Bind to host/port from SASK_HOST / SASK_PORT (defaults 127.0.0.1 / 8080).",
+  "Write pytest tests covering the contract (see acceptance).",
+  "Add SASK_* env vars to flake.nix shellHook with sensible local defaults.",
+  "Add scripts/run-local.sh and scripts/run-tests.sh.",
+  "Update CLAUDE.md to mention the new src/ layout and how to run things."
+]
+out = [
+  "HTTPS / TLS (deferred to PR-004 via Caddy).",
+  "Cloud provisioning (PR-003).",
+  "Deployment automation (PR-004).",
+  "Token rotation, expiry, scopes.",
+  "Persistent storage / database.",
+  "Real game assets (placeholders only).",
+  "Structured logging, metrics, observability.",
+  "Async / streaming response handling.",
+  "Rate limiting."
+]
+
+[deliverables]
+files = [
+  "pyproject.toml",
+  "src/sask/__init__.py",
+  "src/sask/app.py",
+  "src/sask/auth.py",
+  "src/sask/manifest.py",
+  "src/sask/translators.py",
+  "resources/manifest.toml",
+  "resources/images/splash.png",
+  "resources/json/scenario-001.json",
+  "resources/audio/ambient-loop.mp3",
+  "resources/audio/ambient-video.mp4",
+  "tests/__init__.py",
+  "tests/test_health.py",
+  "tests/test_auth.py",
+  "tests/test_resources.py",
+  "tests/conftest.py",
+  "scripts/run-local.sh",
+  "scripts/run-tests.sh",
+  "decisions/0002-service-framework-and-conventions.toml"
+]
+tests = [
+  "tests/test_health.py — /health returns 200 without auth.",
+  "tests/test_auth.py — missing token, bad token, valid token cases.",
+  "tests/test_resources.py — each kind, valid id, unknown id, wrong kind."
+]
+
+[acceptance]
+items = [
+  "scripts/validate-specs.sh exits 0.",
+  "scripts/run-tests.sh exits 0 with all tests passing.",
+  "scripts/run-local.sh starts the service and curl http://127.0.0.1:8080/health returns {\"status\": \"ok\"}.",
+  "curl with valid token retrieves each of the four placeholder resources (1 image, 1 json, 2 audio) with correct Content-Type.",
+  "curl with no token or bad token returns 401.",
+  "curl for unknown id returns 404.",
+  "src/sask/translators.py contains the only serialization logic; app.py does not call json.dumps directly on response bodies.",
+  "No Pydantic, marshmallow, or similar auto-serializers in pyproject.toml.",
+  "git status is clean after the implementation commit.",
+  "CLAUDE.md reflects the new layout."
+]
+
+[review]
+focus = [
+  "translators.py: are the translator functions actually explicit and testable in isolation?",
+  "auth.py: is the token check constant-time-ish (use hmac.compare_digest)?",
+  "manifest.py: does it gracefully handle missing files referenced in the manifest?",
+  "Tests: is each contract item covered by at least one test?",
+  "pyproject.toml: are dependencies pinned to reasonable version ranges?"
+]
+smoke_test = """
+cd ~/Code/sask
+nix develop --command bash -c '
+  poetry install &&
+  scripts/run-tests.sh &&
+  scripts/run-local.sh &
+  sleep 2 &&
+  curl -s http://127.0.0.1:8080/health &&
+  pkill -f "python.*sask"
+'
+"""
+
+[notes]
+for_assistant = """
+Use Flask, not FastAPI or Starlette. Use the standard library tomllib for
+TOML parsing. Use hmac.compare_digest for token comparison. Do NOT introduce
+Pydantic, marshmallow, attrs, or other auto-serialization libraries —
+translators.py exists precisely to keep serialization explicit. Keep
+modules small and focused. Tests use Flask's test client (no separate
+HTTP server needed for unit tests). The placeholder audio file should
+be small (a few KB); a generated tone or silence works.
+If any acceptance item conflicts with reasonable Python practice,
+surface the conflict — do not silently rework the spec.
+The two audio files demonstrate that a single kind can have multiple ids
+(ambient-loop.mp3 served as id=ambient-loop, ambient-video.mp4 served as
+id=ambient-video). Content-Type should be derived from the manifest entry,
+not from the file extension alone.
+"""

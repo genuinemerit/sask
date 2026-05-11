@@ -1,0 +1,54 @@
+id = "ADR-0002"
+title = "Service framework and serialization conventions"
+status = "accepted"
+date = "2026-05-10"
+
+[context]
+problem = """
+The resource service needs a Python web framework. Several reasonable
+options exist (Flask, Starlette, FastAPI). We also need a convention for
+how request and response data is shaped, since framework choice and
+serialization style are tightly coupled in modern Python web work.
+"""
+constraints = [
+  "Hobby project — minimize ceremony.",
+  "Developer is already familiar with Flask.",
+  "Async is not required at this scale.",
+  "Prefer explicit translator functions over auto-serialization libraries (Pydantic, etc.)."
+]
+alternatives = [
+  "FastAPI: more popular, async, but pushes Pydantic-heavy idioms.",
+  "Starlette: minimal, async, no Pydantic by default.",
+  "stdlib http.server: zero deps but more boilerplate."
+]
+
+[decision]
+summary = """
+Use Flask as the web framework. Use plain dataclasses or dicts for
+internal data shapes; convert to/from wire formats (JSON bytes, file
+bytes) in explicit translator functions in a dedicated module. Do not
+use Pydantic, marshmallow, or other auto-serialization libraries for
+the core service.
+"""
+rationale = """
+Flask matches developer familiarity and the project's small scale.
+Explicit translators keep serialization debuggable and align with the
+established convention from prior projects (Ursina Lab).
+"""
+
+[consequences]
+positive = [
+  "Lower friction to start coding.",
+  "Translators are testable in isolation.",
+  "Easier to reason about exactly what bytes go on the wire."
+]
+negative = [
+  "More boilerplate than Pydantic-based frameworks.",
+  "If we later need OpenAPI generation or complex schema evolution, we may revisit this."
+]
+followups = [
+  "If/when a second service or a more complex schema lands, reconsider whether explicit translators still scale."
+]
+
+[links]
+requirements = []

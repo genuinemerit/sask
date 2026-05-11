@@ -18,7 +18,7 @@ configuration are all version-controlled and scripted.
 - `prs/` — PR specifications: structured work units that drive implementation. Schema in `_schema.toml`.
 - `scripts/` — Bash orchestration scripts. Idempotent where possible.
 - `tools/` — Python helpers (validators, generators).
-- `docs/devlog.md` — Human-written dev log. Read for context; do not write to it without explicit instruction.
+- `docs/devlog.md` — Dev log. Mainly human-written. Read for context; do not write to it without explicit instruction.
 - `docs/references.md` — Curated links and references.
 - `docs/notes/` — Free-form notes.
 - `secrets/` — Secrets directory. Contents gitignored except `*.example` files and `README.md`.

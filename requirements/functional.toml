@@ -10,6 +10,19 @@ acceptance = [
   "GET /resource/<id> with invalid or missing token returns 401.",
   "GET /resource/<unknown-id> with valid token returns 404."
 ]
+[[requirement]]
+id = "REQ-FUN-002"
+title = "Resource kinds supported"
+category = "functional"
+priority = "must"
+statement = "The service shall support delivery of three resource kinds: image (binary), json (text/UTF-8), and audio (binary)."
+rationale = "Defines the initial surface of resource types for game-client consumption."
+acceptance = [
+  "Service responds correctly to GET /resource/image/<id> with appropriate Content-Type.",
+  "Service responds correctly to GET /resource/json/<id> with application/json.",
+  "Service responds correctly to GET /resource/audio/<id> with appropriate Content-Type.",
+  "Unknown kinds return 404."
+]
 [requirement.links]
 adrs = []
 
