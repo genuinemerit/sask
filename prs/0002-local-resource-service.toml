@@ -1,6 +1,6 @@
 id = "PR-002"
 title = "Local resource service (Flask, token auth, four resource kinds)"
-status = "ready"
+status = "complete"
 experiment_id = "baseline"
 
 [implements]

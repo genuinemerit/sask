@@ -13,6 +13,15 @@ configuration are all version-controlled and scripted.
 
 ## Structure
 
+- `src/sask/` — Python package (Flask application).
+  - `app.py` — Application factory (`create_app()`); `/health` and `/resource/<kind>/<id>` routes.
+  - `auth.py` — Bearer-token loading and validation (`hmac.compare_digest`).
+  - `manifest.py` — Resource manifest loading (`ResourceEntry` dataclass, `load_manifest()`).
+  - `translators.py` — All JSON serialization and file reading for HTTP responses.
+- `resources/` — Placeholder resource files served by the application.
+  - `manifest.toml` — Maps `(kind, id)` pairs to file paths and MIME types.
+  - `images/`, `json/`, `audio/` — Asset sub-directories.
+- `tests/` — pytest test suite (`conftest.py`, `test_health.py`, `test_auth.py`, `test_resources.py`).
 - `decisions/` — Architecture Decision Records as TOML. Schema in `_schema.toml`.
 - `requirements/` — Functional and operational requirements as TOML. Schema in `_schema.toml`.
 - `prs/` — PR specifications: structured work units that drive implementation. Schema in `_schema.toml`.
@@ -55,13 +64,35 @@ configuration are all version-controlled and scripted.
 - One commit per PR-spec implementation, message references the PR id (e.g. `PR-002: hex math`).
 - Housekeeping commits are permitted for small fixes, status updates, and devlog entries (e.g. `PR-002: mark complete, update devlog`).
 
+## Running the service
+
+```bash
+# Install dependencies (required once after clone or dependency changes)
+poetry install
+
+# Start the local dev server (binds to 127.0.0.1:8080 by default)
+scripts/run-local.sh
+
+# Run the test suite
+scripts/run-tests.sh
+```
+
+Runtime is configured via environment variables set automatically by `nix develop`:
+
+| Variable | Default | Purpose |
+|---|---|---|
+| `SASK_HOST` | `127.0.0.1` | Bind address |
+| `SASK_PORT` | `8080` | Bind port |
+| `SASK_TOKENS_PATH` | `~/.config/sask/tokens.toml` | Authorized tokens file |
+| `SASK_MANIFEST_PATH` | `$PROJECT_ROOT/resources/manifest.toml` | Resource manifest |
+
 ## Tools available in dev shell
 
-After `nix develop`: `python` (3.12), `poetry`, `tofu`, `ansible`, `ssh`, `sqlite`, `jq`, `curl`.
+After `nix develop`: `python` (3.12), `poetry`, `ruff`, `tofu`, `ansible`, `ssh`, `sqlite`, `jq`, `curl`.
 
 ## What to do on first launch in this repo
 
 1. Read this file.
-2. Read `prs/0001-scaffolding.toml` to understand the current task, if any.
+2. Read `prs/` to understand the current task, if any.
 3. Read `decisions/` and `requirements/` to understand established constraints.
 4. Read `docs/devlog.md` for recent context.

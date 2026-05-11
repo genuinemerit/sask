@@ -14,6 +14,7 @@
         packages = with pkgs; [
           python312
           poetry
+          ruff
           opentofu
           ansible
           openssh
@@ -26,6 +27,12 @@
           echo "sask dev shell — $(python --version), Poetry $(poetry --version | cut -d' ' -f3)"
           export PROJECT_ROOT="$PWD"
           export PS1="(sask) $PS1"
+
+          # sask runtime defaults — override in your shell as needed.
+          export SASK_HOST="127.0.0.1"
+          export SASK_PORT="8080"
+          export SASK_TOKENS_PATH="$HOME/.config/sask/tokens.toml"
+          export SASK_MANIFEST_PATH="$PROJECT_ROOT/resources/manifest.toml"
         '';
       };
     };

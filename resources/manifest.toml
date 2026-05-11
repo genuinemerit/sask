@@ -1,0 +1,26 @@
+# sask resource manifest — maps (kind, id) to file paths and MIME types.
+# Paths are relative to this file's directory.
+
+[[resource]]
+kind = "image"
+id = "splash"
+path = "images/splash.png"
+content_type = "image/png"
+
+[[resource]]
+kind = "json"
+id = "scenario-001"
+path = "json/scenario-001.json"
+content_type = "application/json"
+
+[[resource]]
+kind = "audio"
+id = "ambient-loop"
+path = "audio/ambient-loop.mp3"
+content_type = "audio/mpeg"
+
+[[resource]]
+kind = "audio"
+id = "ambient-video"
+path = "audio/ambient-video.mp4"
+content_type = "video/mp4"

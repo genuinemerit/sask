@@ -1,0 +1,31 @@
+[tool.poetry]
+name = "sask"
+version = "0.1.0"
+description = "Small authenticated resource server experiment"
+authors = ["Dave"]
+packages = [{include = "sask", from = "src"}]
+
+[tool.poetry.dependencies]
+python = "^3.12"
+flask = "^3.0"
+
+[tool.poetry.group.dev.dependencies]
+pytest = "^8.0"
+ruff = ">=0.9.0"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.ruff]
+src = ["src"]
+line-length = 88
+
+[tool.ruff.lint]
+select = ["E", "W", "F", "I", "UP", "D", "B", "C4"]
+
+[tool.ruff.lint.pydocstyle]
+convention = "google"
