@@ -2,6 +2,23 @@
 
 Reverse-chronological. Newest entries at top. Hand-written or auto-generated.
 
+## 2026-05-12 — PR-003 first successful provision
+
+`scripts/provision.sh` (interactive) completed cleanly. 7 resources created
+in ~46s: SSH key and reserved IP in parallel (1s each), droplet (33s),
+firewall and IP assignment in parallel (1s / 12s), ssh-config snippet last.
+Reserved IP `206.189.249.29`; DNS A record for `sask.davidstitt.net` created
+via `digitalocean_record` (TTL 300). `data.digitalocean_domain` correctly
+verified the pre-existing `davidstitt.net` domain at plan time.
+`~/.ssh/config.d/sask` written with 0600 permissions as designed.
+
+Note: `provision.sh` runs `tofu init -upgrade` on every invocation. This
+re-checks provider versions within constraints and is intentional — keeps
+the lock file current. Slight overhead on repeat runs; not a problem.
+
+Pending before PR-003 is complete: manual DO console inspection, SSH
+connection test, destroy cycle, clean redeploy.
+
 ## 2026-05-12 — PR-003 implementation
 
 Provisioned the DO droplet via OpenTofu. Created `infra/` with split .tf
