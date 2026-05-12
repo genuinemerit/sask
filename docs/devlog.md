@@ -2,6 +2,31 @@
 
 Reverse-chronological. Newest entries at top. Hand-written or auto-generated.
 
+## 2026-05-12 - PR-003 set up
+
+NixOS guest clipboard sharing with host (virt-manager/QEMU/Spice)
+Required in configuration.nix:
+
+services.spice-vdagentd.enable = true;
+services.qemuGuest.enable = true;
+Explicit systemd user service for spice-vdagent (Plasma autostart wasn't picking it up).
+
+Plasma Wayland session does NOT work — spice-vdagent's Wayland path expects Mutter's D-Bus interface (org.gnome.Mutter.DisplayConfig), which KDE/KWin doesn't provide. Solution: log in via Plasma X11 session and use spice-vdagent -x.
+Set as default: services.displayManager.defaultSession = "plasmax11"; (verify exact name in your NixOS version).
+
+Workflow: host-side browser (native Ubuntu) for Claude conversations,
+NixOS VM for development. Clipboard flows freely. Resolution 1680x1050
+in the VM stays performant on the XPS 13's integrated graphics.
+
+SSH key for sask deployment: ed25519, project-specific
+(~/.ssh/sask_ed25519), agent-loaded. Did NOT manually upload to DO —
+OpenTofu will manage it as part of PR-003. ~/.ssh/config set up with
+Include directive so PR-003 can drop a generated snippet into
+~/.ssh/config.d/sask.
+
+DO API token in ~/.config/sask/infra.env, exported as
+DIGITALOCEAN_TOKEN (the convention the DO provider auto-detects).
+
 ## 2026-05-11 — PR-002 done
 
 Built the local resource server: a Flask app that delivers authenticated

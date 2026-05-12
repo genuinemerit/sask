@@ -10,6 +10,9 @@ acceptance = [
   "scripts/destroy.sh removes the droplet and all associated cloud resources.",
   "Re-running deploy after destroy yields a working service with no manual steps."
 ]
+[requirement.links]
+adrs = ["ADR-0001"]
+
 
 [[requirement]]
 id = "REQ-SEC-001"
@@ -25,4 +28,20 @@ acceptance = [
 ]
 [requirement.links]
 adrs = ["ADR-0001"]
+
+
+[[requirement]]
+id = "REQ-OPS-002"
+title = "Manual droplet access available"
+category = "operational"
+priority = "should"
+statement = "After provisioning, the developer shall be able to access the droplet via SSH (using the project's SSH config snippet) and via DO's browser-based console as a fallback."
+rationale = "Recovery and inspection paths are essential when working with cloud resources."
+acceptance = [
+  "scripts/connect.sh successfully opens an SSH session to the provisioned droplet.",
+  "The droplet appears in the DO web UI with a working console option.",
+  "SSH access works from a fresh terminal after tofu apply completes."
+]
+[requirement.links]
+adrs = ["ADR-0004"]
 

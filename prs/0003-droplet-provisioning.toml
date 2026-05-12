@@ -1,0 +1,112 @@
+id = "PR-003"
+title = "Droplet provisioning via OpenTofu"
+status = "ready"
+experiment_id = "baseline"
+
+[implements]
+requirements = ["REQ-OPS-001", "REQ-OPS-002"]
+adrs = ["ADR-0003", "ADR-0004"]
+
+[scope]
+in = [
+  "Create infra/ directory with split .tf files (versions, variables, main, ssh-config, outputs).",
+  "Configure DO provider via DIGITALOCEAN_TOKEN environment variable.",
+  "Register the project SSH public key (~/.ssh/sask_ed25519.pub) as a digitalocean_ssh_key resource.",
+  "Provision a single Ubuntu 24.04 droplet (s-1vcpu-1gb) in fra1.",
+  "Provision a floating IP and attach it to the droplet.",
+  "Provision a DO cloud firewall: inbound 22 from developer IP (looked up via http data source), 80 and 443 from anywhere.",
+  "Generate ~/.ssh/config.d/sask via local_file resource with droplet connection info.",
+  "Pin Tofu provider versions in versions.tf.",
+  "Local state (infra/terraform.tfstate, gitignored).",
+  "Create scripts/provision.sh, scripts/destroy.sh, scripts/connect.sh.",
+  "Default scripts prompt for confirmation; -y flag bypasses prompt.",
+  "Update CLAUDE.md with infra/ directory description and script usage.",
+  "Add devlog entry capturing the manual DNS step at GoDaddy."
+]
+out = [
+  "Service deployment (deferred to PR-004 via Ansible).",
+  "Caddy / HTTPS / Let's Encrypt setup (deferred to PR-004).",
+  "Non-root user creation on droplet (deferred to PR-004).",
+  "Cloud-init (deliberately not used; configuration handled by Ansible).",
+  "Backups, monitoring, alerting.",
+  "DNS automation via Tofu (handled manually at GoDaddy).",
+  "ufw on droplet (DO cloud firewall only)."
+]
+
+[deliverables]
+files = [
+  "infra/versions.tf",
+  "infra/variables.tf",
+  "infra/main.tf",
+  "infra/ssh-config.tf",
+  "infra/outputs.tf",
+  "infra/terraform.tfvars.example",
+  "infra/.gitignore",
+  "scripts/provision.sh",
+  "scripts/destroy.sh",
+  "scripts/connect.sh",
+  "decisions/0003-tofu-state-management.toml",
+  "decisions/0004-deployment-topology.toml"
+]
+tests = [
+  "Smoke test (manual): tofu apply succeeds, droplet reachable via SSH, tofu destroy succeeds cleanly with no orphaned resources visible in DO UI."
+]
+
+[acceptance]
+items = [
+  "scripts/validate-specs.sh exits 0.",
+  "scripts/provision.sh -y completes successfully and outputs floating IP.",
+  "After DNS record creation at GoDaddy (manual step), 'ssh sask-droplet' (using generated config) connects successfully.",
+  "DO web console shows droplet, floating IP, firewall, and SSH key all present.",
+  "scripts/destroy.sh -y completes and DO UI shows no remaining sask resources.",
+  "After destroy, scripts/provision.sh -y succeeds again (clean redeploy).",
+  "~/.ssh/config.d/sask is written by tofu apply and removed by tofu destroy.",
+  "infra/terraform.tfstate is in .gitignore (not committed).",
+  "All tofu commands run via the scripts; no manual tofu invocation required.",
+  "git status is clean after implementation commits."
+]
+
+[review]
+focus = [
+  "versions.tf: are provider versions pinned to specific minor versions?",
+  "main.tf: does the firewall correctly use a data source for the developer's current IP?",
+  "ssh-config.tf: does the generated file have correct permissions (0600)?",
+  "outputs.tf: does the script output give clear next-step instructions (DNS record details)?",
+  "scripts: do they source ~/.config/sask/infra.env before invoking tofu?",
+  "Idempotence: does running provision.sh twice cause any drift or errors?"
+]
+smoke_test = """
+cd ~/Code/sask
+nix develop
+scripts/validate-specs.sh
+scripts/provision.sh -y
+# At this point, manually:
+#   1. Read the output for the floating IP.
+#   2. Log into GoDaddy.
+#   3. Create A record: sask.davidstitt.net -> <floating IP>.
+#   4. Wait for propagation (try 'dig sask.davidstitt.net' until it resolves).
+ssh sask-droplet 'uname -a'        # should succeed
+scripts/destroy.sh -y
+# Verify in DO UI that droplet, floating IP, firewall, ssh key are all gone.
+# Optionally: scripts/provision.sh -y again to verify clean redeploy.
+"""
+
+[notes]
+for_assistant = """
+Use the digitalocean Tofu provider, not the legacy Terraform variant.
+Pin to digitalocean provider version ~> 2.0 (latest 2.x). Use the http
+data source to fetch the developer's current IP (https://ifconfig.me
+or https://api.ipify.org); restrict SSH inbound to that single IP. The
+DO firewall must permit inbound TCP 22 from the developer's IP only,
+and inbound TCP 80 and 443 from 0.0.0.0/0 and ::/0. The droplet image
+is exactly 'ubuntu-24-04-x64'. Use the floating IP as the SSH target
+in the generated ssh-config snippet (not the droplet's direct IP) so
+the snippet remains valid across droplet replacements. The local_file
+resource writing to ~/.ssh/config.d/sask should set file_permission =
+"0600". The scripts must source ~/.config/sask/infra.env before
+invoking tofu. The DIGITALOCEAN_TOKEN env var is read automatically by
+the provider — no explicit variable declaration needed in Tofu.
+Provider version pinning: use 'required_providers' block in versions.tf.
+Do NOT manually upload anything to the DO web UI. All cloud state is
+managed via Tofu.
+"""

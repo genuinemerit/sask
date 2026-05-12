@@ -1,0 +1,55 @@
+id = "ADR-0003"
+title = "OpenTofu state management"
+status = "accepted"
+date = "2026-05-12"
+
+[context]
+problem = """
+OpenTofu maintains a state file describing what infrastructure it manages.
+This file is critical: losing it means losing the ability to cleanly
+destroy or modify the resources Tofu created. We need to decide where
+state lives and how it's protected.
+"""
+constraints = [
+  "Hobby project, single developer, single machine.",
+  "Must support clean destroy/apply cycles.",
+  "Should not introduce significant ongoing costs.",
+  "Should not require setup ceremony disproportionate to project size."
+]
+alternatives = [
+  "Remote state in DO Spaces (S3-compatible). Durable, survives laptop failure, adds ~$5/month cost and setup time.",
+  "Remote state in a git repository (gitignored encrypted file). Possible but fiddly; not recommended by Tofu maintainers.",
+  "Terraform Cloud or similar SaaS state backend. Free tier exists but adds external dependency."
+]
+
+[decision]
+summary = """
+Use local state in infra/terraform.tfstate. The state file is gitignored.
+This is acceptable for the project's hobby scale and single-developer
+context. If multi-machine work or disaster resilience becomes important,
+migrate to DO Spaces remote state per the path documented below.
+"""
+rationale = """
+Local state is the simplest setup, matches project ceremony level, and
+costs nothing. The primary risk (state loss = orphaned cloud resources)
+is small for a hobby project where cloud resources are cheap and few.
+"""
+
+[consequences]
+positive = [
+  "Zero setup cost, zero ongoing cost.",
+  "All Tofu work happens locally; no external service dependency.",
+  "Easy to understand and debug."
+]
+negative = [
+  "Loss of laptop or state file = orphaned cloud resources requiring manual cleanup via DO UI.",
+  "Single-machine only; can't work from another machine without copying state.",
+  "No state locking — concurrent tofu runs could corrupt state (not an issue with one developer one machine)."
+]
+followups = [
+  "Migration path to remote state: provision DO Space, configure backend in versions.tf, run 'tofu init -migrate-state', verify, commit.",
+  "If a state-loss incident occurs, document the recovery procedure in docs/notes/."
+]
+
+[links]
+requirements = ["REQ-OPS-001"]

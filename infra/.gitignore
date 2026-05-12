@@ -1,0 +1,10 @@
+# Tofu state files
+*.tfstate
+*.tfstate.*
+.terraform/
+.terraform.lock.hcl
+
+# Local override files
+terraform.tfvars
+*.auto.tfvars
+
