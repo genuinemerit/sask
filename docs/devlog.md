@@ -2,6 +2,35 @@
 
 Reverse-chronological. Newest entries at top. Hand-written or auto-generated.
 
+## 2026-05-12 — PR-003 implementation
+
+Provisioned the DO droplet via OpenTofu. Created `infra/` with split .tf
+files: versions, variables, main, ssh-config, outputs. Provider pinned to
+`digitalocean ~> 2.0`. Droplet is `s-1vcpu-1gb` Ubuntu 24.04 in fra1.
+Reserved IP attached for a stable address that survives destroy/apply
+cycles. Cloud firewall restricts SSH (port 22) to the developer's current
+IP fetched at apply time via the `http` data source; HTTP/HTTPS open from
+anywhere. SSH config snippet written to `~/.ssh/config.d/sask` by
+`local_file` resource (0600 permissions).
+
+Note on terminology: DigitalOcean renamed "Floating IPs" to "Reserved IPs"
+in 2022. The Tofu provider reflects this as `digitalocean_reserved_ip` /
+`digitalocean_reserved_ip_assignment`. All documentation updated to match.
+
+**Manual DNS step (required after each fresh provision):**
+After `scripts/provision.sh` completes, the reserved IP is shown in the
+`next_steps` output. Log into GoDaddy and set:
+
+    A record: sask.davidstitt.net → <reserved IP>
+
+DNS is not automated (GoDaddy has no Tofu provider worth using for a
+single record). Once set, the record survives destroy/apply cycles because
+the reserved IP persists. Only needed again if the reserved IP resource is
+destroyed. Verify propagation with `dig +short sask.davidstitt.net` before
+testing SSH.
+
+Reference: PR-003, ADR-0003, ADR-0004, REQ-OPS-001, REQ-OPS-002.
+
 ## 2026-05-12 - PR-003 set up
 
 NixOS guest clipboard sharing with host (virt-manager/QEMU/Spice)

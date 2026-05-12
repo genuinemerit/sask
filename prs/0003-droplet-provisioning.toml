@@ -1,6 +1,6 @@
 id = "PR-003"
 title = "Droplet provisioning via OpenTofu"
-status = "ready"
+status = "in_progress"
 experiment_id = "baseline"
 
 [implements]
@@ -13,7 +13,7 @@ in = [
   "Configure DO provider via DIGITALOCEAN_TOKEN environment variable.",
   "Register the project SSH public key (~/.ssh/sask_ed25519.pub) as a digitalocean_ssh_key resource.",
   "Provision a single Ubuntu 24.04 droplet (s-1vcpu-1gb) in fra1.",
-  "Provision a floating IP and attach it to the droplet.",
+  "Provision a reserved IP (DO renamed 'reserved IP' to 'reserved IP' in 2022; Tofu resource: digitalocean_reserved_ip) and attach it to the droplet.",
   "Provision a DO cloud firewall: inbound 22 from developer IP (looked up via http data source), 80 and 443 from anywhere.",
   "Generate ~/.ssh/config.d/sask via local_file resource with droplet connection info.",
   "Pin Tofu provider versions in versions.tf.",
@@ -55,9 +55,9 @@ tests = [
 [acceptance]
 items = [
   "scripts/validate-specs.sh exits 0.",
-  "scripts/provision.sh -y completes successfully and outputs floating IP.",
+  "scripts/provision.sh -y completes successfully and outputs reserved IP.",
   "After DNS record creation at GoDaddy (manual step), 'ssh sask-droplet' (using generated config) connects successfully.",
-  "DO web console shows droplet, floating IP, firewall, and SSH key all present.",
+  "DO web console shows droplet, reserved IP, firewall, and SSH key all present.",
   "scripts/destroy.sh -y completes and DO UI shows no remaining sask resources.",
   "After destroy, scripts/provision.sh -y succeeds again (clean redeploy).",
   "~/.ssh/config.d/sask is written by tofu apply and removed by tofu destroy.",
@@ -81,13 +81,13 @@ nix develop
 scripts/validate-specs.sh
 scripts/provision.sh -y
 # At this point, manually:
-#   1. Read the output for the floating IP.
+#   1. Read the output for the reserved IP.
 #   2. Log into GoDaddy.
-#   3. Create A record: sask.davidstitt.net -> <floating IP>.
+#   3. Create A record: sask.davidstitt.net -> <reserved IP>.
 #   4. Wait for propagation (try 'dig sask.davidstitt.net' until it resolves).
 ssh sask-droplet 'uname -a'        # should succeed
 scripts/destroy.sh -y
-# Verify in DO UI that droplet, floating IP, firewall, ssh key are all gone.
+# Verify in DO UI that droplet, reserved IP, firewall, ssh key are all gone.
 # Optionally: scripts/provision.sh -y again to verify clean redeploy.
 """
 
@@ -99,7 +99,7 @@ data source to fetch the developer's current IP (https://ifconfig.me
 or https://api.ipify.org); restrict SSH inbound to that single IP. The
 DO firewall must permit inbound TCP 22 from the developer's IP only,
 and inbound TCP 80 and 443 from 0.0.0.0/0 and ::/0. The droplet image
-is exactly 'ubuntu-24-04-x64'. Use the floating IP as the SSH target
+is exactly 'ubuntu-24-04-x64'. Use the reserved IP as the SSH target
 in the generated ssh-config snippet (not the droplet's direct IP) so
 the snippet remains valid across droplet replacements. The local_file
 resource writing to ~/.ssh/config.d/sask should set file_permission =
