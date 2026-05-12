@@ -2,6 +2,23 @@
 
 Reverse-chronological. Newest entries at top. Hand-written or auto-generated.
 
+## 2026-05-12 — PR-003 destroy cycle validated
+
+`scripts/destroy.sh` (interactive) completed cleanly. 7 resources destroyed,
+0 remaining, no orphaned resources in DO UI. Total ~33s: IP assignment detach
+(12s) then droplet destroy (21s) run sequentially (droplet can't be destroyed
+until reserved IP is detached); everything else near-instant.
+
+Destruction order matched the dependency graph in reverse: `~/.ssh/config.d/sask`
+removed first (before any cloud resource), then DNS record, firewall, and IP
+assignment in parallel, then reserved IP and droplet, then SSH key last.
+
+Notable: droplet's ephemeral direct IP was `46.101.229.123`, distinct from
+reserved IP `206.189.249.29`. Validates the reserved IP design — redeploy will
+assign a new direct IP, but the reserved IP and DNS record stay stable.
+DNS record removed cleanly on destroy; no lingering entry, no dangling reserved
+IP cost. `~/.ssh/config.d/sask` confirmed absent after destroy.
+
 ## 2026-05-12 — PR-003 first successful provision
 
 `scripts/provision.sh` (interactive) completed cleanly. 7 resources created
