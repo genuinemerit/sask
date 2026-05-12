@@ -102,8 +102,8 @@ scripts/destroy.sh            # prompts for confirmation
 scripts/destroy.sh -y         # non-interactive
 ```
 
-After provisioning, a manual DNS step is required: set an A record at GoDaddy
-(`sask.davidstitt.net` → reserved IP shown in tofu output). DNS is not automated.
+DNS is managed by Tofu (`digitalocean_record`). After `provision.sh` completes,
+wait for propagation: `dig +short sask.davidstitt.net` until it returns the reserved IP.
 
 Runtime is configured via environment variables set automatically by `nix develop`:
 

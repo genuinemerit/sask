@@ -1,11 +1,25 @@
-# Fetch the developer's current public IP so the firewall allows SSH only from here.
+# --------------------------------------------------------------------------
+# Data sources
+# --------------------------------------------------------------------------
+
+# Developer's current public IP — used to restrict SSH inbound to one address.
 data "http" "developer_ip" {
   url = "https://api.ipify.org"
+}
+
+# Verify the managed domain exists in DO before attempting to create records.
+# Fails fast at plan time if the domain is missing, rather than during apply.
+data "digitalocean_domain" "davidstitt_net" {
+  name = "davidstitt.net"
 }
 
 locals {
   developer_ip_cidr = "${chomp(data.http.developer_ip.response_body)}/32"
 }
+
+# --------------------------------------------------------------------------
+# SSH key
+# --------------------------------------------------------------------------
 
 # Register the project SSH key with DO.
 resource "digitalocean_ssh_key" "sask" {
@@ -13,7 +27,10 @@ resource "digitalocean_ssh_key" "sask" {
   public_key = file(pathexpand(var.ssh_public_key_path))
 }
 
-# The droplet itself.
+# --------------------------------------------------------------------------
+# Droplet
+# --------------------------------------------------------------------------
+
 resource "digitalocean_droplet" "sask" {
   name     = "${var.project_name}-prod"
   region   = var.region
@@ -24,7 +41,10 @@ resource "digitalocean_droplet" "sask" {
   # No cloud-init; Ansible handles configuration in PR-004.
 }
 
-# Reserved IP, attached to the droplet.
+# --------------------------------------------------------------------------
+# Networking: reserved IP
+# --------------------------------------------------------------------------
+
 resource "digitalocean_reserved_ip" "sask" {
   region = var.region
 }
@@ -34,7 +54,24 @@ resource "digitalocean_reserved_ip_assignment" "sask" {
   droplet_id = digitalocean_droplet.sask.id
 }
 
-# Cloud firewall.
+# --------------------------------------------------------------------------
+# DNS
+# --------------------------------------------------------------------------
+
+# A record: sask.davidstitt.net -> reserved IP.
+# davidstitt.net is a pre-existing managed domain in the DO account.
+resource "digitalocean_record" "sask" {
+  domain = data.digitalocean_domain.davidstitt_net.name
+  type   = "A"
+  name   = "sask"
+  value  = digitalocean_reserved_ip.sask.ip_address
+  ttl    = 300
+}
+
+# --------------------------------------------------------------------------
+# Firewall
+# --------------------------------------------------------------------------
+
 resource "digitalocean_firewall" "sask" {
   name        = "${var.project_name}-firewall"
   droplet_ids = [digitalocean_droplet.sask.id]

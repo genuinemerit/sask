@@ -9,23 +9,20 @@ output "reserved_ip" {
 output "next_steps" {
   value = <<-EOT
 
-    sask droplet provisioned
-    ========================
-    Reserved IP : ${digitalocean_reserved_ip.sask.ip_address}
-    Droplet ID  : ${digitalocean_droplet.sask.id}
+    sask droplet provisioned.
 
-    Next steps:
-      1. At GoDaddy, set A record:
-           sask.davidstitt.net -> ${digitalocean_reserved_ip.sask.ip_address}
-      2. Wait for DNS propagation:
-           dig +short sask.davidstitt.net
-      3. Test SSH:
-           ssh sask-droplet
-         or
-           scripts/connect.sh
+    Reserved IP: ${digitalocean_reserved_ip.sask.ip_address}
+    DNS:         sask.davidstitt.net (managed by Tofu, will propagate shortly)
 
-    To tear down:
+    Wait for propagation:
+      dig +short sask.davidstitt.net
+
+    Connect:
+      ssh sask-droplet
+        or
+      scripts/connect.sh
+
+    Tear down:
       scripts/destroy.sh
-
   EOT
 }

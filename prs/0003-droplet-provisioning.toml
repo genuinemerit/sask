@@ -13,7 +13,7 @@ in = [
   "Configure DO provider via DIGITALOCEAN_TOKEN environment variable.",
   "Register the project SSH public key (~/.ssh/sask_ed25519.pub) as a digitalocean_ssh_key resource.",
   "Provision a single Ubuntu 24.04 droplet (s-1vcpu-1gb) in fra1.",
-  "Provision a reserved IP (DO renamed 'reserved IP' to 'reserved IP' in 2022; Tofu resource: digitalocean_reserved_ip) and attach it to the droplet.",
+  "Provision a reserved IP (DO renamed 'floating IP' to 'reserved IP' in 2022; Tofu resource: digitalocean_reserved_ip) and attach it to the droplet.",
   "Provision a DO cloud firewall: inbound 22 from developer IP (looked up via http data source), 80 and 443 from anywhere.",
   "Generate ~/.ssh/config.d/sask via local_file resource with droplet connection info.",
   "Pin Tofu provider versions in versions.tf.",
@@ -21,7 +21,8 @@ in = [
   "Create scripts/provision.sh, scripts/destroy.sh, scripts/connect.sh.",
   "Default scripts prompt for confirmation; -y flag bypasses prompt.",
   "Update CLAUDE.md with infra/ directory description and script usage.",
-  "Add devlog entry capturing the manual DNS step at GoDaddy."
+  "Manage DNS A record for sask.davidstitt.net via Tofu (digitalocean_record; davidstitt.net is nameservered at DO).",
+  "Add devlog entry summarising provisioning approach and DNS automation."
 ]
 out = [
   "Service deployment (deferred to PR-004 via Ansible).",
@@ -29,7 +30,7 @@ out = [
   "Non-root user creation on droplet (deferred to PR-004).",
   "Cloud-init (deliberately not used; configuration handled by Ansible).",
   "Backups, monitoring, alerting.",
-  "DNS automation via Tofu (handled manually at GoDaddy).",
+  "GoDaddy DNS management (davidstitt.net is nameservered at DO; DNS handled via Tofu).",
   "ufw on droplet (DO cloud firewall only)."
 ]
 
@@ -56,7 +57,7 @@ tests = [
 items = [
   "scripts/validate-specs.sh exits 0.",
   "scripts/provision.sh -y completes successfully and outputs reserved IP.",
-  "After DNS record creation at GoDaddy (manual step), 'ssh sask-droplet' (using generated config) connects successfully.",
+  "After tofu apply, 'ssh sask-droplet' (using generated config) connects successfully once DNS propagates.",
   "DO web console shows droplet, reserved IP, firewall, and SSH key all present.",
   "scripts/destroy.sh -y completes and DO UI shows no remaining sask resources.",
   "After destroy, scripts/provision.sh -y succeeds again (clean redeploy).",
@@ -80,11 +81,8 @@ cd ~/Code/sask
 nix develop
 scripts/validate-specs.sh
 scripts/provision.sh -y
-# At this point, manually:
-#   1. Read the output for the reserved IP.
-#   2. Log into GoDaddy.
-#   3. Create A record: sask.davidstitt.net -> <reserved IP>.
-#   4. Wait for propagation (try 'dig sask.davidstitt.net' until it resolves).
+# DNS A record is created by Tofu. Wait for propagation:
+dig +short sask.davidstitt.net     # repeat until it returns the reserved IP
 ssh sask-droplet 'uname -a'        # should succeed
 scripts/destroy.sh -y
 # Verify in DO UI that droplet, reserved IP, firewall, ssh key are all gone.

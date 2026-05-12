@@ -25,14 +25,14 @@ alternatives = [
 [decision]
 summary = """
 Single Ubuntu 24.04 droplet (s-1vcpu-1gb) in fra1 region. Reserved IP
-(DigitalOcean renamed "reserved IP" to "reserved IP" in 2022; the Tofu
-provider reflects this as digitalocean_reserved_ip) attached for stable
-address across destroy/apply cycles. Cloud-level DO
-firewall (no ufw on droplet) allowing inbound SSH (port 22) from the
-developer's current IP, plus HTTP (80) and HTTPS (443) from anywhere.
-Domain sask.davidstitt.net, DNS managed manually at GoDaddy, A record
-points at the reserved IP. Root user only on droplet for now; non-root
-user creation deferred to PR-004 (Ansible).
+(DigitalOcean renamed "floating IP" to "reserved IP" in 2022; Tofu
+resource: digitalocean_reserved_ip) attached for stable address across
+destroy/apply cycles. Cloud-level DO firewall (no ufw on droplet)
+allowing inbound SSH (port 22) from the developer's current IP, plus
+HTTP (80) and HTTPS (443) from anywhere. Domain sask.davidstitt.net;
+DNS managed via Tofu (digitalocean_record resource) — davidstitt.net
+is nameservered at DigitalOcean. Root user only on droplet for now;
+non-root user creation deferred to PR-004 (Ansible).
 """
 rationale = """
 Single droplet matches scale; reserved IP enables stable DNS without
@@ -47,11 +47,10 @@ positive = [
   "DNS record set once, survives destroy/apply cycles.",
   "DO firewall is reviewable via tofu plan before applying.",
   "Recovery via DO web console remains possible (cloud firewall doesn't block console).",
-  "DNS record at GoDaddy points at the reserved IP, not the droplet — so destroy/apply cycles do not require DNS changes."
+  "DNS record (digitalocean_record) points at the reserved IP, not the droplet — destroy/apply cycles do not require DNS changes."
 ]
 negative = [
   "No HA — droplet failure means service down.",
-  "DNS change at GoDaddy is a manual step (not in Tofu).",
   "SSH-from-my-IP-only requires re-applying when developer's IP changes (handled via Tofu http data source that fetches current IP at apply time).",
   "Developer IP may change between provisioning sessions (mobile work, ISP IP rotation, VPN toggling). The firewall is set at apply time based on the IP-of-the-moment. If the IP changes after apply, SSH access from the new location requires re-running scripts/provision.sh, which will detect the new IP and update the firewall rule (this is a no-op for everything else and takes seconds).",
   "Reserved IP costs ~$4/month when no droplet is attached. During normal destroy/apply cycles this is brief; if the experiment is paused with the droplet destroyed but the IP retained, costs accumulate."
