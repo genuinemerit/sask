@@ -2,6 +2,29 @@
 
 Reverse-chronological. Newest entries at top. Hand-written or auto-generated.
 
+## 2026-05-13 — PR-004 destroy/reprovision cycle validated
+
+Ran the full destroy → provision → deploy → test cycle from zero to confirm
+the automation holds end-to-end with no manual steps.
+
+Destroy (`scripts/destroy.sh -y`): 7 resources destroyed cleanly in ~34s.
+Reserved IP `157.230.79.32` released; DNS record removed immediately;
+`~/.ssh/config.d/sask` removed before any cloud resource.
+
+Provision (`scripts/provision.sh -y`): 7 resources created in ~46s.
+New reserved IP `129.212.169.212`; DNS A record updated automatically by
+Tofu. Propagated within 10s.
+
+Deploy (`scripts/deploy.sh -y`): `ok=23 changed=18 failed=0` on the
+fresh droplet. Caddy reload handler succeeded cleanly — the root-owned log
+file fix holds on a fresh install (not just idempotent re-runs). Let's
+Encrypt certificate issued automatically via tls-alpn-01 challenge.
+
+Tests: `scripts/acceptance-test.sh` 9/9; `poetry run pytest tests/acceptance/`
+17/17 in 6.24s. All 14 PR-004 acceptance items confirmed.
+
+Reference: PR-004, tests/results/PR-004.md.
+
 ## 2026-05-13 — PR-004 complete
 
 Deployed the sask service to the DO droplet via Ansible. The service is live
