@@ -8,10 +8,18 @@ packages = [{include = "sask", from = "src"}]
 [tool.poetry.dependencies]
 python = "^3.12"
 flask = "^3.0"
+gunicorn = "^23.0"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^8.0"
 ruff = ">=0.9.0"
+
+[tool.poetry.group.acceptance]
+optional = true
+
+[tool.poetry.group.acceptance.dependencies]
+pytest = "^8.0"
+requests = "^2.31"
 
 [build-system]
 requires = ["poetry-core"]

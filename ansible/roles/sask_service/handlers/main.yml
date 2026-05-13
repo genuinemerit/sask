@@ -1,0 +1,13 @@
+---
+# Handlers run in definition order (not notification order).
+# "Reload systemd" is defined first so it always runs before
+# "Restart sask service" when both are triggered by a unit file change.
+
+- name: Reload systemd
+  ansible.builtin.systemd:
+    daemon_reload: true
+
+- name: Restart sask service
+  ansible.builtin.systemd:
+    name: sask
+    state: restarted

@@ -1,0 +1,73 @@
+---
+- name: Create virtualenv
+  ansible.builtin.pip:
+    requirements: "{{ local_project_root }}/requirements.txt"
+    virtualenv: "{{ sask_venv_dir }}"
+    virtualenv_command: python3 -m venv
+    state: present
+  notify: Restart sask service
+
+- name: Copy src/sask package
+  ansible.builtin.copy:
+    src: "{{ local_project_root }}/src/sask/"
+    dest: "{{ sask_app_dir }}/sask/"
+    owner: "{{ sask_user }}"
+    group: "{{ sask_group }}"
+    mode: "0644"
+    directory_mode: "0755"
+  notify: Restart sask service
+
+- name: Copy resources
+  ansible.builtin.copy:
+    src: "{{ local_project_root }}/resources/"
+    dest: "{{ sask_app_dir }}/resources/"
+    owner: "{{ sask_user }}"
+    group: "{{ sask_group }}"
+    mode: "0644"
+    directory_mode: "0755"
+  notify: Restart sask service
+
+- name: Deploy tokens file
+  ansible.builtin.copy:
+    src: "{{ local_tokens_path }}"
+    dest: "{{ sask_config_dir }}/tokens.toml"
+    owner: "{{ sask_user }}"
+    group: "{{ sask_group }}"
+    mode: "0600"
+  no_log: true
+  notify: Restart sask service
+
+- name: Deploy environment file
+  ansible.builtin.template:
+    src: environment.j2
+    dest: "{{ sask_config_dir }}/environment"
+    owner: "{{ sask_user }}"
+    group: "{{ sask_group }}"
+    mode: "0640"
+  notify: Restart sask service
+
+- name: Deploy systemd service unit
+  ansible.builtin.template:
+    src: sask.service.j2
+    dest: /etc/systemd/system/sask.service
+    owner: root
+    group: root
+    mode: "0644"
+  notify:
+    - Reload systemd
+    - Restart sask service
+
+- name: Set ownership of app directory
+  ansible.builtin.file:
+    path: "{{ sask_app_dir }}"
+    state: directory
+    owner: "{{ sask_user }}"
+    group: "{{ sask_group }}"
+    recurse: true
+
+- name: Enable and start sask service
+  ansible.builtin.systemd:
+    name: sask
+    enabled: true
+    state: started
+    daemon_reload: true

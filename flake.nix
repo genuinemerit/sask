@@ -17,6 +17,7 @@
           ruff
           opentofu
           ansible
+          ansible-lint
           openssh
           sqlite
           jq

@@ -1,0 +1,24 @@
+---
+# Application identity
+sask_domain: sask.davidstitt.net
+sask_user: sask
+sask_group: sask
+
+# Remote directory layout
+sask_app_dir: /opt/sask
+sask_config_dir: /etc/sask
+sask_log_dir: /var/log/sask
+sask_venv_dir: /opt/sask/.venv
+
+# gunicorn runtime
+sask_bind: "127.0.0.1:8080"
+sask_workers: 2
+
+# Local paths (resolved on the control machine at play time)
+local_project_root: "{{ playbook_dir }}/.."
+local_tokens_path: "{{ lookup('env', 'HOME') }}/.config/sask/tokens.toml"
+
+# OS maintenance — set to true only when you deliberately want to upgrade
+# all packages on the droplet.  Leaving false keeps deploys fast and
+# prevents unexpected package changes.
+apt_upgrade: false

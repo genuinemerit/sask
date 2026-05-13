@@ -1,0 +1,8 @@
+---
+- name: Deploy sask service
+  hosts: sask-droplet
+  become: true
+  roles:
+    - base
+    - sask_service
+    - caddy

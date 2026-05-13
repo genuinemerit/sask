@@ -1,0 +1,19 @@
+[Unit]
+Description=sask resource server
+After=network.target
+
+[Service]
+Type=simple
+User={{ sask_user }}
+Group={{ sask_group }}
+WorkingDirectory={{ sask_app_dir }}
+EnvironmentFile={{ sask_config_dir }}/environment
+ExecStart={{ sask_venv_dir }}/bin/gunicorn 'sask.app:app' \
+    --bind {{ sask_bind }} \
+    --workers {{ sask_workers }} \
+    --access-logfile -
+Restart=on-failure
+RestartSec=5s
+
+[Install]
+WantedBy=multi-user.target

@@ -33,6 +33,14 @@ configuration are all version-controlled and scripted.
   - `outputs.tf` — `reserved_ip`, `droplet_id`, and `next_steps` (DNS instructions).
   - `terraform.tfvars.example` — Commented-out defaults; copy to `terraform.tfvars` to override.
   - `.gitignore` — Excludes state files, lock file, and tfvars.
+- `ansible/` — Ansible playbook for service deployment to the droplet.
+  - `ansible.cfg` — Disables host key checking; points SSH at `~/.ssh/config.d/sask`.
+  - `inventory.yml` — Single host `sask-droplet` (resolved via SSH config alias).
+  - `site.yml` — Top-level playbook: runs `base`, `sask_service`, `caddy` roles in order.
+  - `group_vars/all.yml` — All tunable variables (paths, domain, gunicorn workers, `apt_upgrade`).
+  - `roles/base/` — apt update, base packages, `sask` system user, `/opt/sask /etc/sask /var/log/sask` dirs.
+  - `roles/sask_service/` — venv + pip install, copy source + resources, tokens deploy, systemd unit + env file.
+  - `roles/caddy/` — Caddy apt repo + install, Caddyfile template (HTTPS reverse proxy, auto Let's Encrypt).
 - `scripts/` — Bash orchestration scripts. Idempotent where possible.
 - `tools/` — Python helpers (validators, generators).
 - `docs/devlog.md` — Dev log. Mainly human-written. Read for context; do not write to it without explicit instruction.
@@ -83,6 +91,26 @@ scripts/run-local.sh
 
 # Run the test suite
 scripts/run-tests.sh
+```
+
+## Deploying the service
+
+Requires a provisioned droplet (run `scripts/provision.sh` first) and
+`~/.config/sask/tokens.toml` with at least one valid token entry.
+
+```bash
+# Deploy: exports requirements, copies code/secrets, configures gunicorn + Caddy
+scripts/deploy.sh          # prompts for confirmation (currently non-interactive; -y accepted)
+scripts/deploy.sh -y
+
+# Quick bash smoke test against the live HTTPS endpoint
+scripts/acceptance-test.sh
+
+# Full pytest acceptance suite against the live endpoint
+poetry run pytest tests/acceptance/ -v
+
+# Re-export requirements.txt after any dependency changes
+scripts/export-requirements.sh
 ```
 
 ## Provisioning the droplet
