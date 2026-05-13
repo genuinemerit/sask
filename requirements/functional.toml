@@ -25,4 +25,19 @@ acceptance = [
 ]
 [requirement.links]
 adrs = []
-
+[[requirement]]
+id = "REQ-FUN-003"
+title = "Service reachable over HTTPS at deployed URL"
+category = "functional"
+priority = "must"
+statement = "The deployed service shall be reachable at https://sask.davidstitt.net/ with a valid Let's Encrypt certificate and shall deliver the same endpoints (and same auth behavior) as the local service."
+rationale = "End-to-end functional acceptance criterion for deployment."
+acceptance = [
+  "curl -s https://sask.davidstitt.net/health returns {\"status\": \"ok\"} with 200.",
+  "TLS certificate is valid (curl does not require -k).",
+  "All resource kinds (image, json, audio) retrievable with valid token.",
+  "All failure conditions from REQ-FUN-001 hold against the remote endpoint (missing token, bad token, unknown id, wrong kind).",
+  "Resource bytes retrieved match the local files byte-for-byte."
+]
+[requirement.links]
+adrs = ["ADR-0005"]

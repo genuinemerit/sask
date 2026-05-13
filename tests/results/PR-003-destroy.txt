@@ -1,0 +1,253 @@
+[dave@nixos:~/Code/sask]$ nix develop
+sask dev shell — Python 3.12.12, Poetry 2.1.3)
+(sask) 
+[dave@nixos:~/Code/sask]$ scripts/destroy.sh
+data.http.developer_ip: Reading...
+data.digitalocean_domain.davidstitt_net: Reading...
+digitalocean_ssh_key.sask: Refreshing state... [id=56264842]
+digitalocean_reserved_ip.sask: Refreshing state... [id=206.189.249.29]
+data.http.developer_ip: Read complete after 0s [id=https://api.ipify.org]
+digitalocean_droplet.sask: Refreshing state... [id=570586226]
+data.digitalocean_domain.davidstitt_net: Read complete after 0s [id=davidstitt.net]
+digitalocean_record.sask: Refreshing state... [id=1818729768]
+digitalocean_reserved_ip_assignment.sask: Refreshing state... [id=570586226-206.189.249.29-20260512182555618900000001]
+digitalocean_firewall.sask: Refreshing state... [id=794f8630-73d2-4a1a-a364-540e2ab495ee]
+local_file.ssh_config_snippet: Refreshing state... [id=edc59a3dd54ea83a25f0abcd475b593c0b5c5a8a]
+
+OpenTofu used the selected providers to generate the following execution plan. Resource actions are indicated with the following symbols:
+  - destroy
+
+OpenTofu will perform the following actions:
+
+  # digitalocean_droplet.sask will be destroyed
+  - resource "digitalocean_droplet" "sask" {
+      - backups              = false -> null
+      - created_at           = "2026-05-12T18:25:12Z" -> null
+      - disk                 = 25 -> null
+      - graceful_shutdown    = false -> null
+      - id                   = "570586226" -> null
+      - image                = "ubuntu-24-04-x64" -> null
+      - ipv4_address         = "46.101.229.123" -> null
+      - ipv4_address_private = "10.114.0.2" -> null
+      - ipv6                 = false -> null
+      - locked               = false -> null
+      - memory               = 1024 -> null
+      - monitoring           = false -> null
+      - name                 = "sask-prod" -> null
+      - price_hourly         = 0.00893 -> null
+      - price_monthly        = 6 -> null
+      - private_networking   = true -> null
+      - public_networking    = true -> null
+      - region               = "fra1" -> null
+      - resize_disk          = true -> null
+      - size                 = "s-1vcpu-1gb" -> null
+      - ssh_keys             = [
+          - "c7:07:c0:2e:d1:59:66:ea:e5:4c:26:b0:57:14:c8:6a",
+        ] -> null
+      - status               = "active" -> null
+      - tags                 = [] -> null
+      - urn                  = "do:droplet:570586226" -> null
+      - vcpus                = 1 -> null
+      - volume_ids           = [] -> null
+      - vpc_uuid             = "4790c5a2-dad1-416a-952e-2dbfcb659c86" -> null
+    }
+
+  # digitalocean_firewall.sask will be destroyed
+  - resource "digitalocean_firewall" "sask" {
+      - created_at      = "2026-05-12T18:25:44Z" -> null
+      - droplet_ids     = [
+          - 570586226,
+        ] -> null
+      - id              = "794f8630-73d2-4a1a-a364-540e2ab495ee" -> null
+      - name            = "sask-firewall" -> null
+      - pending_changes = [] -> null
+      - status          = "succeeded" -> null
+      - tags            = [] -> null
+
+      - inbound_rule {
+          - port_range                = "22" -> null
+          - protocol                  = "tcp" -> null
+          - source_addresses          = [
+              - "188.26.195.77/32",
+            ] -> null
+          - source_droplet_ids        = [] -> null
+          - source_kubernetes_ids     = [] -> null
+          - source_load_balancer_uids = [] -> null
+          - source_tags               = [] -> null
+        }
+      - inbound_rule {
+          - port_range                = "443" -> null
+          - protocol                  = "tcp" -> null
+          - source_addresses          = [
+              - "0.0.0.0/0",
+              - "::/0",
+            ] -> null
+          - source_droplet_ids        = [] -> null
+          - source_kubernetes_ids     = [] -> null
+          - source_load_balancer_uids = [] -> null
+          - source_tags               = [] -> null
+        }
+      - inbound_rule {
+          - port_range                = "80" -> null
+          - protocol                  = "tcp" -> null
+          - source_addresses          = [
+              - "0.0.0.0/0",
+              - "::/0",
+            ] -> null
+          - source_droplet_ids        = [] -> null
+          - source_kubernetes_ids     = [] -> null
+          - source_load_balancer_uids = [] -> null
+          - source_tags               = [] -> null
+        }
+
+      - outbound_rule {
+          - destination_addresses          = [
+              - "0.0.0.0/0",
+              - "::/0",
+            ] -> null
+          - destination_droplet_ids        = [] -> null
+          - destination_kubernetes_ids     = [] -> null
+          - destination_load_balancer_uids = [] -> null
+          - destination_tags               = [] -> null
+          - protocol                       = "icmp" -> null
+        }
+      - outbound_rule {
+          - destination_addresses          = [
+              - "0.0.0.0/0",
+              - "::/0",
+            ] -> null
+          - destination_droplet_ids        = [] -> null
+          - destination_kubernetes_ids     = [] -> null
+          - destination_load_balancer_uids = [] -> null
+          - destination_tags               = [] -> null
+          - port_range                     = "1-65535" -> null
+          - protocol                       = "tcp" -> null
+        }
+      - outbound_rule {
+          - destination_addresses          = [
+              - "0.0.0.0/0",
+              - "::/0",
+            ] -> null
+          - destination_droplet_ids        = [] -> null
+          - destination_kubernetes_ids     = [] -> null
+          - destination_load_balancer_uids = [] -> null
+          - destination_tags               = [] -> null
+          - port_range                     = "1-65535" -> null
+          - protocol                       = "udp" -> null
+        }
+    }
+
+  # digitalocean_record.sask will be destroyed
+  - resource "digitalocean_record" "sask" {
+      - domain   = "davidstitt.net" -> null
+      - flags    = 0 -> null
+      - fqdn     = "sask.davidstitt.net" -> null
+      - id       = "1818729768" -> null
+      - name     = "sask" -> null
+      - port     = 0 -> null
+      - priority = 0 -> null
+      - ttl      = 300 -> null
+      - type     = "A" -> null
+      - value    = "206.189.249.29" -> null
+      - weight   = 0 -> null
+    }
+
+  # digitalocean_reserved_ip.sask will be destroyed
+  - resource "digitalocean_reserved_ip" "sask" {
+      - id         = "206.189.249.29" -> null
+      - ip_address = "206.189.249.29" -> null
+      - region     = "fra1" -> null
+      - urn        = "do:reservedip:206.189.249.29" -> null
+    }
+
+  # digitalocean_reserved_ip_assignment.sask will be destroyed
+  - resource "digitalocean_reserved_ip_assignment" "sask" {
+      - droplet_id = 570586226 -> null
+      - id         = "570586226-206.189.249.29-20260512182555618900000001" -> null
+      - ip_address = "206.189.249.29" -> null
+    }
+
+  # digitalocean_ssh_key.sask will be destroyed
+  - resource "digitalocean_ssh_key" "sask" {
+      - fingerprint = "c7:07:c0:2e:d1:59:66:ea:e5:4c:26:b0:57:14:c8:6a" -> null
+      - id          = "56264842" -> null
+      - name        = "sask-deploy" -> null
+      - public_key  = <<-EOT
+            ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIHzAdM5qhmJBjlH2RwmlyoneJdkIZdqxiS2rTf2OR3XO dave@nixos_sask-001
+        EOT -> null
+    }
+
+  # local_file.ssh_config_snippet will be destroyed
+  - resource "local_file" "ssh_config_snippet" {
+      - content              = <<-EOT
+            # Generated by OpenTofu — do not edit by hand.
+            # Destroyed by 'tofu destroy'.
+            Host sask-droplet
+              HostName 206.189.249.29
+              User root
+              IdentityFile /home/dave/.ssh/sask_ed25519
+              IdentitiesOnly yes
+              StrictHostKeyChecking accept-new
+        EOT -> null
+      - content_base64sha256 = "Pyvn9AXUZRKimBRDufXHNNzP3HHD0piUsCWnoARedDA=" -> null
+      - content_base64sha512 = "WWzVR+ENGDueFW5L1sxRtHg+v4MpZkxxwMnuVRFvbbZwmE9W/rzPvvfTcRr+12w/a71WW8vyLjgYKiKLHgAzLQ==" -> null
+      - content_md5          = "d6def29fe7a02537f7850c32d3515b98" -> null
+      - content_sha1         = "edc59a3dd54ea83a25f0abcd475b593c0b5c5a8a" -> null
+      - content_sha256       = "3f2be7f405d46512a2981443b9f5c734dccfdc71c3d29894b025a7a0045e7430" -> null
+      - content_sha512       = "596cd547e10d183b9e156e4bd6cc51b4783ebf8329664c71c0c9ee55116f6db670984f56febccfbef7d3711afed76c3f6bbd565bcbf22e38182a228b1e00332d" -> null
+      - directory_permission = "0777" -> null
+      - file_permission      = "0600" -> null
+      - filename             = "/home/dave/.ssh/config.d/sask" -> null
+      - id                   = "edc59a3dd54ea83a25f0abcd475b593c0b5c5a8a" -> null
+    }
+
+Plan: 0 to add, 0 to change, 7 to destroy.
+
+Changes to Outputs:
+  - droplet_id  = "570586226" -> null
+  - next_steps  = <<-EOT
+        sask droplet provisioned.
+        
+        Reserved IP: 206.189.249.29
+        DNS:         sask.davidstitt.net (managed by Tofu, will propagate shortly)
+        
+        Wait for propagation:
+          dig +short sask.davidstitt.net
+        
+        Connect:
+          ssh sask-droplet
+            or
+          scripts/connect.sh
+        
+        Tear down:
+          scripts/destroy.sh
+    EOT -> null
+  - reserved_ip = "206.189.249.29" -> null
+
+Do you really want to destroy all resources?
+  OpenTofu will destroy all your managed infrastructure, as shown above.
+  There is no undo. Only 'yes' will be accepted to confirm.
+
+  Enter a value: yes
+
+local_file.ssh_config_snippet: Destroying... [id=edc59a3dd54ea83a25f0abcd475b593c0b5c5a8a]
+local_file.ssh_config_snippet: Destruction complete after 0s
+digitalocean_reserved_ip_assignment.sask: Destroying... [id=570586226-206.189.249.29-20260512182555618900000001]
+digitalocean_record.sask: Destroying... [id=1818729768]
+digitalocean_firewall.sask: Destroying... [id=794f8630-73d2-4a1a-a364-540e2ab495ee]
+digitalocean_firewall.sask: Destruction complete after 0s
+digitalocean_record.sask: Destruction complete after 0s
+digitalocean_reserved_ip_assignment.sask: Still destroying... [id=570586226-206.189.249.29-20260512182555618900000001, 10s elapsed]
+digitalocean_reserved_ip_assignment.sask: Destruction complete after 12s
+digitalocean_reserved_ip.sask: Destroying... [id=206.189.249.29]
+digitalocean_droplet.sask: Destroying... [id=570586226]
+digitalocean_reserved_ip.sask: Destruction complete after 0s
+digitalocean_droplet.sask: Still destroying... [id=570586226, 10s elapsed]
+digitalocean_droplet.sask: Still destroying... [id=570586226, 20s elapsed]
+digitalocean_droplet.sask: Destruction complete after 21s
+digitalocean_ssh_key.sask: Destroying... [id=56264842]
+digitalocean_ssh_key.sask: Destruction complete after 0s
+
+Destroy complete! Resources: 7 destroyed.
+(sask) 
+[dave@nixos:~/Code/sask]$ 

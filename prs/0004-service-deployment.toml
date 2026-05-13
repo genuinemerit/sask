@@ -1,0 +1,143 @@
+id = "PR-004"
+title = "Service deployment via Ansible (gunicorn, Caddy, systemd)"
+status = "ready"
+experiment_id = "baseline"
+
+[implements]
+requirements = ["REQ-FUN-003", "REQ-OPS-001", "REQ-OPS-003", "REQ-OPS-004"]
+adrs = ["ADR-0005", "ADR-0006"]
+
+[scope]
+in = [
+  "Create ansible/ directory with ansible.cfg, inventory.yml, site.yml, group_vars/all.yml.",
+  "Create three roles: base, sask_service, caddy. Each with tasks/, templates/ as needed, handlers/ where needed.",
+  "base role: apt update/upgrade (controlled), create sask user (no shell login), create /opt/sask /etc/sask /var/log/sask directories.",
+  "sask_service role: install python3-venv, create venv at /opt/sask/.venv, install requirements.txt, copy src/sask/, copy resources/, copy local tokens.toml to /etc/sask/tokens.toml (mode 0600), deploy systemd unit, deploy environment file, reload systemd, enable+start service.",
+  "caddy role: add Caddy apt repo (GPG key + sources list), install caddy, deploy Caddyfile from template with domain sask.davidstitt.net, validate caddy config, reload caddy.",
+  "Add gunicorn to Python dependencies in pyproject.toml (dev: still flask run for local, but gunicorn for prod).",
+  "Create scripts/export-requirements.sh that runs poetry export.",
+  "Create scripts/deploy.sh that: sources infra.env, verifies tokens.toml exists locally, runs export-requirements.sh, runs ansible-playbook against the droplet via existing SSH config.",
+  "Create scripts/acceptance-test.sh: bash-based smoke test using curl against https://sask.davidstitt.net.",
+  "Create tests/acceptance/test_remote.py: pytest-based acceptance suite covering all unit-test conditions against the real endpoint.",
+  "Add 'acceptance' optional dependency group to pyproject.toml (pytest + requests).",
+  "Update CLAUDE.md with ansible/ directory, deploy.sh usage, acceptance test instructions.",
+  "Add devlog entry capturing the deploy workflow."
+]
+out = [
+  "Rate limiting (deferred — see ADR-0005 followups).",
+  "Token rotation without redeploy (deferred).",
+  "ufw on droplet (deferred — DO firewall sufficient).",
+  "Audit logging beyond Caddy's default access log.",
+  "Encrypted secrets at rest (deferred).",
+  "Caching, CDN, performance tuning.",
+  "Health-check monitoring (e.g., uptimerobot integration).",
+  "Log rotation customization (default journald is fine).",
+  "Backups of any kind."
+]
+
+[deliverables]
+files = [
+  "ansible/ansible.cfg",
+  "ansible/inventory.yml",
+  "ansible/site.yml",
+  "ansible/group_vars/all.yml",
+  "ansible/roles/base/tasks/main.yml",
+  "ansible/roles/sask_service/tasks/main.yml",
+  "ansible/roles/sask_service/templates/sask.service.j2",
+  "ansible/roles/sask_service/templates/environment.j2",
+  "ansible/roles/sask_service/handlers/main.yml",
+  "ansible/roles/caddy/tasks/main.yml",
+  "ansible/roles/caddy/templates/Caddyfile.j2",
+  "ansible/roles/caddy/handlers/main.yml",
+  "scripts/deploy.sh",
+  "scripts/acceptance-test.sh",
+  "scripts/export-requirements.sh",
+  "tests/acceptance/__init__.py",
+  "tests/acceptance/test_remote.py",
+  "tests/acceptance/conftest.py",
+  "decisions/0005-service-deployment.toml",
+  "decisions/0006-application-secrets-deployment.toml",
+  "requirements.txt"
+]
+tests = [
+  "tests/acceptance/test_remote.py — pytest suite, all conditions, real HTTPS endpoint.",
+  "scripts/acceptance-test.sh — bash smoke test for quick manual runs."
+]
+
+[acceptance]
+items = [
+  "scripts/validate-specs.sh exits 0.",
+  "Droplet is provisioned (scripts/provision.sh has been run; reserved IP, DNS, droplet all live).",
+  "Local ~/.config/sask/tokens.toml exists with at least one valid token.",
+  "Running scripts/deploy.sh -y completes successfully with no Ansible task failures.",
+  "https://sask.davidstitt.net/health returns 200 with {\"status\": \"ok\"} and valid TLS cert.",
+  "scripts/acceptance-test.sh exits 0.",
+  "tests/acceptance/test_remote.py: all tests pass.",
+  "Resource files retrieved over HTTPS are byte-identical to local files (sha256 match).",
+  "systemctl status sask on droplet shows active (running) under user sask.",
+  "Caddy is reloading/serving the configured site (systemctl status caddy shows active).",
+  "Killing the gunicorn process on the droplet results in systemd restart within 10 seconds.",
+  "Re-running scripts/deploy.sh -y produces no errors and only changes things that have actually changed (idempotency).",
+  "scripts/destroy.sh removes everything cleanly; subsequent provision+deploy works from zero.",
+  "git status is clean after implementation commits; no secrets in git diff or git log."
+]
+
+[review]
+focus = [
+  "ansible.cfg: does it disable host_key_checking sensibly and use the existing SSH config?",
+  "inventory.yml: does it reference sask-droplet by alias (using ~/.ssh/config.d/sask) rather than hardcoding IP?",
+  "Tokens copy task: file mode 0600, owner sask, group sask — verify all three.",
+  "sask.service.j2: User=sask, Restart=on-failure, ExecStart uses gunicorn from venv, EnvironmentFile points to /etc/sask/environment.",
+  "Caddyfile.j2: domain matches DNS, reverse_proxy to 127.0.0.1:8080, no other interfaces exposed.",
+  "deploy.sh: does it bail clearly when tokens.toml missing? Does export-requirements happen before copy?",
+  "Idempotence: does running deploy.sh twice show 'ok=N changed=0' on second run for all tasks?",
+  "Acceptance tests: do they cover both happy and unhappy paths?"
+]
+smoke_test = """
+# Assumes droplet is provisioned per PR-003 and ~/.config/sask/tokens.toml exists.
+cd ~/Code/sask
+nix develop
+scripts/validate-specs.sh
+scripts/deploy.sh -y
+# After ~2 minutes:
+scripts/acceptance-test.sh
+poetry run pytest tests/acceptance/ -v
+# Verify byte-identity:
+TOKEN=$(grep -m1 'token = ' ~/.config/sask/tokens.toml | sed 's/.*"\\(.*\\)".*/\\1/')
+curl -s -H "Authorization: Bearer $TOKEN" https://sask.davidstitt.net/resource/image/splash -o /tmp/remote-splash.png
+sha256sum /tmp/remote-splash.png resources/images/splash.png
+# Idempotency:
+scripts/deploy.sh -y  # should show 'changed=0' for nearly everything.
+"""
+
+[notes]
+for_assistant = """
+Use Ansible (the FOSS one, not Tower). The inventory should reference
+the host via the SSH alias 'sask-droplet' from ~/.ssh/config.d/sask, NOT
+by hardcoding the IP — this way IP changes (e.g., after destroy/reapply)
+don't require inventory edits. ansible.cfg should set
+'host_key_checking = False' (acceptable for our managed setup; the
+StrictHostKeyChecking accept-new policy is enforced at the SSH layer).
+Use Ansible's 'copy' module for the tokens file (NOT 'template' — no
+substitution). Use 'template' for sask.service, environment, and
+Caddyfile (Jinja2 substitution from group_vars/all.yml).
+gunicorn ExecStart should be:
+  /opt/sask/.venv/bin/gunicorn 'sask.app:app' --bind 127.0.0.1:8080 --workers 2 --access-logfile -
+The 'sask.app:app' assumes the Flask app object is named 'app' in
+sask/app.py — verify this matches PR-002 implementation. If PR-002 used
+a factory function (create_app), the ExecStart pattern is different.
+Caddy install via apt: follow Caddy's official Debian/Ubuntu instructions
+(GPG key from https://dl.cloudsmith.io/public/caddy/stable/gpg.key, apt
+repo at https://dl.cloudsmith.io/public/caddy/stable/deb/debian.deb.txt).
+Use the apt_key and apt_repository Ansible modules (or their modern
+equivalents using deb822_repository).
+Caddyfile must be minimal — domain block, reverse_proxy, log. Do NOT
+add tls or acme directives; Caddy handles those automatically.
+The acceptance pytest suite should reuse the token from
+~/.config/sask/tokens.toml (read at test setup) rather than hardcoding.
+Use the requests library, not Flask's test client, since this is testing
+the remote endpoint.
+Do NOT include 'apt upgrade' in the base role by default — controlled via
+a variable in group_vars/all.yml (default: false). Upgrading on every
+deploy is slow and risky; should be a deliberate choice.
+"""

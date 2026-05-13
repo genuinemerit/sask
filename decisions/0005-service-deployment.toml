@@ -1,0 +1,74 @@
+id = "ADR-0005"
+title = "Service deployment via Ansible, gunicorn, Caddy"
+status = "accepted"
+date = "2026-05-13"
+
+[context]
+problem = """
+The Flask service from PR-002 needs to run reliably on the droplet
+provisioned in PR-003. We need a deployment story covering: how code
+gets onto the droplet, how dependencies are managed, what runs the
+service, how HTTPS is provided, and how the service survives reboots
+and crashes.
+"""
+constraints = [
+  "Hobby project — minimize moving parts.",
+  "Must support reproducible deploys (run script, get working service).",
+  "Must serve real HTTPS to a remote game client.",
+  "Should align with existing project conventions (explicit, declarative, scripted)."
+]
+alternatives = [
+  "Docker / containers — adds runtime layer, conflicts with 'classic VM' learning goal.",
+  "Custom shell scripts via SSH — works but loses idempotency and structure.",
+  "Pure systemd-only with no reverse proxy — would require app-level TLS, much more complex.",
+  "nginx instead of Caddy — works but Caddy's auto-TLS is significantly simpler."
+]
+
+[decision]
+summary = """
+Use Ansible (via roles) to configure the droplet. Service runs as a
+systemd unit under a non-root 'sask' user, executed by gunicorn (NOT
+Flask's dev server). Caddy provides HTTPS reverse-proxy with automatic
+Let's Encrypt certificate management. Python dependencies are exported
+from Poetry to requirements.txt and installed via pip into a venv on
+the droplet — Poetry is not installed in production. Three Ansible
+roles: base (OS prep, user, directories), sask_service (Python venv,
+code deploy, systemd), caddy (reverse proxy, TLS).
+"""
+rationale = """
+Ansible matches the declarative-idempotent style established by Tofu.
+Roles teach the conventional structure without over-engineering for
+this small case. gunicorn is the standard WSGI server for Flask in
+production and avoids known issues with the dev server. Caddy is
+significantly less ceremony than nginx + certbot for the same outcome.
+Requirements.txt export keeps the production environment lean and
+matches conventional Python deployment.
+"""
+
+[consequences]
+positive = [
+  "scripts/deploy.sh becomes the single command for 'put the world right'.",
+  "Idempotent: re-running deploy on a clean droplet, or a partial droplet, converges to the same state.",
+  "Caddy auto-renews certificates; zero manual TLS management.",
+  "Service survives reboots, restarts on failure, runs as non-root.",
+  "Production tooling (pip + requirements.txt) decouples from dev tooling (Poetry)."
+]
+negative = [
+  "Requirements.txt must be re-exported on dependency changes; risk of staleness if forgotten (mitigated by deploy.sh running the export).",
+  "Ansible adds a new tool to the project's mental model.",
+  "Caddy's auto-TLS requires port 80 open to the world (it is, per PR-003)."
+]
+followups = [
+  "Rate limiting (Caddy directive or app-layer) — not needed at hobby scale.",
+  "Token rotation / expiry / revocation — current model is static, full redeploy.",
+  "ufw on droplet for defense in depth — DO firewall sufficient for now.",
+  "Audit logging of authenticated requests — app-layer feature when needed.",
+  "Encrypted secrets at rest — tokens.toml is mode 0600 plaintext; consider sops if stakes change.",
+  "Caching and CDN — single-droplet direct serve fine at current scale.",
+  "Health checks and monitoring — none configured; would add if uptime mattered.",
+  "Multiple workers / concurrency tuning — gunicorn default workers is fine for prototype.",
+  "Log rotation for Caddy and gunicorn — default systemd journald is fine for now."
+]
+
+[links]
+requirements = ["REQ-OPS-001", "REQ-FUN-003"]

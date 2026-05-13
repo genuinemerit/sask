@@ -45,3 +45,34 @@ acceptance = [
 [requirement.links]
 adrs = ["ADR-0004"]
 
+[[requirement]]
+id = "REQ-OPS-003"
+title = "Service runs as systemd unit"
+category = "operational"
+priority = "must"
+statement = "The service shall run as a systemd unit under a non-root user, restart on failure, and start automatically at boot."
+rationale = "Reliability and security baseline for any deployed service."
+acceptance = [
+  "systemctl status sask shows the service active (running).",
+  "Killing the service process (pkill -f gunicorn) results in systemd restart within 10 seconds.",
+  "Service user (sask) is non-root and has no shell login.",
+  "Service files in /opt/sask/ are owned by the sask user."
+]
+[requirement.links]
+adrs = ["ADR-0005"]
+
+[[requirement]]
+id = "REQ-OPS-004"
+title = "Application tokens deployed from developer machine"
+category = "security"
+priority = "must"
+statement = "The application tokens file shall be deployed from the developer's local machine to the droplet via Ansible. It shall never be committed to git, never pass through Tofu state, and shall be mode 0600 on the droplet."
+rationale = "Implements ADR-0001 secrets policy for the application-layer secrets."
+acceptance = [
+  "Running scripts/deploy.sh without ~/.config/sask/tokens.toml present produces a clear error and exits non-zero.",
+  "After deploy, /etc/sask/tokens.toml exists on droplet with mode 0600, owned by sask user.",
+  "git grep for any token value returns nothing.",
+  "Tofu state does not contain any token value."
+]
+[requirement.links]
+adrs = ["ADR-0001", "ADR-0006"]
