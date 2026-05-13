@@ -2,6 +2,42 @@
 
 Reverse-chronological. Newest entries at top. Hand-written or auto-generated.
 
+## 2026-05-13 — PR-004 complete
+
+Deployed the sask service to the DO droplet via Ansible. The service is live
+at `https://sask.davidstitt.net` with a valid Let's Encrypt certificate
+obtained automatically by Caddy on first startup.
+
+Three Ansible roles: `base` (apt packages, sask system user, directories),
+`sask_service` (venv, pip install, code + resources + tokens deploy, systemd
+unit), `caddy` (apt repo, install, Caddyfile, log directory). gunicorn serves
+the Flask app as a systemd unit under the non-root `sask` user with
+`Restart=on-failure`. Caddy reverse-proxies port 443 → 127.0.0.1:8080 and
+writes access logs to `/var/log/caddy/sask.log` in console format.
+
+Tokens are deployed from `~/.config/sask/tokens.toml` (local) to
+`/etc/sask/tokens.toml` (remote, mode 0600, no_log: true) — never touch git
+or Tofu state. `scripts/deploy.sh` verifies the local tokens file exists
+before invoking Ansible and re-exports `requirements.txt` on each run.
+`export-requirements.sh` was rewritten to read `poetry.lock` directly
+(Poetry 2.x moved `export` to a separate plugin not in the Nix shell).
+
+Several deploy issues caught and fixed in the same session: SSH config
+`~` expansion in subprocess (fixed by relying on `~/.ssh/config` Include
+directive instead of `-F`), requirements.txt path on remote host, Caddy log
+file created as root by `caddy validate` (removed validate, fixed with
+post-deploy recurse chown), and non-idempotent source copy (switched to
+`ansible.posix.synchronize` with `--exclude=__pycache__ --no-owner --no-group`).
+
+Idempotency confirmed: two consecutive deploys both show `ok=20 changed=0`.
+17/17 pytest acceptance tests pass; 9/9 bash smoke tests pass.
+Results in `tests/results/PR-004.md`.
+
+Two acceptance items deferred: kill/restart exercise and full
+destroy+reprovision-from-zero cycle.
+
+Reference: PR-004, ADR-0005, ADR-0006, REQ-FUN-003, REQ-OPS-001, REQ-OPS-003, REQ-OPS-004.
+
 ## 2026-05-12 — PR-003 destroy cycle validated
 
 `scripts/destroy.sh` (interactive) completed cleanly. 7 resources destroyed,

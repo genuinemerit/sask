@@ -1,6 +1,6 @@
 id = "PR-004"
 title = "Service deployment via Ansible (gunicorn, Caddy, systemd)"
-status = "ready"
+status = "complete"
 experiment_id = "baseline"
 
 [implements]
