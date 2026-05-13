@@ -26,8 +26,19 @@
     owner: root
     group: root
     mode: "0644"
-    validate: caddy validate --adapter caddyfile --config %s
   notify: Reload Caddy
+
+# Must run after Caddyfile deploy: the validate step (now removed) or early
+# Caddy startup can create sask.log as root.  Recurse ensures any
+# root-owned files inside /var/log/caddy are corrected.
+- name: Ensure /var/log/caddy owned by caddy
+  ansible.builtin.file:
+    path: /var/log/caddy
+    state: directory
+    owner: caddy
+    group: caddy
+    mode: "0755"
+    recurse: true
 
 - name: Enable and start Caddy
   ansible.builtin.systemd:

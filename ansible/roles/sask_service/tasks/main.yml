@@ -1,20 +1,30 @@
 ---
-- name: Create virtualenv
+- name: Copy requirements.txt
+  ansible.builtin.copy:
+    src: "{{ local_project_root }}/requirements.txt"
+    dest: "{{ sask_app_dir }}/requirements.txt"
+    owner: "{{ sask_user }}"
+    group: "{{ sask_group }}"
+    mode: "0644"
+
+- name: Install Python dependencies into virtualenv
   ansible.builtin.pip:
-    requirements: "{{ local_project_root }}/requirements.txt"
+    requirements: "{{ sask_app_dir }}/requirements.txt"
     virtualenv: "{{ sask_venv_dir }}"
     virtualenv_command: python3 -m venv
     state: present
   notify: Restart sask service
 
-- name: Copy src/sask package
-  ansible.builtin.copy:
+- name: Sync src/sask package (excluding __pycache__)
+  ansible.posix.synchronize:
     src: "{{ local_project_root }}/src/sask/"
     dest: "{{ sask_app_dir }}/sask/"
-    owner: "{{ sask_user }}"
-    group: "{{ sask_group }}"
-    mode: "0644"
-    directory_mode: "0755"
+    delete: true
+    rsync_opts:
+      - "--exclude=__pycache__"
+      - "--exclude=*.pyc"
+      - "--no-owner"
+      - "--no-group"
   notify: Restart sask service
 
 - name: Copy resources
