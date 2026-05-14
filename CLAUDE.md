@@ -75,7 +75,7 @@ configuration are all version-controlled and scripted.
 - Reference scripts in PR specs rather than embedding commands inline.
 
 ### Git
-- Local git only. No GitHub Actions, no branch protection.
+- Remote: https://github.com/genuinemerit/sask (SSH: `git@github.com:genuinemerit/sask.git`)
 - Linear commits to `main` unless experimenting on a branch.
 - One commit per PR-spec implementation, message references the PR id (e.g. `PR-002: hex math`).
 - Housekeeping commits are permitted for small fixes, status updates, and devlog entries (e.g. `PR-002: mark complete, update devlog`).
