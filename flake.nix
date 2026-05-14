@@ -22,6 +22,7 @@
           sqlite
           jq
           curl
+          gh
         ];
 
         shellHook = ''
