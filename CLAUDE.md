@@ -144,7 +144,7 @@ Runtime is configured via environment variables set automatically by `nix develo
 
 ## Tools available in dev shell
 
-After `nix develop`: `python` (3.12), `poetry`, `ruff`, `tofu`, `ansible`, `ssh`, `sqlite`, `jq`, `curl`.
+After `nix develop`: `python` (3.12), `poetry`, `ruff`, `tofu`, `ansible`, `ssh`, `sqlite`, `jq`, `curl`, `gh`.
 
 ## What to do on first launch in this repo
 
