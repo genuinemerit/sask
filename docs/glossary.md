@@ -15,7 +15,8 @@ not here. Items marked **(TBD)** await design.
   the first day of Spring in the Saskan Lands.
 - **AstroYear** — the precise, leap-free solar year: 365.2422 days = 31,556,926.08 pulses. The
   astronomical constant from which seasons and orbital positions derive.
-- **Turn** — a *civil* solar year, with leap adjustments. Distinct from the AstroYear, which never leaps.
+- **Turn** — a *civil* solar year, with leap adjustments. A Lore term used across both Fatunik and Terpin
+  cultures. Distinct from the AstroYear, which never leaps.
 
 ## Reference frames, positions & angles
 
@@ -76,10 +77,18 @@ Code uses these stable categories; lore overloads several names (see below).
 - **Day** → one rotation of the world = 86,400 pulses.
 - **Astro time** → the `pulse` count.
 - **Astro / Astronomical calendar** → the canonical calendar, in pulses and days from epoch.
-- **Turn** → a civil (Fatunik) solar year, leap-adjusted.
+- **Turn** → a civil solar year (leap-adjusted). Used in both Fatunik and Terpin cultures; synonym for "solar year" in Lore.
 - **AstroYear** → the precise solar year, no leaps.
 - **Solar / Fatunik calendar** → civil calendar on seasons and solar events (intercalary month + extra day every 5 turns).
 - **Terpin calendar** → the Terpin civil calendar; long-cycle, floats, with a coarse correction (~one month every 32 turns).
+- **Long year** (Terpin Lore) → a Terpin Turn in which the festival month is extended (by 32 or 31 days); occurs every
+  132nd Terpin year, at the end of each Shell.
+- **Shell** (Terpin Lore) → a period of 132 Terpin Turns, always concluding at the end of a long year. Shell 1 begins
+  on Terpin epoch day 1; subsequent Shells are numbered sequentially. A Terpin Lore date typically includes both the
+  Turn number and the Shell number (e.g., Shell 7, Turn 47).
+- **Age** (Fatunik Lore) → an arbitrary named range of Fatunik Turns (from-turn to to-turn), with a name and
+  description used in storytelling. Age definitions are not persisted at this stage; the engine function converts a
+  Fatunik Turn range to the corresponding Astro pulse bounds.
 - **Lunar calendar** → any calendar driven by moon cycles. **(TBD — design pending.)**
 - **SolarLunar / FatunikLunar / LuniSolar / LuniFatunik** → a combined solar-and-lunar calendar. **(TBD.)**
 - **Star Context** → the simplified constellation / fixed-star framework (astrological, not a star map).

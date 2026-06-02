@@ -29,3 +29,47 @@ orbital_start = 0.5
 id            = "stillness"
 name          = "Stillness"
 orbital_start = 0.75
+
+# Named events at equinoxes, solstices, and mid-season points.
+# orbital_position: fraction of AstroYear [0.0, 1.0).
+# Names are Fatunik lore overlay; keys (id) are stable in code.
+
+[[events]]
+id               = "spring_equinox"
+name             = "Green Day"
+orbital_position = 0.0
+
+[[events]]
+id               = "mid_greening"
+name             = "Leafcrest"
+orbital_position = 0.125
+
+[[events]]
+id               = "summer_solstice"
+name             = "Blaze Day"
+orbital_position = 0.25
+
+[[events]]
+id               = "mid_blazing"
+name             = "Highsun"
+orbital_position = 0.375
+
+[[events]]
+id               = "autumn_equinox"
+name             = "Wither Day"
+orbital_position = 0.5
+
+[[events]]
+id               = "mid_withering"
+name             = "Deepleaf"
+orbital_position = 0.625
+
+[[events]]
+id               = "winter_solstice"
+name             = "Still Day"
+orbital_position = 0.75
+
+[[events]]
+id               = "mid_stillness"
+name             = "Deepwinter"
+orbital_position = 0.875

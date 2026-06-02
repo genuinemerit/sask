@@ -86,9 +86,17 @@ class SeasonConfig:
 
 
 @dataclass(frozen=True)
+class EventConfig:
+    id: str
+    name: str
+    orbital_position: float
+
+
+@dataclass(frozen=True)
 class SeasonsConfig:
     near_tolerance: float
     seasons: tuple[SeasonConfig, ...]
+    events: tuple[EventConfig, ...]
 
 
 @dataclass(frozen=True)
@@ -245,7 +253,26 @@ def _load_seasons(raw: dict, src: str) -> SeasonsConfig:
                 ),
             )
         )
-    return SeasonsConfig(near_tolerance=float(tol), seasons=tuple(seasons))
+    event_list = raw.get("events", [])
+    if not isinstance(event_list, list):
+        raise ConfigError(f"{src}: events must be an array")
+    events = []
+    for i, e in enumerate(event_list):
+        if not isinstance(e, dict):
+            raise ConfigError(f"{src}: events[{i}] must be a table")
+        esrc = f"{src} events[{i}]"
+        events.append(
+            EventConfig(
+                id=str(_require(e, "id", esrc)),
+                name=str(_require(e, "name", esrc)),
+                orbital_position=float(_require(e, "orbital_position", esrc)),
+            )
+        )
+    return SeasonsConfig(
+        near_tolerance=float(tol),
+        seasons=tuple(seasons),
+        events=tuple(events),
+    )
 
 
 def _load_timeline(raw: dict, src: str) -> TimelineConfig:

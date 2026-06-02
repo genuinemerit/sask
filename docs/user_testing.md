@@ -116,6 +116,7 @@ http://localhost:5000/
 ### Results — 2026-06-02
 
 Tested on `sask-dev` via SSH tunnel. All cases pass.
+See: /tests/results/user_tests/SPEC-005_user_test_results.odt for screenshots.
 
 | TC | Result | Notes |
 |---|---|---|

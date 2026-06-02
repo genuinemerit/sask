@@ -32,11 +32,13 @@ class CalendarDate:
 
 @dataclass(frozen=True)
 class SeasonInfo:
-    """Astronomical season for a pulse (scaffold for SPEC-004)."""
+    """Astronomical season and event proximity for a pulse (SPEC-004)."""
 
     season_id: str  # "greening" | "blazing" | "withering" | "stillness"
     name: str
-    orbital_position: float  # position within the AstroYear
+    orbital_position: float  # position within the AstroYear [0.0, 1.0)
+    near_event_id: str | None = None  # event id if within near_tolerance
+    near_event_name: str | None = None  # display name of the near event
 
 
 def validate(unit: object) -> list[str]:

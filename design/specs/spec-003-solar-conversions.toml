@@ -13,7 +13,8 @@ in = [
   "Fatunik: Gregorian 4/100/400 leap via festival length (5/6); 13 months (Gleaming=month 1, 5-6 days; 2-13 = 30); sunrise day-start (+21,600).",
   "Terpin: 132/4620 leap via festival length (5/37/36); 13 months (festival=month 1; 2-13 = 30); midnight day-start (0).",
   "1-indexed months and days; continuous year numbering from 1.",
-  "Ages lookup by canonical Astro-turn range; Shells turns<->Shells+turns formatting helper.",
+  "Ages helper: convert a Fatunik Turn range (from-year, to-year) to Astro pulse bounds. Deferred: persisting Age definitions.",
+  "Shells formatting helper: convert between a plain Terpin Turn number and Shell+turn-within-shell notation.",
 ]
 out = [
   "Seasonal context (SPEC-004), UI, lunar calendars, and lore month/day names (numeric only for now).",
@@ -29,7 +30,7 @@ tests = [
   "pulse -> Fatunik -> pulse and pulse -> Terpin -> pulse round-trip to day resolution.",
   "Fatunik leap: a 366-day year on the 4/100/400 rule; Terpin: a 397-day long year and the 396-day super-long year.",
   "Fatunik sunrise day-boundary handled (the first 21,600 pulses belong to the prior Fatunik day).",
-  "Ages lookup returns the correct Age for sample Astro turns.",
+  "Ages helper returns correct Astro pulse bounds for sample Fatunik Turn ranges.",
 ]
 
 [acceptance]
