@@ -3,7 +3,8 @@
     "md013": {
       "enabled": true,
       "line_length": 120,
-      "code_blocks": false
+      "code_blocks": false,
+      "tables": false
     }
   }
 }

@@ -38,7 +38,7 @@ items = [
   "Round-trips consistent to day resolution for both solar calendars.",
   "Leap arithmetic correct for Fatunik (4/100/400) and Terpin (132/4620).",
   "Festival is month 1; days and years are 1-indexed and continuous.",
-  "The current day resolves to roughly Fatunik year 2,017 and Terpin year 2,271.",
+  "The current day (Astro year 3313) resolves to roughly Fatunik year 1,782 and Terpin year 2,271.",
 ]
 
 [review]

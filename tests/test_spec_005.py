@@ -44,7 +44,7 @@ def test_get_root_returns_200(client):
 
 def test_default_pulse_prefilled(client):
     # story_now_pulse from config should appear as the form's default value.
-    assert b"71642553600" in client.get("/").data
+    assert b"104548096103" in client.get("/").data
 
 
 def test_no_script_tags(client):

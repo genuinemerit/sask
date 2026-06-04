@@ -214,8 +214,8 @@ def test_time_constants(cfg):
 
 def test_calendar_epoch_days(cfg):
     assert cfg.astro.epoch_astro_day == 1
-    assert cfg.terpin.epoch_astro_day == 1
-    assert cfg.fatunik.epoch_astro_day == 92_498
+    assert cfg.terpin.epoch_astro_day == 380_948
+    assert cfg.fatunik.epoch_astro_day == 559_278
 
 
 def test_fatunik_day_start_offset(cfg):
@@ -237,7 +237,7 @@ def test_seasons_count_and_order(cfg):
 
 
 def test_timeline_story_now(cfg):
-    assert cfg.timeline.story_now_pulse == 71_642_553_600
+    assert cfg.timeline.story_now_pulse == 104_548_096_103
 
 
 # ── load_config: ConfigError on malformed/missing input ──────────────────────

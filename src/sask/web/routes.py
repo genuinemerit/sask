@@ -1,18 +1,71 @@
-"""Route handlers for the sask web UI (SPEC-005).
+"""Route handlers for the sask web UI (SPEC-005, SPEC-009).
 
-All engine calls go through pulse_info() and return PulseInfo message units.
-No engine internals are accessed directly from routes.
+All engine calls go through message-unit functions (pulse_info, body_state,
+sky_position, etc.) and return typed message units. No engine internals are
+accessed directly from routes; lore overlay (color, rings, notes) is read
+from AppConfig and passed to the translator, not mixed into engine calls.
 """
 
 from __future__ import annotations
 
 from flask import Blueprint, current_app, render_template, request
 
-from ..message import PulseInfo
-from ..pulse import pulse_info
-from .translator import to_pulse_view
+from ..bodies import all_body_states
+from ..config_loader import AppConfig
+from ..message import CalendarDate, PulseInfo
+from ..pulse import astro_to_fatunik, astro_to_terpin, fatunik_to_pulse, pulse_info
+from ..sky import all_sky_positions, fatune_sky_position
+from .translator import (
+    to_moon_view,
+    to_planet_view,
+    to_pulse_view,
+)
 
 bp = Blueprint("main", __name__)
+
+
+# ── Pulse resolution ───────────────────────────────────────────────────────────
+
+
+def _resolve_pulse(
+    cfg: AppConfig,
+) -> tuple[int | None, str | None]:
+    """Parse request args into a pulse integer, or return an error string.
+
+    Priority: pulse > astro_day > fatunik date fields.
+    Returns (pulse, None) on success; (None, error_msg) on bad input;
+    (None, None) when no input was given (form should render empty).
+    """
+    pulse_p = request.args.get("pulse")
+    astro_day_p = request.args.get("astro_day")
+    fat_y = request.args.get("fatunik_year")
+    fat_m = request.args.get("fatunik_month")
+    fat_d = request.args.get("fatunik_day")
+
+    if pulse_p is not None:
+        try:
+            return int(round(float(pulse_p))), None
+        except ValueError:
+            return None, f"Invalid pulse value: {pulse_p!r} — enter a number."
+
+    if astro_day_p is not None:
+        try:
+            day = int(astro_day_p)
+            return (day - 1) * cfg.time_constants.pulses_per_day, None
+        except ValueError:
+            return None, f"Invalid Astro day: {astro_day_p!r} — enter an integer."
+
+    if fat_y and fat_m and fat_d:
+        try:
+            date = CalendarDate("fatunik", int(fat_y), int(fat_m), int(fat_d))
+            return fatunik_to_pulse(date, cfg), None
+        except (ValueError, KeyError) as exc:
+            return None, f"Invalid Fatunik date: {exc}"
+
+    return None, None
+
+
+# ── Routes ─────────────────────────────────────────────────────────────────────
 
 
 @bp.route("/")
@@ -37,4 +90,83 @@ def index() -> str:
         view=view,
         error=error,
         default_pulse=default_pulse,
+    )
+
+
+@bp.route("/moons")
+def moons() -> str:
+    cfg: AppConfig = current_app.config["SASK_CONFIG"]
+    default_pulse = cfg.timeline.story_now_pulse
+    pulse, error = _resolve_pulse(cfg)
+
+    moon_views = None
+    fatune_pos = None
+    fatunik_date = terpin_date = None
+
+    if pulse is not None and error is None:
+        all_states = all_body_states(pulse, cfg)
+        all_positions = all_sky_positions(pulse, all_states, cfg)
+        fatune_pos = fatune_sky_position(pulse, cfg.gavor, cfg.time_constants)
+
+        body_cfg_map = {b.name: b for b in cfg.bodies}
+        moon_views = [
+            to_moon_view(state, pos, body_cfg_map[state.name].notes or "")
+            for state, pos in zip(all_states, all_positions)
+            if state.body_type == "moon"
+        ]
+        fatunik_date = astro_to_fatunik(pulse, cfg)
+        terpin_date = astro_to_terpin(pulse, cfg)
+
+    return render_template(
+        "moons.html",
+        moon_views=moon_views,
+        fatune_pos=fatune_pos,
+        fatunik_date=fatunik_date,
+        terpin_date=terpin_date,
+        error=error,
+        default_pulse=default_pulse,
+        queried_pulse=pulse,
+    )
+
+
+@bp.route("/planets")
+def planets() -> str:
+    cfg: AppConfig = current_app.config["SASK_CONFIG"]
+    default_pulse = cfg.timeline.story_now_pulse
+    pulse, error = _resolve_pulse(cfg)
+
+    planet_views = None
+    fatune_pos = None
+    fatunik_date = terpin_date = None
+
+    if pulse is not None and error is None:
+        all_states = all_body_states(pulse, cfg)
+        all_positions = all_sky_positions(pulse, all_states, cfg)
+        fatune_pos = fatune_sky_position(pulse, cfg.gavor, cfg.time_constants)
+
+        body_cfg_map = {b.name: b for b in cfg.bodies}
+        planet_views = [
+            to_planet_view(
+                state,
+                pos,
+                apparent_color=body_cfg_map[state.name].apparent_color,
+                rings=body_cfg_map[state.name].rings,
+                visible_moons=body_cfg_map[state.name].visible_moons,
+                notes=body_cfg_map[state.name].notes or "",
+            )
+            for state, pos in zip(all_states, all_positions)
+            if state.body_type == "planet"
+        ]
+        fatunik_date = astro_to_fatunik(pulse, cfg)
+        terpin_date = astro_to_terpin(pulse, cfg)
+
+    return render_template(
+        "planets.html",
+        planet_views=planet_views,
+        fatune_pos=fatune_pos,
+        fatunik_date=fatunik_date,
+        terpin_date=terpin_date,
+        error=error,
+        default_pulse=default_pulse,
+        queried_pulse=pulse,
     )

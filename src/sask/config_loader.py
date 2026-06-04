@@ -117,8 +117,14 @@ class BodyConfig:
     node: float  # ascending node fraction [0.0, 1.0); frozen by SPEC-006
     diameter_km: float
     albedo: float
+    apparent_color: str
     distance_km: float | None  # moons only: orbital radius (constant, circular orbit)
+    rotation_type: str | None  # moons only
+    rotation_period_days: float | None  # moons only
     semi_major_axis: float | None  # planets only: Gavor-orbit units (Gavor=1.0)
+    rings: str | None  # planets only: descriptive text
+    visible_moons: int | None  # planets only: count of moons visible through a glass
+    notes: str | None
 
 
 @dataclass(frozen=True)
@@ -328,10 +334,18 @@ def _load_body(raw: dict, src: str) -> BodyConfig:
         node=float(_require(raw, "node", src)),
         diameter_km=float(_require(raw, "diameter_km", src)),
         albedo=float(_require(raw, "albedo", src)),
+        apparent_color=str(_require(raw, "apparent_color", src)),
         distance_km=float(raw["distance_km"]) if "distance_km" in raw else None,
+        rotation_type=str(raw["rotation_type"]) if "rotation_type" in raw else None,
+        rotation_period_days=float(raw["rotation_period_days"])
+        if "rotation_period_days" in raw
+        else None,
         semi_major_axis=float(raw["semi_major_axis"])
         if "semi_major_axis" in raw
         else None,
+        rings=str(raw["rings"]) if "rings" in raw else None,
+        visible_moons=int(raw["visible_moons"]) if "visible_moons" in raw else None,
+        notes=str(raw["notes"]) if "notes" in raw else None,
     )
 
 

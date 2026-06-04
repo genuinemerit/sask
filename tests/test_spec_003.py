@@ -8,7 +8,7 @@ Covers:
   - Terpin long-year (132) and super-long-year (4620) lengths
   - Terpin Shells formatting helpers
   - Ages helper: fatunik_turns_to_pulse_range
-  - story_now_pulse resolves to roughly Fatunik ~2017, Terpin ~2271
+  - story_now_pulse resolves to roughly Fatunik ~1782, Terpin ~2271
 """
 
 from __future__ import annotations
@@ -39,7 +39,9 @@ TC = CONFIG.terpin
 FATUNIK_EPOCH_PULSE = (
     FC.epoch_astro_day - 1
 ) * CONFIG.time_constants.pulses_per_day + FC.day_start_offset
-TERPIN_EPOCH_PULSE = 0  # Terpin epoch = Astro Day 1, midnight
+TERPIN_EPOCH_PULSE = (
+    TC.epoch_astro_day - 1
+) * CONFIG.time_constants.pulses_per_day + TC.day_start_offset
 
 
 # ── Fatunik: epoch and basic round-trips ─────────────────────────────────────
@@ -63,7 +65,7 @@ def test_fatunik_epoch_is_y1m1d1():
         CalendarDate("fatunik", 4, 13, 30),  # last day of leap year
         CalendarDate("fatunik", 100, 1, 1),  # century year (not leap)
         CalendarDate("fatunik", 400, 1, 1),  # 400-year restore (leap)
-        CalendarDate("fatunik", 2017, 1, 1),  # near story_now
+        CalendarDate("fatunik", 1782, 1, 1),  # near story_now
     ],
 )
 def test_fatunik_round_trip(date):
@@ -245,9 +247,9 @@ def test_fatunik_turns_to_pulse_range_start_lte_end():
 # ── story_now sanity checks ───────────────────────────────────────────────────
 
 
-def test_story_now_fatunik_year_roughly_2017():
+def test_story_now_fatunik_year_roughly_1782():
     date = astro_to_fatunik(CONFIG.timeline.story_now_pulse, CONFIG)
-    assert 2015 <= date.year <= 2020
+    assert 1780 <= date.year <= 1785
 
 
 def test_story_now_terpin_year_roughly_2271():

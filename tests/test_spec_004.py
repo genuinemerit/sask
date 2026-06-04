@@ -136,10 +136,14 @@ def test_season_info_no_event_fields_are_none():
 # ── Cross-calendar: season from any calendar ──────────────────────────────────
 
 
-def test_terpin_year_1_is_greening():
-    # Terpin epoch = Astro pulse 0 → orbital position 0.0 → Greening
+def test_terpin_year_1_is_near_spring_equinox():
+    # Terpin epoch = spring equinox of Astro year 1043; year 1 day 1 starts
+    # at midnight of that Astro day, which falls in the last hours of Stillness
+    # (just before the equinox occurs that afternoon).
     pulse = terpin_to_pulse(CalendarDate("terpin", 1, 1, 1), CONFIG)
-    assert season_info(pulse, CONFIG).season_id == "greening"
+    info = season_info(pulse, CONFIG)
+    assert info.season_id == "stillness"
+    assert info.near_event_id == "spring_equinox"
 
 
 def test_season_independent_of_calendar():
@@ -150,16 +154,16 @@ def test_season_independent_of_calendar():
     assert info.season_id in {"greening", "blazing", "withering", "stillness"}
 
 
-def test_terpin_new_year_drifts_through_seasons():
-    # Terpin New Year drifts astronomically over time (long-cycle leap only
-    # partially corrects). Different centuries should see different seasons.
-    seasons_seen = {
-        season_info(
-            terpin_to_pulse(CalendarDate("terpin", yr, 1, 1), CONFIG), CONFIG
-        ).season_id
-        for yr in [1, 500, 1000, 1500, 2000]
-    }
-    assert len(seasons_seen) > 1
+def test_terpin_new_year_stays_in_late_stillness():
+    # Terpin average year ≈ AstroYear, so new years consistently fall in late
+    # Stillness (orbital_pos > 0.90) — always near the spring equinox but
+    # never quite at it.  The drift within that band is real but confined.
+    for yr in [1, 132, 500, 1000, 2000]:
+        pulse = terpin_to_pulse(CalendarDate("terpin", yr, 1, 1), CONFIG)
+        op = (pulse / CONFIG.time_constants.astro_year_pulses) % 1.0
+        assert op > 0.90, (
+            f"Terpin year {yr} new year at orbital_pos {op:.4f} — expected > 0.90"
+        )
 
 
 # ── Layer purity ──────────────────────────────────────────────────────────────
