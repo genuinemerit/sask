@@ -1,0 +1,8 @@
+[observation]
+obliquity_deg          = 23.44
+observer_latitude_deg  = 35.47
+observer_longitude_deg = -97.5   # recorded, mechanically unused
+
+[gavor]
+epoch_offset     = 0.0   # Gavor sits at orbital position 0.0 at pulse 0 (reference anchor)
+semi_major_axis  = 1.0   # unit reference; all planetary semi_major_axis values are in these units

@@ -10,4 +10,4 @@ acceptance = [
   "/design holds this scaffolding dd, its reqs, and its spec.",
 ]
 [links]
-dds = ["DD-001"]
+dds = ["DD-0001"]

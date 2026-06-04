@@ -1,0 +1,229 @@
+[provenance]
+seed              = 20260604
+generator_version = "1.0"
+generated_date    = "2026-06-04"
+
+[[body]]
+name = "Endor"
+type = "moon"
+sidereal_period_days = 33.5
+epoch_offset = 0.477754
+inclination_deg = 1.223721
+node = 0.013445
+diameter_km = 3400
+albedo = 0.13
+apparent_color = "Pale gray-blue"
+rotation_type = "Synchronous"
+rotation_period_days = 33.5
+distance_km = 420000
+notes = "Tidal-locked; known as 'The Watcher'"
+
+[[body]]
+name = "Sella"
+type = "moon"
+sidereal_period_days = 27.3
+epoch_offset = 0.309749
+inclination_deg = 4.482626
+node = 0.79597
+diameter_km = 1600
+albedo = 0.2
+apparent_color = "Ashy bronze"
+rotation_type = "Synchronous"
+rotation_period_days = 27.3
+distance_km = 180000
+notes = "Highly regular; favored by navigators"
+
+[[body]]
+name = "Lelako"
+type = "moon"
+sidereal_period_days = 11.1
+epoch_offset = 0.985128
+inclination_deg = 3.213907
+node = 0.924525
+diameter_km = 500
+albedo = 0.35
+apparent_color = "Bright ivory"
+rotation_type = "Synchronous"
+rotation_period_days = 11.1
+distance_km = 90000
+notes = "Small but bright; sacred to rabbits"
+
+[[body]]
+name = "Jembor"
+type = "moon"
+sidereal_period_days = 54.2
+epoch_offset = 0.84282
+inclination_deg = 5.402293
+node = 0.097357
+diameter_km = 3000
+albedo = 0.12
+apparent_color = "Rust-brown"
+rotation_type = "Free-spin"
+rotation_period_days = 19.8
+distance_km = 350000
+notes = "Captured object; not tidally locked; shows a different face"
+
+[[body]]
+name = "Calumbra"
+type = "moon"
+sidereal_period_days = 22.7
+epoch_offset = 0.356108
+inclination_deg = 4.218971
+node = 0.538474
+diameter_km = 2200
+albedo = 0.18
+apparent_color = "Silvery-gray"
+rotation_type = "Synchronous"
+rotation_period_days = 22.7
+distance_km = 270000
+notes = "Mysterious albedo variation with seasons"
+
+[[body]]
+name = "Zehembra"
+type = "moon"
+sidereal_period_days = 18.9
+epoch_offset = 0.823134
+inclination_deg = 1.0
+node = 0.327352
+diameter_km = 1400
+albedo = 0.22
+apparent_color = "Gold-hued white"
+rotation_type = "Synchronous"
+rotation_period_days = 18.9
+distance_km = 210000
+notes = "Linked to solar omens and lore of fate; low inclination, eclipses often"
+
+[[body]]
+name = "Shunna"
+type = "moon"
+sidereal_period_days = 16.3
+epoch_offset = 0.190426
+inclination_deg = 2.63029
+node = 0.5395
+diameter_km = 900
+albedo = 0.4
+apparent_color = "Ice-blue shimmer"
+rotation_type = "Synchronous"
+rotation_period_days = 16.3
+distance_km = 160000
+notes = "Cold, dazzling; seen best during Stillness"
+
+[[body]]
+name = "Kanka"
+type = "moon"
+sidereal_period_days = 45.0
+epoch_offset = 0.522829
+inclination_deg = 6.017272
+node = 0.49921
+diameter_km = 3800
+albedo = 0.1
+apparent_color = "Deep violet-brown"
+rotation_type = "Chaotic spin"
+rotation_period_days = 38.0
+distance_km = 480000
+notes = "Captured moon with seismic activity; sometimes 'moans' in storms"
+
+[[body]]
+name = "Aesthra"
+type = "planet"
+sidereal_period_days = 88
+semi_major_axis = 0.387
+epoch_offset = 0.070082
+inclination_deg = 1.751921
+node = 0.359105
+diameter_km = 4600
+albedo = 0.12
+apparent_color = "Dull pewter-gray"
+rings = "none"
+visible_moons = 0
+notes = "Swift dawn-or-dusk herald; never far from Fatune's glare; shows crescent-to-full phases through a glass. Inner co-orbital twin."
+
+[[body]]
+name = "Lethra"
+type = "planet"
+sidereal_period_days = 88
+semi_major_axis = 0.387
+epoch_offset = 0.570082
+inclination_deg = 4.700592
+node = 0.520275
+diameter_km = 4400
+albedo = 0.14
+apparent_color = "Pale brassy gold"
+rings = "none"
+visible_moons = 0
+notes = "Co-orbital twin half a cycle behind Aesthra; rides the dusk when Aesthra rides the dawn. The two heralds."
+
+[[body]]
+name = "Beyarus"
+type = "planet"
+sidereal_period_days = 225
+semi_major_axis = 0.724
+epoch_offset = 0.561749
+inclination_deg = 4.512849
+node = 0.191893
+diameter_km = 12500
+albedo = 0.65
+apparent_color = "Brilliant silver-white"
+rings = "none"
+visible_moons = 0
+notes = "Brightest wanderer; a beacon under heavy cloud; dramatic phases through a glass."
+
+[[body]]
+name = "Dramond"
+type = "planet"
+sidereal_period_days = 500
+semi_major_axis = 1.234
+epoch_offset = 0.387337
+inclination_deg = 7.165469
+node = 0.472372
+diameter_km = 15000
+albedo = 0.3
+apparent_color = "Warm amber, hazy rim"
+rings = "none"
+visible_moons = 1
+notes = "Amber wanderer with a faintly oval disk and one dim attendant moon visible through a good glass."
+
+[[body]]
+name = "Thurnak"
+type = "planet"
+sidereal_period_days = 687
+semi_major_axis = 1.522
+epoch_offset = 0.663537
+inclination_deg = 4.982289
+node = 0.232992
+diameter_km = 6800
+albedo = 0.16
+apparent_color = "Rusty blood-red"
+rings = "none"
+visible_moons = 0
+notes = "The red wanderer; noticeably bright at opposition; ill-omened in lore."
+
+[[body]]
+name = "Zelven"
+type = "planet"
+sidereal_period_days = 4380
+semi_major_axis = 5.239
+epoch_offset = 0.792613
+inclination_deg = 7.88564
+node = 0.811569
+diameter_km = 135000
+albedo = 0.5
+apparent_color = "Banded cream and tawny"
+rings = "none"
+visible_moons = 4
+notes = "Banded giant with a train of four bright moons visible through a spyglass."
+
+[[body]]
+name = "Kreetha"
+type = "planet"
+sidereal_period_days = 10585
+semi_major_axis = 9.437
+epoch_offset = 0.705577
+inclination_deg = 5.290697
+node = 0.23969
+diameter_km = 115000
+albedo = 0.45
+apparent_color = "Pale wheat-gold"
+rings = "Prominent; appears as a flattened, 'eared' disk through a glass"
+visible_moons = 1
+notes = "Slowest and most distant; the ringed sage."

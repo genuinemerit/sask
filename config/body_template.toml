@@ -1,0 +1,47 @@
+[_meta]
+type        = "body"
+description = "Celestial body config schema (moons and planets)"
+
+[fields.name]
+required = true
+[fields.type]
+required = true
+enum     = ["moon", "planet"]
+
+# Dynamical inputs - sidereal period authored; offset/inclination/node generated and frozen by SPEC-006
+[fields.sidereal_period_days]
+required = true
+[fields.epoch_offset]
+required = true
+[fields.inclination_deg]
+required = true
+[fields.node]
+required = true
+
+# Descriptive, all bodies (authored)
+[fields.diameter_km]
+required = true
+[fields.albedo]
+required = true
+[fields.apparent_color]
+required = true
+[fields.notes]
+required = false
+
+# Descriptive, moons only (authored)
+[fields.distance_km]
+required = false
+[fields.rotation_type]
+required = false
+[fields.rotation_period_days]
+required = false
+
+# Dynamical, planets only (authored; from Kepler T²=a³, Gavor=1.0)
+[fields.semi_major_axis]
+required = false
+
+# Descriptive, planets only (authored)
+[fields.rings]
+required = false
+[fields.visible_moons]
+required = false

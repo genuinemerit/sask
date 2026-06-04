@@ -9,4 +9,4 @@ acceptance=[
   "No function mutates global RNG or shared state; any seeded randomness uses a local generator.",
 ]
 [links]
-dds=["DD-002"]
+dds=["DD-0002"]

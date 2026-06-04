@@ -10,4 +10,4 @@ acceptance=[
   "Apparition occurrence is reproducible for a given seed and config.",
 ]
 [links]
-dds=["DD-002"]
+dds=["DD-0002"]

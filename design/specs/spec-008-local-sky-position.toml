@@ -1,0 +1,64 @@
+id     = "SPEC-008"
+title  = "Local-sky position: altitude/azimuth and rise/transit/set"
+status = "draft"
+experiment_id = "baseline"
+
+[implements]
+requirements = ["REQ-FUN-001","REQ-FUN-006","REQ-OPS-006","REQ-OPS-008"]
+dds          = ["DD-0004","DD-0002"]
+
+[scope]
+in = [
+  "Transform a body's geocentric ecliptic coordinates (from SPEC-007) into equatorial coordinates (declination, right ascension) using Gavor's obliquity (23.44 degrees).",
+  "Transform equatorial into horizontal coordinates - altitude and azimuth - for the canonical observer (latitude 35.47 N) at a given pulse, using the planet's rotation (86,400 pulses/day) for the hour angle.",
+  "Rise, transit, and set pulses (altitude crossing the horizon, and the altitude maximum), plus an above-horizon boolean at a pulse, with circumpolar and never-rising cases handled.",
+  "Run Fatune through the same chain to supply day/night context and the obliquity-driven seasonal shift in rise position and day length.",
+  "Typed message units: altitude and azimuth in degrees, rise/transit/set and all times in pulses, plus above-horizon and day/night flags.",
+]
+out = [
+  "Phase, visibility, and eclipse (SPEC-007, consumed as inputs).",
+  "Atmospheric refraction, higher-order parallax, and precession (out for now; optional later refinements).",
+  "Calendar and watch translation (a presentation overlay).",
+  "Apparitions, fixed stars, and conjunctions.",
+]
+
+[deliverables]
+files = [
+  "src: coordinate-transform module (ecliptic -> equatorial -> horizontal) reading obliquity and observer latitude from config",
+  "src: rise/transit/set solver and above-horizon test",
+  "src: local-sky message units",
+  "tests: known-geometry, rise/set, and seasonal fixtures",
+]
+tests = [
+  "A body at declination 0 transits due south (azimuth 180) at altitude 90 - 35.47 = 54.53 degrees.",
+  "Altitude is ~0 at the computed rise and set pulses; transit is the altitude maximum between them.",
+  "Fatune's rise azimuth and day length vary with season under the 23.44-degree tilt.",
+  "The above-horizon boolean agrees with the sign of altitude; circumpolar and never-rising cases resolve cleanly.",
+]
+
+[acceptance]
+items = [
+  "Altitude and azimuth are correct for known test geometries at the observer's latitude.",
+  "Rise, transit, and set are returned as pulses and bracket the above-horizon window.",
+  "Seasonal variation in the sun's rise position and day length emerges from the obliquity.",
+  "Angles are in degrees, all times in pulses; outputs are typed message units.",
+]
+
+[review]
+focus = [
+  "Correct ecliptic -> equatorial -> horizontal chain; obliquity and observer latitude applied correctly.",
+  "Rotation-to-hour-angle mapping (one rotation per 86,400 pulses).",
+  "Numerical stability of the rise/set solve, including circumpolar / never-up edges.",
+  "Times in pulses; clean message units; pure transform over SPEC-007's outputs.",
+]
+smoke_test = "For a handful of pulses compute alt/az for a couple of moons and Fatune; check the sun's transit altitude and rise/set for 35.47 N across two seasons, and that a moon's rise/transit/set pulses bracket its above-horizon window."
+
+[notes]
+for_assistant = """
+Standard spherical-astronomy transforms, simplified to circular orbits; no
+refraction, higher-order parallax, or precession unless later requested. Obliquity
+and observer latitude come from the frozen config (SPEC-006). This layer is a pure
+transform sitting on SPEC-007's geocentric ecliptic outputs. Emit altitude and
+azimuth in degrees (altitude -90..+90; azimuth 0..360, N=0, E=90) and every time as
+a pulse; calendar/watch translation is a separate overlay.
+"""

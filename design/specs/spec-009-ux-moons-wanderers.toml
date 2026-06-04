@@ -1,0 +1,67 @@
+id     = "SPEC-009"
+title  = "Web UX: lunar and planetary sky for a given pulse"
+status = "draft"
+experiment_id = "baseline"
+
+[implements]
+requirements = ["REQ-OPS-007","REQ-OPS-008"]
+dds          = ["DD-0003","DD-0002"]
+
+[scope]
+in = [
+  "Server-rendered Jinja views (no JavaScript) that take a pulse as input and render the sky for that pulse, extending the SPEC-005 thin slice additively (new routes/templates/view-models, same structure).",
+  "A moons view: per moon, its phase and illuminated fraction, visibility, rise/transit/set, altitude/azimuth, apparent size, brightness, and any eclipse (solar or lunar type).",
+  "A planets (wanderers) view: per planet, its visibility, altitude/azimuth, rise/transit/set, brightness, color, and telescopic appearance (rings, visible moons, phases).",
+  "A simple form to enter a pulse (or an Astro day, or a solar-calendar date converted to a pulse via SPEC-003); minimal markup, no client-side scripting.",
+  "Consuming the SPEC-007 (phase, visibility, eclipse, size, brightness) and SPEC-008 (altitude/azimuth, rise/transit/set) message units in-process through the seam only, rendered via a presentation translator (message unit -> view model). The engine never imports Flask.",
+  "Rendering all times as pulses, with solar-calendar dates (Astro, Fatunik, Terpin) available via the SPEC-003 translators where useful.",
+]
+out = [
+  "Lunar and solar-lunar calendars, and named time-of-day watches - deferred to the calendar work.",
+  "JavaScript, and any graphic sky simulation (a later upgrade).",
+  "Comets, fixed stars, the Spark, and conjunction views (not yet built).",
+  "Retrograde status - deferred; computing apparent motion direction requires tracking geocentric longitude across pulses and adds complexity out of proportion to story value at this stage.",
+  "The HTTP API itself (the seam stays API-ready, not API-built).",
+]
+
+[deliverables]
+files = [
+  "src: Flask routes and Jinja templates for the moons and planets sky views",
+  "src: presentation translators (body/sky message unit -> view model)",
+  "src: pulse/date input handling (reusing SPEC-003 for date -> pulse)",
+  "tests: HTTP smoke, layer-purity, and no-JavaScript tests",
+]
+tests = [
+  "For a given pulse, the moons page renders each moon's phase, visibility, rise/transit/set, position, size, brightness, and any eclipse.",
+  "For a given pulse, the planets page renders each planet's position, visibility, brightness, and telescopic appearance.",
+  "Rendered HTML contains no script tags; the UI imports only the engine's message-unit interface, and the engine has no Flask import.",
+  "Times display as pulses; solar-calendar rendering works where shown.",
+]
+
+[acceptance]
+items = [
+  "Entering a pulse renders a complete lunar and planetary sky for that instant, end to end and deployed.",
+  "No JavaScript appears in the output; pages are server-rendered Jinja.",
+  "The engine is consumed only through SPEC-007/008 message units; no engine logic or Flask coupling crosses the seam.",
+  "The new views are additive to the SPEC-005 structure; times are in pulses, with solar dates where rendered.",
+]
+
+[review]
+focus = [
+  "Layer purity: the message-unit seam is the only contact point; no engine internals in the UI.",
+  "No JavaScript; minimal, server-rendered templates.",
+  "Views are additive to SPEC-005, not a rewrite.",
+  "Times in pulses; calendar rendering only via the existing solar translators.",
+]
+smoke_test = "Enter a representative pulse; confirm the deployed moons and planets pages render each body's state with no JavaScript and through message units only."
+
+[notes]
+for_assistant = """
+This applies DD-0003 to the new lunar and planetary data: it extends the SPEC-005
+thin slice with moons and planets sky views for a given pulse, consuming SPEC-007
+and SPEC-008 only through the message-unit seam (the engine never imports Flask).
+Server-rendered Jinja, no JavaScript. Show times as pulses; solar-calendar dates
+come from SPEC-003. Named watches and lunar/solar-lunar calendars are deliberately
+deferred to the calendar work, as is the graphic sky simulation. Build after
+SPEC-006/007/008, since it displays their outputs.
+"""

@@ -10,4 +10,4 @@ acceptance = [
   "Deferred or deviating items are noted explicitly rather than omitted.",
 ]
 [links]
-dds = ["DD-001"]
+dds = ["DD-0001"]

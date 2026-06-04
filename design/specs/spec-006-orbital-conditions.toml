@@ -1,0 +1,73 @@
+id     = "SPEC-006"
+title  = "Generate and freeze orbital initial conditions"
+status = "draft"
+experiment_id = "baseline"
+
+[implements]
+requirements = ["REQ-FUN-001","REQ-OPS-006","REQ-OPS-009"]
+dds          = ["DD-0004","DD-0002"]
+
+[scope]
+in = [
+  "Three authored config files are provided as starting points and may be modified, corrected, or improved as needed while preserving design intent: /config/body_template.toml (the body meta-schema), /config/body_data.toml (the fifteen bodies' descriptive and period values), and /config/observation_data.toml (obliquity and observer reference).",
+  "/config/body_template.toml defines the body record shape - identity (name, type), dynamical inputs (sidereal period, epoch offset, inclination, node), and descriptive fields - with the dynamical fields required in the completed config and descriptive fields laid out separately from lore.",
+  "A one-time generation routine that, from a single recorded seed, draws epoch offset and ascending node as uniform [0.0, 1.0) and inclination as uniform ~1-8 degrees for all eight moons and seven planets, and writes those three dynamical fields into each record of /config/body_data.toml, completing it in place.",
+  "Lore-preserving overrides applied after the draw: Lethra's epoch offset = Aesthra's offset + 0.5 (mod 1.0) to keep the co-orbital twin-Mercury geometry; Zehembra's inclination hand-set low (~1 degree); Dramond's period kept at ~500 days.",
+  "Recording the seed and generator version/parameters in a provenance block within /config/body_data.toml so the draw is reproducible and auditable.",
+  "Confirming /config/observation_data.toml carries Gavor's obliquity (23.44 degrees) and the observer reference (latitude 35.47 N; longitude ~97.5 W recorded, mechanically unused).",
+  "Validating the completed /config/body_data.toml against /config/body_template.toml.",
+]
+out = [
+  "Any orbital, phase, eclipse, or sky-position computation (the body-kinematics SPECs).",
+  "The night-sky altitude/azimuth model.",
+  "Comets, fixed stars, and the Spark.",
+  "Any runtime re-randomization; the generator runs once and is never invoked by the engine.",
+]
+
+[deliverables]
+files = [
+  "/config/body_template.toml - the body meta-schema (refined as needed)",
+  "/config/body_data.toml - fifteen body records, completed in place with the generated dynamical fields, plus a provenance block recording the seed",
+  "/config/observation_data.toml - obliquity and observer reference",
+  "tools/script: one-time generation routine (local seeded RNG) that draws, applies overrides, and writes the dynamical fields",
+  "tests: schema-completeness, reproducibility, range/override, and validation tests",
+]
+tests = [
+  "/config/body_template.toml enumerates every field with its expectations; /config/body_data.toml validates against it once completed.",
+  "All fifteen named bodies are present and fully populated, with no missing fields.",
+  "Re-running the generator with the recorded seed reproduces identical dynamical values.",
+  "Offsets and nodes lie in [0.0, 1.0); inclinations lie in the band (Zehembra low); Lethra = Aesthra + 0.5 (mod 1.0); Dramond ~500 days.",
+]
+
+[acceptance]
+items = [
+  "The three /config files exist and are internally consistent; the template covers every field, type, and unit.",
+  "All eight moons and seven planets are complete, validated records - nothing partially defined.",
+  "/config/body_data.toml is reproducible from the recorded seed it carries.",
+  "The lore overrides hold: Lethra sits 0.5 off Aesthra, Zehembra's inclination is low, Dramond is ~500 days.",
+  "/config/observation_data.toml carries obliquity 23.44 and observer latitude 35.47 N.",
+  "The generator is a one-time tool; the engine reads the frozen config and never re-randomizes.",
+]
+
+[review]
+focus = [
+  "The body template is complete and clearly separates dynamical inputs from descriptive lore.",
+  "Every one of the fifteen bodies is fully populated and validates - no gaps.",
+  "Local seeded RNG only; no global RNG mutation; the seed recorded in body_data.toml.",
+  "Ranges, units, and the Lethra/Zehembra/Dramond overrides are correct.",
+]
+smoke_test = "Run the generator once; confirm body_data.toml is completed in place with all fifteen bodies in range and the correct overrides, that a second run from the recorded seed reproduces identical values, and that body_data.toml validates against body_template.toml."
+
+[notes]
+for_assistant = """
+The three /config files (body_template.toml, body_data.toml, observation_data.toml)
+are authored starting points and may be modified, corrected, or improved as needed -
+field naming, structure, or value fixes - as long as the design intent holds. This
+is a one-time freeze: the generator completes body_data.toml in place by adding
+epoch_offset, inclination_deg, and node to each record, then is dormant; the engine
+reads the frozen file and never invokes the generator. Use a local seeded RNG (no
+global reseeding) and record the seed and generator version in a provenance block in
+body_data.toml. The Lethra-from-Aesthra offset, Zehembra's low inclination, and
+Dramond's ~500-day period are deliberate overrides applied after the draw. Keep each
+record's dynamical inputs separated from its descriptive lore.
+"""

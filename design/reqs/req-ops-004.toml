@@ -10,4 +10,4 @@ acceptance = [
   "A deliberately malformed doc (missing required field or bad id pattern) makes it exit non-zero.",
 ]
 [links]
-dds = ["DD-001"]
+dds = ["DD-0001"]

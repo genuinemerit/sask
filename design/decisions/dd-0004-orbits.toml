@@ -1,0 +1,80 @@
+id     = "DD-0004"
+title  = "Frozen orbital initial conditions and observation constants"
+status = "proposed"
+date   = "2026-06-03"
+
+[context]
+problem = """
+Placing any moon or planet in time needs per-body initial conditions the source
+data lacks: an epoch offset (where the body sits in its orbit at pulse 0) and an
+inclination + node (the orbital tilt and where it crosses the ecliptic, which gate
+eclipses and set ecliptic latitude). Periods give the rate of motion but not the
+absolute position; without fixed initial conditions, every computed phase, eclipse,
+and sky position is undefined. The night-sky (altitude/azimuth) model additionally
+needs two global observation constants. These values must be fixed once and never
+change, or all computed dates and positions would silently shift.
+"""
+constraints = [
+  "The world has no 'true' historical positions, so random starting values are acceptable.",
+  "Once chosen, the values are authoritative and immutable; re-rolling would shift every date and sky position.",
+  "Generation must be reproducible: drawn from a single recorded seed.",
+  "Frozen values are authored config (source of truth), not regenerated at runtime.",
+  "Units and draw ranges follow the agreed scheme (offset/node normalized 0.0-1.0; inclination in degrees).",
+]
+alternatives = [
+  "Hardcode positions or derive them via 'force events' (the prototype workaround) - rejected: fragile and opaque.",
+  "Re-randomize per run - rejected: non-reproducible; dates drift every run.",
+  "Hand-author every value - unnecessary; random-then-frozen suffices, with per-body override where lore needs it.",
+]
+
+[decision]
+summary = """
+Each orbiting body (eight moons, seven planets) carries three dynamical initial
+conditions: epoch offset (fraction 0.0-1.0 of the sidereal orbit at pulse 0),
+inclination (degrees of tilt to the ecliptic), and ascending node (fraction
+0.0-1.0 around the ecliptic). These are GENERATED ONCE from a single recorded
+seed - offsets and nodes drawn uniformly on [0.0, 1.0), inclinations drawn
+uniformly on ~1-8 degrees - then FROZEN into config as authored constants. The
+seed is recorded for audit and re-verification, but the generator is never re-run
+against the live config. Per-body overrides are allowed for lore: Zehembra's
+inclination is hand-set low (~1 degree) so it eclipses noticeably more often.
+Dramond is reconfigured from its degenerate 365.2422-day period (a twin of Gavor's
+year) to ~500 days, restoring a meaningful synodic cycle. Two global observation
+constants are also fixed as authored config: Gavor's axial tilt (obliquity) =
+23.44 degrees (Earth's), and the canonical observer reference = the Saskan Lands
+midpoint at latitude 35.47 N (longitude ~97.5 W recorded but mechanically unused
+in a self-contained world). All of these are authored source-of-truth values per
+DD-0002's persistence tiers, distinct from any derived or computed result.
+"""
+rationale = """
+Periods give the rate of motion; offsets give the absolute position - both are
+needed to place a body in time, and the missing offsets are exactly why the
+prototype reached for 'force events.' Random-but-frozen is legitimate because the
+world has no canonical historical positions; what matters is that the values are
+fixed and reproducible. Recording the seed keeps the freeze auditable and
+regenerable for verification without making it live-mutable. Inclination doubles
+as the eclipse-frequency dial, so a small random spread gives the moons natural
+variety while a single hand-set value (Zehembra) serves the lore. The two global
+constants anchor the local-sky model the moons feed into.
+"""
+
+[consequences]
+positive = [
+  "Every phase, visibility, eclipse, and sky position becomes deterministic at any pulse.",
+  "The freeze is reproducible and auditable from the recorded seed.",
+  "The prototype's 'force events to set positions' workaround is eliminated.",
+  "Moons and planets share one machinery, and the night-sky model has its observer anchors.",
+]
+negative = [
+  "The frozen values must never be regenerated against live config; doing so silently shifts all dates (a discipline to document).",
+  "Per-moon eclipse cadence is emergent from the random inclinations (except Zehembra) and may need later tuning.",
+]
+followups = [
+  "SPEC: generate-and-freeze the initial conditions (draw from the recorded seed, write authored config, log the seed).",
+  "SPEC(s): body kinematics - orbital position + phase, then the altitude/azimuth + rise/set local-sky layer.",
+  "Possible REQ-OPS-010: immutability and reproducibility of frozen initial state, if you want it formalized.",
+  "Later: comets, fixed stars, and the Spark.",
+]
+
+[links]
+requirements = ["REQ-FUN-001","REQ-FUN-002","REQ-FUN-003","REQ-OPS-006","REQ-OPS-009"]

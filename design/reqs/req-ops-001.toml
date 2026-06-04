@@ -10,4 +10,4 @@ acceptance = [
   "No project tool is sourced from the host system config.",
 ]
 [links]
-dds = ["DD-001"]
+dds = ["DD-0001"]

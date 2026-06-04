@@ -9,4 +9,4 @@ acceptance=[
   "Changing a config value changes output with no code change.",
 ]
 [links]
-dds=["DD-002"]
+dds=["DD-0002"]

@@ -5,7 +5,7 @@ experiment_id = "baseline"
 
 [implements]
 requirements = ["REQ-FUN-001","REQ-FUN-002","REQ-OPS-006","REQ-OPS-008"]
-dds          = ["DD-002"]
+dds          = ["DD-0002"]
 
 [scope]
 in = [

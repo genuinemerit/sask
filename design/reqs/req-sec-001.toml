@@ -10,4 +10,4 @@ acceptance = [
   "Key-based login for the dev user succeeds.",
 ]
 [links]
-dds = ["DD-001"]
+dds = ["DD-0001"]

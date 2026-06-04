@@ -1,0 +1,14 @@
+id="REQ-FUN-006"
+title="Local-sky position and rise/set"
+category="functional"
+priority="must"
+statement="From a body's geocentric ecliptic position, the engine computes its local-sky horizontal coordinates - altitude and azimuth - for the canonical observer at a given pulse, applying the planet's axial tilt and the observer's latitude and rotation, and derives rise, transit, and set. All emitted times are in pulses; angles are in degrees."
+rationale="The target output is a watch-by-watch description of the night sky - when a body rises, where it sits, when it sets - which the synodic phase/visibility model alone cannot provide; it requires the observer's frame (latitude, rotation) and the obliquity-driven ecliptic-to-horizontal transform."
+acceptance=[
+  "A body of zero declination transits due south at altitude (90 - observer latitude).",
+  "Rise and set occur where altitude crosses the horizon; transit is the altitude maximum.",
+  "Obliquity produces seasonal variation in the sun's rise azimuth and day length.",
+  "All returned times are pulses; altitude and azimuth are in degrees.",
+]
+[links]
+dds=["DD-0004","DD-0002"]

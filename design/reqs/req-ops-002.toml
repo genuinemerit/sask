@@ -9,4 +9,4 @@ acceptance = [
   "Aside from out-of-band secrets and host credentials (re-provisioned manually), no project artifact exists only on the VM.",
 ]
 [links]
-dds = ["DD-001"]
+dds = ["DD-0001"]

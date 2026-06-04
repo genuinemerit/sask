@@ -1,0 +1,65 @@
+id     = "SPEC-007"
+title  = "Body kinematics: orbital position, phase, visibility, eclipse"
+status = "draft"
+experiment_id = "baseline"
+
+[implements]
+requirements = ["REQ-FUN-001","REQ-FUN-002","REQ-FUN-003","REQ-OPS-006","REQ-OPS-008"]
+dds          = ["DD-0002","DD-0004"]
+
+[scope]
+in = [
+  "Sidereal orbital position at any pulse for each body, from its sidereal period and frozen epoch offset, normalized 0.0-1.0 with circular math.",
+  "Geocentric ecliptic coordinates (longitude, latitude) of each body as seen from Gavor: moons directly from their orbital position; planets via their heliocentric position relative to Gavor's. Ecliptic latitude derives from inclination + node.",
+  "Synodic position relative to Fatune, derived from the sidereal position and the AstroYear (moons: 1/T_syn = 1/T_sidereal - 1/T_year; planets: relative to Gavor's heliocentric motion).",
+  "Illuminated phase (lit fraction) from synodic position; visibility as a 0.0-1.0 scalar (visible band ~0.1-0.9, lost in glare near conjunction), with a boolean derived by threshold.",
+  "Eclipse predicate: a body near a node (ecliptic latitude ~0) and near a syzygy (synodic near conjunction or opposition) within the shared fuzzy tolerance window, typed solar (at conjunction) or lunar (at opposition).",
+  "Apparent angular size (diameter / distance) and a relative brightness scalar (albedo x lit fraction x apparent size).",
+  "Typed message units for all outputs, expressed in pulses and normalized/scalar terms.",
+]
+out = [
+  "Local-sky altitude/azimuth and rise/transit/set (SPEC-008).",
+  "Multi-body co-occurrence predicates - co_fullness and positional_conjunction (a later conjunctions SPEC).",
+  "Apparitions (Spark, comets), fixed stars.",
+  "Calendar or watch translation (a presentation overlay).",
+]
+
+[deliverables]
+files = [
+  "src: body-kinematics module (position, synodic, phase, visibility, eclipse, size, brightness), reading frozen config",
+  "src: message units for body state",
+  "tests: position/phase/visibility/eclipse fixtures and wrap-around cases",
+]
+tests = [
+  "Known epoch offset + period yields the expected sidereal and synodic position at a given pulse.",
+  "Phase is new (~0) near conjunction and full (~1) near opposition; visibility stays in [0,1] and the invisible zone straddles the 0/1 wrap correctly.",
+  "An eclipse fires only when latitude is near a node and the body is near a syzygy, with the correct solar/lunar type.",
+  "Apparent size and brightness are positive and track distance, albedo, and phase as expected.",
+]
+
+[acceptance]
+items = [
+  "All body state is a deterministic, pure function of pulse and frozen config.",
+  "Phase, visibility, and eclipse follow the synodic and latitude geometry defined in DD-0002.",
+  "Eclipses are rare for most moons and more frequent for Zehembra, per the frozen inclinations.",
+  "Outputs are typed message units in pulses and normalized scalars; no calendar/watch terms appear.",
+]
+
+[review]
+focus = [
+  "Circular math and the 0/1 wrap for synodic position and the invisible band.",
+  "Correct synodic derivation for moons vs planets (the geocentric step for planets).",
+  "Node-gated syzygy eclipse logic and its solar/lunar typing.",
+  "Clean separation of dynamical computation from the descriptive lore it reads.",
+]
+smoke_test = "For a few pulses, compute position, phase, visibility, and any eclipse for two or three moons (including Zehembra) and confirm the values and eclipse rarity look right."
+
+[notes]
+for_assistant = """
+Consumes the frozen config from SPEC-006. It must emit geocentric ecliptic
+longitude and latitude, which the sky layer depends on. For planets, geocentric
+longitude comes from the heliocentric-to-geocentric step against Gavor's position;
+a storytelling-grade approximation is fine. Eclipse is node-gated syzygy. Keep all
+output in pulses and normalized scalars; calendar and watch translation is a
+separate overlay.
+"""

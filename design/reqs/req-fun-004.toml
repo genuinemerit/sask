@@ -10,4 +10,4 @@ acceptance=[
   "Tolerance windows are read from config.",
 ]
 [links]
-dds=["DD-002"]
+dds=["DD-0002"]

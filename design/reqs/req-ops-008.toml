@@ -9,4 +9,4 @@ acceptance=[
   "A field never mixes types (e.g., no string 'n/a' in a numeric field; use null).",
 ]
 [links]
-dds=["DD-002"]
+dds=["DD-0002"]

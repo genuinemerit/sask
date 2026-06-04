@@ -9,4 +9,4 @@ acceptance=[
   "Season and equinox boundaries track orbital position and do not shift when a civil calendar applies leap rules.",
 ]
 [links]
-dds=["DD-002"]
+dds=["DD-0002"]

@@ -9,4 +9,4 @@ acceptance=[
   "No computation depends on a lore string.",
 ]
 [links]
-dds=["DD-002"]
+dds=["DD-0002"]

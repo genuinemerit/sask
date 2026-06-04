@@ -9,4 +9,4 @@ acceptance=[
   "Authored facts survive a cache rebuild; no authored datum exists only in a derived cache.",
 ]
 [links]
-dds=["DD-002"]
+dds=["DD-0002"]

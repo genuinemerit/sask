@@ -9,4 +9,4 @@ acceptance = [
   "Only README.md and *.example files under /secrets are tracked.",
 ]
 [links]
-dds = ["DD-001"]
+dds = ["DD-0001"]
