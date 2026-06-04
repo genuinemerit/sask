@@ -41,6 +41,31 @@ class SeasonInfo:
     near_event_name: str | None = None  # display name of the near event
 
 
+@dataclass(frozen=True)
+class BodyState:
+    """State of a celestial body at a given pulse (SPEC-007).
+
+    All angles in degrees; times in pulses; distances in body-type units
+    (km for moons, AU for planets). Brightness and apparent_size are
+    dimensionless relative scalars — meaningful for comparison within a
+    category, not for cross-category comparison.
+    """
+
+    name: str
+    body_type: str  # "moon" | "planet"
+    sidereal_fraction: float  # [0.0, 1.0) — position in sidereal orbit
+    ecliptic_lon_deg: float  # [0.0, 360.0) — geocentric ecliptic longitude
+    ecliptic_lat_deg: float  # (-90.0, 90.0) — geocentric ecliptic latitude
+    geocentric_dist: float  # km (moons) or AU (planets)
+    synodic_fraction: float  # [0.0, 1.0); 0=conjunction/new, 0.5=opposition/full
+    illuminated_fraction: float  # [0.0, 1.0] — fraction of visible face lit by Fatune
+    visibility: float  # [0.0, 1.0]; 0 when lost in glare or Gavor's shadow
+    is_visible: bool
+    eclipse_type: str | None  # "solar" | "lunar" | None
+    apparent_size: float  # diameter_km / geocentric_dist_km (dimensionless)
+    brightness: float  # albedo × illuminated_fraction × apparent_size (relative)
+
+
 def validate(unit: object) -> list[str]:
     """Return a list of field-level errors for a message-unit dataclass.
 

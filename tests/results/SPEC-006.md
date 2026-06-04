@@ -5,7 +5,7 @@
 
 ## Test run
 
-```
+```text
 26 passed in 0.06s
 ```
 
@@ -15,7 +15,7 @@ All 26 tests pass. Full pre-commit check exits 0.
 
 Generator run:
 
-```
+```text
 python3 tools/generate_orbital_conditions.py
 Wrote /home/dave/Code/sask-calendar/config/body_data.toml
 Seed: 20260604   Bodies: 15

@@ -1,7 +1,8 @@
-"""Load and validate engine config from TOML files (SPEC-002).
+"""Load and validate engine config from TOML files (SPEC-002, SPEC-006/007).
 
 The config directory must contain:
-  time_constants.toml, calendars.toml, seasons.toml, timeline.toml
+  time_constants.toml, calendars.toml, seasons.toml, timeline.toml,
+  body_data.toml, observation_data.toml
 
 All validation is done at load time; callers receive a typed AppConfig or
 a ConfigError is raised.
@@ -105,6 +106,32 @@ class TimelineConfig:
 
 
 @dataclass(frozen=True)
+class BodyConfig:
+    """One celestial body record from body_data.toml (SPEC-006/007)."""
+
+    name: str
+    body_type: str  # "moon" | "planet"
+    sidereal_period_days: float
+    epoch_offset: float  # [0.0, 1.0) frozen by SPEC-006
+    inclination_deg: float  # orbital tilt to ecliptic; frozen by SPEC-006
+    node: float  # ascending node fraction [0.0, 1.0); frozen by SPEC-006
+    diameter_km: float
+    albedo: float
+    distance_km: float | None  # moons only: orbital radius (constant, circular orbit)
+    semi_major_axis: float | None  # planets only: Gavor-orbit units (Gavor=1.0)
+
+
+@dataclass(frozen=True)
+class GavorConfig:
+    """Gavor (the world) and observer reference from observation_data.toml."""
+
+    epoch_offset: float  # = 0.0; heliocentric orbit starts at pulse 0
+    semi_major_axis: float  # = 1.0; unit reference for planetary distances
+    obliquity_deg: float  # axial tilt = 23.44 degrees
+    observer_latitude_deg: float  # canonical observer = 35.47 N
+
+
+@dataclass(frozen=True)
 class AppConfig:
     time_constants: TimeConstants
     astro: CalendarConfig
@@ -112,6 +139,8 @@ class AppConfig:
     terpin: TerpinConfig
     seasons: SeasonsConfig
     timeline: TimelineConfig
+    bodies: tuple[BodyConfig, ...]  # all 15 celestial bodies
+    gavor: GavorConfig
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
@@ -282,6 +311,56 @@ def _load_timeline(raw: dict, src: str) -> TimelineConfig:
     return TimelineConfig(story_now_pulse=snp)
 
 
+# ── Body and observer loaders ─────────────────────────────────────────────────
+
+
+def _load_body(raw: dict, src: str) -> BodyConfig:
+    name = str(_require(raw, "name", src))
+    btype = str(_require(raw, "type", src))
+    if btype not in ("moon", "planet"):
+        raise ConfigError(f"{src}: type must be 'moon' or 'planet', got {btype!r}")
+    return BodyConfig(
+        name=name,
+        body_type=btype,
+        sidereal_period_days=float(_require(raw, "sidereal_period_days", src)),
+        epoch_offset=float(_require(raw, "epoch_offset", src)),
+        inclination_deg=float(_require(raw, "inclination_deg", src)),
+        node=float(_require(raw, "node", src)),
+        diameter_km=float(_require(raw, "diameter_km", src)),
+        albedo=float(_require(raw, "albedo", src)),
+        distance_km=float(raw["distance_km"]) if "distance_km" in raw else None,
+        semi_major_axis=float(raw["semi_major_axis"])
+        if "semi_major_axis" in raw
+        else None,
+    )
+
+
+def _load_bodies(raw: dict, src: str) -> tuple[BodyConfig, ...]:
+    entries = raw.get("body", [])
+    if not isinstance(entries, list) or len(entries) != 15:
+        raise ConfigError(
+            f"{src}: expected exactly 15 [[body]] entries, found {len(entries)}"
+        )
+    return tuple(_load_body(e, f"{src} body[{i}]") for i, e in enumerate(entries))
+
+
+def _load_gavor(raw: dict, src: str) -> GavorConfig:
+    obs = _require(raw, "observation", src)
+    gav = _require(raw, "gavor", src)
+    if not isinstance(obs, dict):
+        raise ConfigError(f"{src}: [observation] must be a table")
+    if not isinstance(gav, dict):
+        raise ConfigError(f"{src}: [gavor] must be a table")
+    return GavorConfig(
+        epoch_offset=float(_require(gav, "epoch_offset", f"{src} [gavor]")),
+        semi_major_axis=float(_require(gav, "semi_major_axis", f"{src} [gavor]")),
+        obliquity_deg=float(_require(obs, "obliquity_deg", f"{src} [observation]")),
+        observer_latitude_deg=float(
+            _require(obs, "observer_latitude_deg", f"{src} [observation]")
+        ),
+    )
+
+
 # ── Public entry point ────────────────────────────────────────────────────────
 
 
@@ -298,6 +377,10 @@ def load_config(config_dir: Path) -> AppConfig:
     )
     seasons = _load_seasons(_load_toml(config_dir / "seasons.toml"), "seasons.toml")
     timeline = _load_timeline(_load_toml(config_dir / "timeline.toml"), "timeline.toml")
+    bodies = _load_bodies(_load_toml(config_dir / "body_data.toml"), "body_data.toml")
+    gavor = _load_gavor(
+        _load_toml(config_dir / "observation_data.toml"), "observation_data.toml"
+    )
     return AppConfig(
         time_constants=tc,
         astro=astro,
@@ -305,4 +388,6 @@ def load_config(config_dir: Path) -> AppConfig:
         terpin=terpin,
         seasons=seasons,
         timeline=timeline,
+        bodies=bodies,
+        gavor=gavor,
     )
