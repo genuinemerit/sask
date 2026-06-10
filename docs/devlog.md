@@ -1,5 +1,28 @@
 # Dev log
 
+## 2026-06-10 — SPEC-010: fixed stars and Houses of the Equinox
+
+**Design work (all accepted):** DD-0005 (stars/houses), DD-0006 (apparitions),
+DD-0007 (lunar calendars), DD-0008 (unified sky view); REQ-FUN-007/008/009;
+SPEC-010–014. Config files added for all five upcoming specs.
+
+**SPEC-010 implemented** (35 tests, 333 total):
+
+- `config/star_data.toml` / `config/house_data.toml` — 16 fixed stars and 14
+  Houses of the Equinox. Both files reformatted to valid TOML (original drafts
+  used invalid semicolon-separated key-value pairs).
+- `src/sask/config_loader.py` — `FixedStarConfig`, `HouseConfig`,
+  `HouseNamingConfig` dataclasses; loaders; `AppConfig` extended.
+- `src/sask/message.py` — `HouseInfo`, `FixedStarInfo`, `StarContext` message
+  units.
+- `src/sask/stars.py` — `get_star_context(pulse, config)`: active house from
+  sidereal-arc placement (`HOUSE_ARC_OFFSET = 0.125`; season points fall
+  mid-group: spring equinox → house 11, solstices/equinoxes → houses 2/5/8);
+  visible stars = 4 perennial + 3 seasonal; 2 circumpolar houses always
+  present. No civil-calendar config consulted.
+
+---
+
 ## 2026-06-05 — SPEC-009 UAT: all tests pass; refactoring complete
 
 **SPEC-009 UAT complete** — all 15 test cases pass (TC-009-01 through TC-009-13,

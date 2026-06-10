@@ -89,6 +89,50 @@ class SkyPosition:
     set_pulse: int | None  # None when circumpolar or never-rising
 
 
+@dataclass(frozen=True)
+class HouseInfo:
+    """A House of the Equinox in a star_context message unit (SPEC-010).
+
+    season_span and personality are None for circumpolar houses.
+    """
+
+    id: str
+    name: str
+    shape: str
+    stars: tuple[str, ...]  # member fixed-star ids; may be empty
+    lore: str | None = None
+    season_span: str | None = None  # seasonal houses only
+    personality: tuple[str, ...] | None = None  # seasonal houses only
+
+
+@dataclass(frozen=True)
+class FixedStarInfo:
+    """A visible fixed star in a star_context message unit (SPEC-010)."""
+
+    id: str
+    name: str
+    season: str  # "perennial" | season id
+    brightness: str
+    color: str
+    variable: bool
+    trait: str
+    position: str
+    epithet: str | None = None
+    lore: str | None = None
+
+
+@dataclass(frozen=True)
+class StarContext:
+    """Star context for a given pulse: active house, circumpolar houses,
+    and visible fixed stars (SPEC-010)."""
+
+    pulse: int
+    season: str
+    house_of_the_equinox: HouseInfo
+    circumpolar_houses: tuple[HouseInfo, ...]
+    visible_fixed_stars: tuple[FixedStarInfo, ...]
+
+
 def validate(unit: object) -> list[str]:
     """Return a list of field-level errors for a message-unit dataclass.
 

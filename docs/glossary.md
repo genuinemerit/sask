@@ -59,9 +59,13 @@ Code uses these stable categories; lore overloads several names (see below).
 - **star** — the system's sun, Fatune.
 - **moon** — one of the eight bodies orbiting the planet.
 - **wanderer** — a planet (other than the world) or a comet visible from the world.
-- **fixed star** — a sidereal background star with seasonal visibility.
-- **constellation / house** — a fixed-star grouping; the "House of the Equinox" is the
-  constellation tied to a given orbital position.
+- **fixed star** — a sidereal background star with seasonal visibility. Sixteen exist:
+  four perennial (always visible) and three per season. SPEC-010.
+- **constellation / House of the Equinox** — a fixed-star grouping tied to a sidereal arc.
+  Twelve seasonal houses (equal arcs of the sidereal year, offset ~half a house from the
+  season boundaries so equinoxes/solstices fall mid-group) plus two circumpolar houses
+  (never "the sign"). The active house is determined by Gavor's orbital position; it never
+  depends on civil-calendar config. SPEC-010.
 
 ## Lore vocabulary → technical meaning
 
@@ -89,7 +93,15 @@ Code uses these stable categories; lore overloads several names (see below).
 - **Age** (Fatunik Lore) → an arbitrary named range of Fatunik Turns (from-turn to to-turn), with a name and
   description used in storytelling. Age definitions are not persisted at this stage; the engine function converts a
   Fatunik Turn range to the corresponding Astro pulse bounds.
-- **Lunar calendar** → any calendar driven by moon cycles. **(TBD — design pending.)**
+- **Lunar calendar** → a calendar driven by one moon's synodic cycle (one month = one synodic
+  period of the chosen moon). Four exist: Untamed (Sella), Warren/Rabbit-sints (Shunna),
+  Hearth/Dog-sints (Jembor, no turns), and Terpin Lunar (mean of all 8 moons). Turn-based
+  calendars also report a **Round** (see below). SPEC-012.
+- **Round** — the luni-solar realignment cycle for a turn-based lunar calendar: the smallest
+  whole-turn count after which the calendar re-aligns with the AstroYear within a tolerance.
+  Reported as a long count (Rounds since epoch) and short count (turn within the Round).
+  Computed from the moon's synodic period, months per turn, and the AstroYear; keyed to the
+  AstroYear, never to a civil calendar.
 - **SolarLunar / FatunikLunar / LuniSolar / LuniFatunik** → a combined solar-and-lunar calendar. **(TBD.)**
 - **Star Context** → the simplified constellation / fixed-star framework (astrological, not a star map).
 - **Conjunction** (lore) → `co_fullness`. A true sky alignment → `positional_conjunction`.

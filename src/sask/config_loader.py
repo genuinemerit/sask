@@ -1,8 +1,9 @@
-"""Load and validate engine config from TOML files (SPEC-002, SPEC-006/007).
+"""Load and validate engine config from TOML files (SPEC-002, SPEC-006/007/010).
 
 The config directory must contain:
   time_constants.toml, calendars.toml, seasons.toml, timeline.toml,
-  body_data.toml, observation_data.toml
+  body_data.toml, observation_data.toml,
+  star_data.toml, house_data.toml
 
 All validation is done at load time; callers receive a typed AppConfig or
 a ConfigError is raised.
@@ -138,6 +139,49 @@ class GavorConfig:
 
 
 @dataclass(frozen=True)
+class FixedStarConfig:
+    """One fixed-star record from star_data.toml (SPEC-010)."""
+
+    id: str
+    name: str
+    season: str  # "perennial" | "greening" | "blazing" | "withering" | "stillness"
+    perennial: bool
+    brightness: str
+    color: str
+    variable: bool
+    trait: str
+    position: str
+    epithet: str | None
+    lore: str | None
+    house: str | None  # house id if linked to a specific house
+
+
+@dataclass(frozen=True)
+class HouseConfig:
+    """One House-of-the-Equinox record from house_data.toml (SPEC-010)."""
+
+    id: str
+    name: str
+    house_type: str  # "seasonal" | "circumpolar"
+    shape: str
+    lore: str | None
+    order: int | None  # seasonal: 1..12; circumpolar: None
+    season_span: str | None
+    personality: tuple[str, ...] | None
+    stars: tuple[str, ...]  # member fixed-star ids; may be empty
+
+
+@dataclass(frozen=True)
+class HouseNamingConfig:
+    """Naming metadata from the [houses] block of house_data.toml (SPEC-010)."""
+
+    name_technical: str
+    name_colloquial: str
+    tradition: str
+    heresy_note: str
+
+
+@dataclass(frozen=True)
 class AppConfig:
     time_constants: TimeConstants
     astro: CalendarConfig
@@ -147,6 +191,9 @@ class AppConfig:
     timeline: TimelineConfig
     bodies: tuple[BodyConfig, ...]  # all 15 celestial bodies
     gavor: GavorConfig
+    stars: tuple[FixedStarConfig, ...]  # 16 fixed stars (SPEC-010)
+    houses: tuple[HouseConfig, ...]  # 14 Houses (SPEC-010)
+    house_naming: HouseNamingConfig  # naming metadata (SPEC-010)
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
@@ -375,6 +422,94 @@ def _load_gavor(raw: dict, src: str) -> GavorConfig:
     )
 
 
+# ── Stars and houses loaders (SPEC-010) ──────────────────────────────────────
+
+_VALID_STAR_SEASONS = {"perennial", "greening", "blazing", "withering", "stillness"}
+_VALID_HOUSE_TYPES = {"seasonal", "circumpolar"}
+
+
+def _load_fixed_star(raw: dict, src: str) -> FixedStarConfig:
+    sid = str(_require(raw, "id", src))
+    season = str(_require(raw, "season", src))
+    if season not in _VALID_STAR_SEASONS:
+        raise ConfigError(
+            f"{src}: star '{sid}' season {season!r} not in {_VALID_STAR_SEASONS}"
+        )
+    return FixedStarConfig(
+        id=sid,
+        name=str(_require(raw, "name", src)),
+        season=season,
+        perennial=bool(_require(raw, "perennial", src)),
+        brightness=str(_require(raw, "brightness", src)),
+        color=str(_require(raw, "color", src)),
+        variable=bool(_require(raw, "variable", src)),
+        trait=str(_require(raw, "trait", src)),
+        position=str(_require(raw, "position", src)),
+        epithet=str(raw["epithet"]) if "epithet" in raw else None,
+        lore=str(raw["lore"]) if "lore" in raw else None,
+        house=str(raw["house"]) if "house" in raw else None,
+    )
+
+
+def _load_fixed_stars(raw: dict, src: str) -> tuple[FixedStarConfig, ...]:
+    entries = raw.get("star", [])
+    if not isinstance(entries, list) or len(entries) != 16:
+        raise ConfigError(
+            f"{src}: expected exactly 16 [[star]] entries, found {len(entries)}"
+        )
+    return tuple(_load_fixed_star(e, f"{src} star[{i}]") for i, e in enumerate(entries))
+
+
+def _load_house(raw: dict, src: str) -> HouseConfig:
+    hid = str(_require(raw, "id", src))
+    htype = str(_require(raw, "type", src))
+    if htype not in _VALID_HOUSE_TYPES:
+        raise ConfigError(
+            f"{src}: house '{hid}' type {htype!r} not in {_VALID_HOUSE_TYPES}"
+        )
+    personality_raw = raw.get("personality")
+    personality: tuple[str, ...] | None = (
+        tuple(str(p) for p in personality_raw)
+        if isinstance(personality_raw, list)
+        else None
+    )
+    stars_raw = raw.get("stars", [])
+    return HouseConfig(
+        id=hid,
+        name=str(_require(raw, "name", src)),
+        house_type=htype,
+        shape=str(_require(raw, "shape", src)),
+        lore=str(raw["lore"]) if "lore" in raw else None,
+        order=int(raw["order"]) if "order" in raw else None,
+        season_span=str(raw["season_span"]) if "season_span" in raw else None,
+        personality=personality,
+        stars=tuple(str(s) for s in stars_raw),
+    )
+
+
+def _load_houses(
+    raw: dict, src: str
+) -> tuple[tuple[HouseConfig, ...], HouseNamingConfig]:
+    entries = raw.get("house", [])
+    if not isinstance(entries, list) or len(entries) != 14:
+        raise ConfigError(
+            f"{src}: expected exactly 14 [[house]] entries, found {len(entries)}"
+        )
+    houses = tuple(_load_house(e, f"{src} house[{i}]") for i, e in enumerate(entries))
+
+    naming_raw = _require(raw, "houses", src)
+    if not isinstance(naming_raw, dict):
+        raise ConfigError(f"{src}: [houses] must be a table")
+    ns = f"{src} [houses]"
+    naming = HouseNamingConfig(
+        name_technical=str(_require(naming_raw, "name_technical", ns)),
+        name_colloquial=str(_require(naming_raw, "name_colloquial", ns)),
+        tradition=str(_require(naming_raw, "tradition", ns)),
+        heresy_note=str(_require(naming_raw, "heresy_note", ns)),
+    )
+    return houses, naming
+
+
 # ── Public entry point ────────────────────────────────────────────────────────
 
 
@@ -395,6 +530,12 @@ def load_config(config_dir: Path) -> AppConfig:
     gavor = _load_gavor(
         _load_toml(config_dir / "observation_data.toml"), "observation_data.toml"
     )
+    stars = _load_fixed_stars(
+        _load_toml(config_dir / "star_data.toml"), "star_data.toml"
+    )
+    houses, house_naming = _load_houses(
+        _load_toml(config_dir / "house_data.toml"), "house_data.toml"
+    )
     return AppConfig(
         time_constants=tc,
         astro=astro,
@@ -404,4 +545,7 @@ def load_config(config_dir: Path) -> AppConfig:
         timeline=timeline,
         bodies=bodies,
         gavor=gavor,
+        stars=stars,
+        houses=houses,
+        house_naming=house_naming,
     )
