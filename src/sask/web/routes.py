@@ -12,6 +12,7 @@ from flask import Blueprint, current_app, render_template, request
 
 from ..bodies import all_body_states
 from ..config_loader import AppConfig
+from ..lunar import get_lunar_date
 from ..message import CalendarDate, PulseInfo
 from ..pulse import (
     astro_to_fatunik,
@@ -20,6 +21,8 @@ from ..pulse import (
     pulse_info,
     terpin_to_pulse,
 )
+from ..scene import get_sky_scene, render_image_prompt, render_night_summary
+from ..season import season_info
 from ..sky import all_sky_positions, fatune_sky_position
 from .translator import (
     to_moon_view,
@@ -188,4 +191,77 @@ def planets() -> str:
         error=error,
         queried_pulse=pulse,
         queried_astro_day=queried_astro_day,
+    )
+
+
+@bp.route("/sky")
+def sky() -> str:
+    cfg: AppConfig = current_app.config["SASK_CONFIG"]
+    ppd = cfg.time_constants.pulses_per_day
+    pulse, error = _resolve_pulse(cfg)
+
+    # When input is a date (not a direct pulse or Astro day), snap to deep night (2 AM)
+    if pulse is not None and not (
+        request.args.get("pulse") or request.args.get("astro_day")
+    ):
+        midnight = (pulse // ppd) * ppd
+        pulse = midnight + 2 * 3600
+
+    scene = None
+    lunar_entries = None
+    si = None
+    moons_up: list = []
+    planets_up: list = []
+    apparitions_up: list = []
+    night_summary = None
+    image_prompt = None
+    cofullness_days = None
+    time_of_day = None
+    fatunik_date = terpin_date = None
+    queried_astro_day = None
+
+    if pulse is not None and error is None:
+        queried_astro_day = pulse // ppd + 1
+        day_offset = pulse % ppd
+        h, m, s = day_offset // 3600, (day_offset % 3600) // 60, day_offset % 60
+        time_of_day = f"{h:02d}:{m:02d}:{s:02d}"
+
+        fatunik_date = astro_to_fatunik(pulse, cfg)
+        terpin_date = astro_to_terpin(pulse, cfg)
+
+        lunar_entries = [
+            (cal, get_lunar_date(pulse, cal.id, cfg)) for cal in cfg.lunar_calendars
+        ]
+
+        si = season_info(pulse, cfg)
+        scene = get_sky_scene(pulse, cfg)
+        night_summary = render_night_summary(scene, cfg)
+        image_prompt = render_image_prompt(scene, cfg)
+
+        moons_up = [b for b in scene.bodies_up if b.body_type == "moon"]
+        planets_up = [b for b in scene.bodies_up if b.body_type == "planet"]
+        apparitions_up = [
+            b for b in scene.bodies_up if b.body_type in ("comet", "spark")
+        ]
+        cofullness_days = max(
+            0, (scene.next_co_fullness.pulse - pulse + ppd - 1) // ppd
+        )
+
+    return render_template(
+        "sky.html",
+        error=error,
+        queried_pulse=pulse,
+        queried_astro_day=queried_astro_day,
+        fatunik_date=fatunik_date,
+        terpin_date=terpin_date,
+        time_of_day=time_of_day,
+        lunar_entries=lunar_entries,
+        si=si,
+        scene=scene,
+        moons_up=moons_up,
+        planets_up=planets_up,
+        apparitions_up=apparitions_up,
+        night_summary=night_summary,
+        image_prompt=image_prompt,
+        cofullness_days=cofullness_days,
     )

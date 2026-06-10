@@ -1,6 +1,6 @@
 id="SPEC-014"
 title="Unified Sky-for-a-date web view"
-status="proposed"
+status="accepted"
 
 [implements]
 requirements=["REQ-OPS-007","REQ-OPS-008","REQ-FUN-009"]

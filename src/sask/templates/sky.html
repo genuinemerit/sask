@@ -1,0 +1,211 @@
+{% extends "base.html" %}
+
+{% block title %}Sky — Saskan Calendar{% endblock %}
+
+{% block content %}
+<h1>Sky for a Date</h1>
+
+<form method="get" action="/sky">
+  <fieldset>
+    <legend>Enter pulse</legend>
+    <label for="pulse">Pulse</label>
+    <input type="number" id="pulse" name="pulse" step="any"
+           value="{{ queried_pulse if queried_pulse is not none else '' }}">
+    <button type="submit">Query</button>
+  </fieldset>
+</form>
+<form method="get" action="/sky">
+  <fieldset>
+    <legend>Or Astro day</legend>
+    <label for="astro_day">Astro Day</label>
+    <input type="number" id="astro_day" name="astro_day" step="1" min="1"
+           value="{{ queried_astro_day if queried_astro_day is not none else '' }}">
+    <button type="submit">Query</button>
+  </fieldset>
+</form>
+<form method="get" action="/sky">
+  <fieldset>
+    <legend>Or Fatunik date</legend>
+    <label for="fatunik_year">Year</label>
+    <input type="number" id="fatunik_year" name="fatunik_year" step="1" style="width:6rem"
+           value="{{ fatunik_date.year if fatunik_date else '' }}">
+    <label for="fatunik_month" style="width:5rem; margin-left:.5rem">Month</label>
+    <input type="number" id="fatunik_month" name="fatunik_month" min="1" max="14" step="1" style="width:4rem"
+           value="{{ fatunik_date.month if fatunik_date else '' }}">
+    <label for="fatunik_day" style="width:4rem; margin-left:.5rem">Day</label>
+    <input type="number" id="fatunik_day" name="fatunik_day" min="1" max="30" step="1" style="width:4rem"
+           value="{{ fatunik_date.day if fatunik_date else '' }}">
+    <button type="submit">Query</button>
+  </fieldset>
+</form>
+<form method="get" action="/sky">
+  <fieldset>
+    <legend>Or Terpin date</legend>
+    <label for="terpin_year">Year</label>
+    <input type="number" id="terpin_year" name="terpin_year" step="1" style="width:6rem"
+           value="{{ terpin_date.year if terpin_date else '' }}">
+    <label for="terpin_month" style="width:5rem; margin-left:.5rem">Month</label>
+    <input type="number" id="terpin_month" name="terpin_month" min="1" max="13" step="1" style="width:4rem"
+           value="{{ terpin_date.month if terpin_date else '' }}">
+    <label for="terpin_day" style="width:4rem; margin-left:.5rem">Day</label>
+    <input type="number" id="terpin_day" name="terpin_day" min="1" max="30" step="1" style="width:4rem"
+           value="{{ terpin_date.day if terpin_date else '' }}">
+    <button type="submit">Query</button>
+  </fieldset>
+</form>
+
+{% if error %}
+  <p class="error">{{ error }}</p>
+{% endif %}
+
+{% if scene %}
+
+<h2>Date &amp; Time</h2>
+<table style="width:auto">
+  <tbody>
+    <tr><th>Astro</th><td>Day {{ queried_astro_day }}, {{ time_of_day }}</td></tr>
+    <tr><th>Fatunik</th>
+        <td>T{{ fatunik_date.year }}&nbsp;M{{ fatunik_date.month }}&nbsp;D{{ fatunik_date.day }}</td></tr>
+    <tr><th>Terpin</th>
+        <td>T{{ terpin_date.year }}&nbsp;M{{ terpin_date.month }}&nbsp;D{{ terpin_date.day }}</td></tr>
+  </tbody>
+</table>
+
+<h2>Lunar Calendars <span class="meta">(display-only)</span></h2>
+<table>
+  <thead>
+    <tr>
+      <th>Calendar</th><th>Moon</th>
+      <th>Long&nbsp;Count</th><th>Short&nbsp;Count</th><th>Turn</th>
+      <th>Month</th><th>Day</th><th>Lunation</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for cal, ld in lunar_entries %}
+    <tr>
+      <td>{{ cal.name }}</td>
+      <td>{{ cal.moon }}</td>
+      <td>{{ ld.long_count if ld.has_turns else "—" }}</td>
+      <td>{{ ld.short_count if ld.has_turns else "—" }}</td>
+      <td>{{ ld.turn if ld.has_turns else "—" }}</td>
+      <td>{{ ld.month if ld.has_turns else "—" }}</td>
+      <td>{{ ld.day }}</td>
+      <td>{{ ld.lunation }}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+
+<h2>Season</h2>
+<p>{{ si.name }}{% if si.near_event_name %} — near <strong>{{ si.near_event_name }}</strong>{% endif %}</p>
+
+<h2>Moons Above the Horizon</h2>
+{% if moons_up %}
+<table>
+  <thead>
+    <tr><th>Moon</th><th>Color</th><th>Phase</th><th>Direction</th><th>Brightness</th></tr>
+  </thead>
+  <tbody>
+    {% for b in moons_up %}
+    <tr>
+      <td><a href="/moons?pulse={{ queried_pulse }}">{{ b.name }}</a></td>
+      <td>{{ b.color }}</td>
+      <td>{{ b.phase }}</td>
+      <td>{{ b.direction }}</td>
+      <td>{{ "%.3f" | format(b.brightness) }}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% else %}
+<p class="meta">No moons above the horizon at this time.</p>
+{% endif %}
+
+<h2>Wanderers Above the Horizon</h2>
+{% if planets_up %}
+<table>
+  <thead>
+    <tr><th>Planet</th><th>Color</th><th>Phase</th><th>Direction</th><th>Brightness</th></tr>
+  </thead>
+  <tbody>
+    {% for b in planets_up %}
+    <tr>
+      <td><a href="/planets?pulse={{ queried_pulse }}">{{ b.name }}</a></td>
+      <td>{{ b.color }}</td>
+      <td>{{ b.phase }}</td>
+      <td>{{ b.direction }}</td>
+      <td>{{ "%.3f" | format(b.brightness) }}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% else %}
+<p class="meta">No wanderers above the horizon at this time.</p>
+{% endif %}
+
+{% if apparitions_up %}
+<h2>Comets &amp; the Spark</h2>
+<table>
+  <thead>
+    <tr><th>Body</th><th>Type</th><th>Direction</th><th>Color</th><th>Visibility</th></tr>
+  </thead>
+  <tbody>
+    {% for b in apparitions_up %}
+    <tr>
+      <td>{{ b.name }}</td>
+      <td>{{ b.body_type }}</td>
+      <td>{{ b.direction }}</td>
+      <td>{{ b.color }}</td>
+      <td>{{ "%.0f%%" | format(b.brightness * 100) }}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endif %}
+
+<h2>Fixed Stars &amp; Houses of the Equinox</h2>
+<p>
+  <strong>Active house:</strong> {{ scene.active_house.name }}<br>
+  {% if scene.circumpolar_houses %}
+  <strong>Circumpolar:</strong>
+  {% for h in scene.circumpolar_houses %}{{ h.name }}{% if not loop.last %}, {% endif %}{% endfor %}
+  {% endif %}
+</p>
+{% if scene.stars_up %}
+<table>
+  <thead><tr><th>Star</th><th>Position</th></tr></thead>
+  <tbody>
+    {% for s in scene.stars_up %}
+    <tr><td>{{ s.name }}</td><td>{{ s.direction }}</td></tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% else %}
+<p class="meta">No fixed stars visible this season.</p>
+{% endif %}
+
+<h2>Co-fullness</h2>
+{% if scene.co_fullness_tonight %}
+<p><strong>Tonight:</strong>
+  {{ scene.co_fullness_tonight.count }}
+  moon{{ 's' if scene.co_fullness_tonight.count != 1 else '' }} near-full together —
+  {{ scene.co_fullness_tonight.moons | join(", ") }}
+</p>
+{% else %}
+<p>No co-fullness event tonight.</p>
+{% endif %}
+<p><strong>Next event:</strong>
+  in {{ cofullness_days }} day{{ 's' if cofullness_days != 1 else '' }} —
+  {{ scene.next_co_fullness.count }}
+  moon{{ 's' if scene.next_co_fullness.count != 1 else '' }}:
+  {{ scene.next_co_fullness.moons | join(", ") }}
+</p>
+
+<h2>Night Summary</h2>
+<p>{{ night_summary }}</p>
+
+<h2>Image Prompt</h2>
+<pre style="white-space:pre-wrap; background:#f9f9f9; padding:.7rem 1rem; border:1px solid #ddd; border-radius:3px; font-size:.85rem; line-height:1.5;">{{ image_prompt }}</pre>
+
+{% endif %}
+{% endblock %}

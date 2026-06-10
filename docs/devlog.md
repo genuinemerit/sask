@@ -1,5 +1,24 @@
 # Dev log
 
+## 2026-06-10 — SPEC-014: unified sky-for-a-date web view
+
+**SPEC-014 implemented** (31 tests, 494 total — unit tests complete; UAT pending):
+
+- `src/sask/web/routes.py` — new `/sky` route: accepts pulse, Astro day,
+  Fatunik date, or Terpin date; date inputs snap to 2 AM deep night; computes
+  all date equivalents (Fatunik, Terpin, 4 lunar calendars), season, full sky
+  scene, night summary, and image prompt.
+- `src/sask/templates/sky.html` — single server-rendered page with panels for:
+  Date & Time equivalents, Lunar Calendars (display-only), Season, Moons above
+  the horizon (linked to /moons), Wanderers (linked to /planets), Comets &
+  the Spark (when visible), Fixed Stars & Houses, Co-fullness tonight & next,
+  Night Summary, Image Prompt.
+- `src/sask/templates/base.html` — Sky nav link added.
+- No JavaScript; pulse rides in query string for bookmarking; date inputs
+  cross-populate to show the resolved pulse.
+
+---
+
 ## 2026-06-10 — SPEC-013: sky-scene composition and text rendering
 
 **SPEC-013 implemented** (27 tests, 463 total):
