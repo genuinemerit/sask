@@ -1,5 +1,24 @@
 # Dev log
 
+## 2026-06-10 — SPEC-013: sky-scene composition and text rendering
+
+**SPEC-013 implemented** (27 tests, 463 total):
+
+- `config/sky_style_data.toml` — already authored; loaded into `AppConfig`
+  via `SkyStyleConfig` and `SkyStyleSettings` dataclasses.
+- `src/sask/config_loader.py` — `SkyStyleConfig`, `SkyStyleSettings`;
+  `_load_sky_styles()` (validates default_style exists); `AppConfig` extended.
+- `src/sask/message.py` — `BodyInScene`, `StarInScene`, `HouseRef`,
+  `CofullnessTonightRef`, `NextCofullnessRef`, `SkyScene` message units.
+  `validate()` improved to skip `X | None` fields (Optional sentinel pattern).
+- `src/sask/scene.py` — new module: `get_sky_scene(pulse, config)` composes
+  the full scene from all existing engine surfaces (SPEC-004/007/008/010/011/012);
+  `render_night_summary(scene, config)` produces deterministic plain prose;
+  `render_image_prompt(scene, config, style_id=None)` appends the selected
+  style's medium/palette/composition/extra directives. No network call; no Flask.
+
+---
+
 ## 2026-06-10 — SPEC-012: lunar calendars and co-fullness tracking
 
 **SPEC-012 implemented** (60 tests, 436 total):

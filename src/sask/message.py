@@ -164,6 +164,77 @@ class CofullnessEvent:
 
 
 @dataclass(frozen=True)
+class BodyInScene:
+    """One body visible above the horizon in a SkyScene (SPEC-013).
+
+    body_type: "moon" | "planet" | "comet" | "spark"
+    direction: compass + altitude band, e.g. "NE mid"
+    phase: named phase for moons/planets; "tail visible" for comets; "glimpsed" for Spark
+    """
+
+    id: str
+    name: str
+    body_type: str
+    direction: str
+    altitude: float
+    color: str
+    brightness: float
+    phase: str
+
+
+@dataclass(frozen=True)
+class StarInScene:
+    """One visible fixed star in a SkyScene (SPEC-013)."""
+
+    id: str
+    name: str
+    direction: str  # descriptive position text from star config
+
+
+@dataclass(frozen=True)
+class HouseRef:
+    """Minimal House reference in a SkyScene (SPEC-013)."""
+
+    id: str
+    name: str
+
+
+@dataclass(frozen=True)
+class CofullnessTonightRef:
+    """Co-fullness event occurring tonight, if any (SPEC-013)."""
+
+    count: int
+    moons: tuple[str, ...]
+
+
+@dataclass(frozen=True)
+class NextCofullnessRef:
+    """Next upcoming co-fullness event (SPEC-013)."""
+
+    pulse: int
+    count: int
+    moons: tuple[str, ...]
+
+
+@dataclass(frozen=True)
+class SkyScene:
+    """Composed sky scene for a given pulse (SPEC-013).
+
+    co_fullness_tonight is None when no co-fullness event falls on this Astro day.
+    next_co_fullness is always set; it refers to the next event from tomorrow onward.
+    """
+
+    pulse: int
+    season: str
+    bodies_up: tuple[BodyInScene, ...]
+    stars_up: tuple[StarInScene, ...]
+    active_house: HouseRef
+    circumpolar_houses: tuple[HouseRef, ...]
+    co_fullness_tonight: CofullnessTonightRef | None
+    next_co_fullness: NextCofullnessRef
+
+
+@dataclass(frozen=True)
 class CometInfo:
     """A visible comet in an apparition_context message unit (SPEC-011)."""
 
@@ -202,9 +273,13 @@ def validate(unit: object) -> list[str]:
 
     Checks that no required field (any field whose type is not Optional)
     holds None.  Returns an empty list when the unit is valid.
+    Fields annotated as X | None are skipped — None is their valid sentinel.
     """
     errors: list[str] = []
     for f in fields(unit):  # type: ignore[arg-type]
+        ann = f.type if isinstance(f.type, str) else repr(f.type)
+        if "None" in ann:
+            continue  # Optional field; None is permitted
         value = getattr(unit, f.name)
         if value is None:
             errors.append(f"{type(unit).__name__}.{f.name} must not be None")

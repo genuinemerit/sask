@@ -245,6 +245,25 @@ class CofullnessConfig:
 
 
 @dataclass(frozen=True)
+class SkyStyleConfig:
+    """One image-prompt style from sky_style_data.toml (SPEC-013)."""
+
+    id: str
+    name: str
+    medium: str
+    palette: str
+    composition: str
+    extra: str | None
+
+
+@dataclass(frozen=True)
+class SkyStyleSettings:
+    """Global settings from sky_style_data.toml (SPEC-013)."""
+
+    default_style: str  # id of the style used when no override is given
+
+
+@dataclass(frozen=True)
 class AppConfig:
     time_constants: TimeConstants
     astro: CalendarConfig
@@ -262,6 +281,8 @@ class AppConfig:
     lunar_calendars: tuple[LunarCalendarConfig, ...]  # 4 lunar calendars (SPEC-012)
     lunar_settings: LunarCalendarSettings  # Round realignment settings (SPEC-012)
     cofullness: CofullnessConfig  # co-fullness tracking config (SPEC-012)
+    sky_styles: tuple[SkyStyleConfig, ...]  # named image-prompt styles (SPEC-013)
+    sky_style_settings: SkyStyleSettings  # default style selection (SPEC-013)
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
@@ -658,6 +679,39 @@ def _load_lunar_calendars(
     return calendars, settings
 
 
+def _load_sky_styles(
+    raw: dict, src: str
+) -> tuple[tuple[SkyStyleConfig, ...], SkyStyleSettings]:
+    settings_raw = _require(raw, "settings", src)
+    if not isinstance(settings_raw, dict):
+        raise ConfigError(f"{src}: [settings] must be a table")
+    default_style = str(_require(settings_raw, "default_style", f"{src} [settings]"))
+    settings = SkyStyleSettings(default_style=default_style)
+
+    raw_styles = raw.get("style", [])
+    if not isinstance(raw_styles, list) or not raw_styles:
+        raise ConfigError(f"{src}: no [[style]] entries found")
+    styles: list[SkyStyleConfig] = []
+    for i, r in enumerate(raw_styles):
+        ns = f"{src} style[{i}]"
+        styles.append(
+            SkyStyleConfig(
+                id=str(_require(r, "id", ns)),
+                name=str(_require(r, "name", ns)),
+                medium=str(_require(r, "medium", ns)),
+                palette=str(_require(r, "palette", ns)),
+                composition=str(_require(r, "composition", ns)),
+                extra=str(r["extra"]) if "extra" in r else None,
+            )
+        )
+    style_ids = {s.id for s in styles}
+    if default_style not in style_ids:
+        raise ConfigError(
+            f"{src}: default_style {default_style!r} not found in styles {style_ids}"
+        )
+    return tuple(styles), settings
+
+
 def _load_cofullness(raw: dict, src: str) -> CofullnessConfig:
     c = _require(raw, "cofullness", src)
     if not isinstance(c, dict):
@@ -705,6 +759,9 @@ def load_config(config_dir: Path) -> AppConfig:
     cofullness = _load_cofullness(
         _load_toml(config_dir / "cofullness_data.toml"), "cofullness_data.toml"
     )
+    sky_styles, sky_style_settings = _load_sky_styles(
+        _load_toml(config_dir / "sky_style_data.toml"), "sky_style_data.toml"
+    )
     return AppConfig(
         time_constants=tc,
         astro=astro,
@@ -722,4 +779,6 @@ def load_config(config_dir: Path) -> AppConfig:
         lunar_calendars=lunar_calendars,
         lunar_settings=lunar_settings,
         cofullness=cofullness,
+        sky_styles=sky_styles,
+        sky_style_settings=sky_style_settings,
     )
