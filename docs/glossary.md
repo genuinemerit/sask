@@ -37,12 +37,13 @@ All cyclic quantities are normalized 0.0–1.0 and use circular (modular) math.
 ## Visibility, phases & events
 
 - **Visibility** — a 0.0–1.0 scalar from synodic position; visible band ≈ 0.1–0.9,
-  "lost in glare" near conjunction. A "visible tonight" boolean is derived by threshold.
+  "lost in glare" near conjunction. A boolean `is_visible` is derived by threshold.
   Fixed stars use a seasonal visibility window instead.
 - **Fuzzy tolerance window** — the shared "within a tolerance of a precise moment" concept used
-  by seasonal events, fullness, and conjunctions.
-- **co_fullness** — engine predicate: N named moons within the fuzzy "full" tolerance on the
-  same night, regardless of sky position. This is the Saskan lore "Conjunction."
+  by seasonal events and conjunctions.
+- **co_fullness** — engine predicate: N named moons each with illuminated fraction ≥ the
+  configured threshold (default 0.90) on the same Astro day, regardless of sky position.
+  This is the Saskan lore "Conjunction."
 - **positional_conjunction** — engine predicate: N bodies within an angular tolerance of the
   same apparent sky position. The rarer "true conjunction."
 - **Apparition** — a window during which an episodic object (comet, the Spark) is visible:

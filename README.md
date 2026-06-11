@@ -46,8 +46,10 @@ navigate to `http://localhost:5000/` in a host browser.
 | Page | Description |
 |---|---|
 | `/` | Pulse lookup — enter a pulse and see Astro day, time of day, orbital position |
-| `/moons` | Moons sky view — phase, illumination, eclipse, altitude/azimuth, rise/transit/set for all 8 moons |
+| `/moons` | Moons sky view — phase, illumination, albedo, eclipse, altitude/azimuth, rise/transit/set for all 8 moons |
 | `/planets` | Planets sky view — same columns plus colour, brightness, and telescopic detail for all 7 planets |
+| `/sky` | Unified sky for a date — lunar calendars, moons and wanderers above horizon, |
+| | co-fullness, season, fixed stars and houses, night summary, image prompt |
 
 All three pages accept four equivalent input forms: pulse number, Astro day,
 Fatunik date, or Terpin date. After any query all four input fields are

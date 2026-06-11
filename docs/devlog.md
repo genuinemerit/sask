@@ -1,18 +1,51 @@
 # Dev log
 
+## 2026-06-11 — SPEC-014: UAT complete (all 20 TCs pass)
+
+UAT surfaced several corrections applied before sign-off:
+
+- **Day-start times:** Removed the 2 AM deep-night snap. Fatunik date input
+  now resolves to 06:00:00 (Fatunik day-start offset); Terpin and Astro day
+  to 00:00:00. Time of day displayed inline next to the Astro Day query button
+  on both `/sky` and `/moons`.
+- **Layout:** Removed redundant "Date & Time" panel; Co-fullness moved
+  immediately below Moons Above Horizon; Season moved above Fixed Stars.
+- **Visibility consistency:** Bodies above horizon now require both
+  `above_horizon` and `is_visible` (illumination threshold) everywhere —
+  fixed in `scene.py` bodies_up filter and `translator.py` view models.
+- **Brightness:** Changed observer-facing brightness from
+  `albedo × illuminated_fraction × apparent_size` (always near zero, always
+  "Dim") to `albedo × illuminated_fraction`. Re-calibrated labels:
+  Brilliant ≥ 0.32, Bright ≥ 0.20, Moderate ≥ 0.10, Faint ≥ 0.04, Dim.
+  Albedo column added to `/moons` table.
+- **Near-full definition corrected:** Replaced time-based tolerance
+  (`full_tolerance_days / T_syn`) with illumination-based threshold
+  (`illuminated_fraction >= 0.90`). Slow moons like Endor (T_syn = 37 d)
+  were excluded despite looking full to any observer; the new definition
+  treats all moons the same way a medieval observer would. Config key renamed
+  `full_tolerance_days` → `full_illumination_threshold`.
+- **Co-fullness wording:** "Tonight" → "This day" throughout; window broadened
+  from single midnight to full Astro day; `observable` flag added to
+  `CofullnessTonightRef`; "(below the horizon throughout this day)" note shown
+  when no near-full moon rises during the day.
+- **Cosmetic:** Moon names capitalised in Lunar Calendars and Co-fullness
+  sections; Terpin "mean" label left lower-case.
+
+---
+
 ## 2026-06-10 — SPEC-014: unified sky-for-a-date web view
 
 **SPEC-014 implemented** (31 tests, 494 total — unit tests complete; UAT pending):
 
 - `src/sask/web/routes.py` — new `/sky` route: accepts pulse, Astro day,
-  Fatunik date, or Terpin date; date inputs snap to 2 AM deep night; computes
+  Fatunik date, or Terpin date; resolves to calendar day-start time; computes
   all date equivalents (Fatunik, Terpin, 4 lunar calendars), season, full sky
   scene, night summary, and image prompt.
 - `src/sask/templates/sky.html` — single server-rendered page with panels for:
-  Date & Time equivalents, Lunar Calendars (display-only), Season, Moons above
-  the horizon (linked to /moons), Wanderers (linked to /planets), Comets &
-  the Spark (when visible), Fixed Stars & Houses, Co-fullness tonight & next,
-  Night Summary, Image Prompt.
+  Lunar Calendars (display-only), Moons above the horizon (linked to /moons),
+  Co-fullness this day and next, Wanderers (linked to /planets), Comets &
+  the Spark (when visible), Season, Fixed Stars & Houses, Night Summary,
+  Image Prompt.
 - `src/sask/templates/base.html` — Sky nav link added.
 - No JavaScript; pulse rides in query string for bookmarking; date inputs
   cross-populate to show the resolved pulse.

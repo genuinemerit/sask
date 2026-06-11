@@ -883,16 +883,16 @@ http://localhost:5000/sky
 
 ---
 
-#### TC-014-12 — Co-fullness tonight at a known event
+#### TC-014-12 — Co-fullness this day at a known event
 
 **Action:** Navigate to `/sky?pulse=432000` (Fatunik T-1531 M11 D4 — the
 first co-fullness midnight in the calendar).
 
 **Pass criteria:**
 
-- The **Tonight** indicator appears in the Co-fullness section.
-- The count is **3** and the moons listed include **sella**, **lelako**,
-  and **shunna**.
+- The **This day** indicator appears in the Co-fullness section.
+- The count is **4** and the moons listed include **Sella**, **Lelako**,
+  **Calumbra**, and **Shunna**.
 
 ---
 
@@ -1007,30 +1007,30 @@ HTML source (Ctrl+U or browser DevTools → Sources).
 
 ---
 
-### SPEC-014 Results — (to be completed after testing)
+### SPEC-014 Results — 2026-06-11
 
 | TC | Result | Notes |
 |---|---|---|
 | TC-014-01 | Pass | |
 | TC-014-02 | Pass | |
-| TC-014-03 | Possible error | Refactoring requests |
-| TC-014-04 | | |
-| TC-014-05 | | |
-| TC-014-06 | | |
-| TC-014-07 | | |
-| TC-014-08 | | |
-| TC-014-09 | | |
-| TC-014-10 | | |
-| TC-014-11 | | |
-| TC-014-12 | | |
-| TC-014-13 | | |
-| TC-014-14 | | |
-| TC-014-15 | | |
-| TC-014-16 | | |
-| TC-014-17 | | |
-| TC-014-18 | | |
-| TC-014-19 | | |
-| TC-014-20 | | |
+| TC-014-03 | Pass | |
+| TC-014-04 | Pass | |
+| TC-014-05 | Pass | |
+| TC-014-06 | Pass | |
+| TC-014-07 | Pass | |
+| TC-014-08 | Pass | |
+| TC-014-09 | Pass | |
+| TC-014-10 | Pass | |
+| TC-014-11 | Pass | |
+| TC-014-12 | Pass | |
+| TC-014-13 | Pass | |
+| TC-014-14 | Pass | |
+| TC-014-15 | Pass | |
+| TC-014-16 | Pass | |
+| TC-014-17 | Pass | |
+| TC-014-18 | Pass | |
+| TC-014-19 | Pass | |
+| TC-014-20 | Pass | |
 
 ---
 
