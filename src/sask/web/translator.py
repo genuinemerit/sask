@@ -112,6 +112,7 @@ class MoonViewModel:
     name: str
     phase_name: str
     illuminated_pct: str  # "87.3%"
+    albedo: str  # "0.350"
     is_visible: bool
     visibility_pct: str  # "0.0%" or "65.4%"
     eclipse: str  # "Solar", "Lunar", or "—"
@@ -124,12 +125,15 @@ class MoonViewModel:
     notes: str
 
 
-def to_moon_view(body: BodyState, sky: SkyPosition, notes: str) -> MoonViewModel:
+def to_moon_view(
+    body: BodyState, sky: SkyPosition, notes: str, albedo: float = 0.0
+) -> MoonViewModel:
     eclipse = body.eclipse_type.capitalize() if body.eclipse_type else "—"
     return MoonViewModel(
         name=body.name,
         phase_name=_phase_name(body.synodic_fraction),
         illuminated_pct=f"{body.illuminated_fraction * 100:.1f}%",
+        albedo=f"{albedo:.3f}",
         is_visible=body.is_visible and sky.above_horizon,
         visibility_pct=f"{body.visibility * 100:.1f}%",
         eclipse=eclipse,

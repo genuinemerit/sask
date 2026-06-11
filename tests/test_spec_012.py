@@ -4,7 +4,7 @@ Covers all acceptance criteria:
   - A month equals one synodic cycle; Terpin = mean of eight synodic periods
   - Turn-based dates report long/short count, turn, month, day; Round realigns
   - Hearth (no-turns) reports lunation and day only; turn fields are None
-  - near_full exactly within one day of a full-moment; false outside
+  - near_full true when illuminated_fraction >= threshold; false at quarter and new
   - Co-fullness: every night with >= min_moons near-full moons, correct count
   - Results are reproducible; no live randomness
   - Civil-calendar structure does not affect lunar dates or co-fullness events
@@ -69,7 +69,7 @@ def test_lunar_calendar_ids():
 
 def test_cofullness_config_loaded():
     cf = CONFIG.cofullness
-    assert cf.full_tolerance_days == pytest.approx(1.0)
+    assert cf.full_illumination_threshold == pytest.approx(0.90)
     assert cf.min_moons == 2
 
 
@@ -128,8 +128,8 @@ def test_near_full_true_at_full_moment():
     assert near_full("sella", p, CONFIG) is True
 
 
-def test_near_full_true_within_tolerance():
-    """Half a day before full: still near-full (tolerance = 1 day)."""
+def test_near_full_true_near_full_moment():
+    """Half a day before full: illumination is still well above threshold."""
     p = _full_moment_pulse("sella", n=0)
     assert near_full("sella", p - PPD // 2, CONFIG) is True
 

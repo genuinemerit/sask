@@ -96,15 +96,16 @@ def _round_turns_for(
 
 
 def near_full(moon_id: str, pulse: int, config: AppConfig) -> bool:
-    """True when the real moon is within full_tolerance_days of full (synodic 0.5)."""
+    """True when the moon's illuminated fraction meets the configured threshold.
+
+    Uses observer-visible illumination rather than a time-window around the
+    exact full-moment, so slow moons (long synodic period) are treated the
+    same as fast ones when they look equally full to a naked-eye observer.
+    """
     body = next(b for b in config.bodies if b.name.lower() == moon_id.lower())
-    t_syn_days = _synodic_period_days(moon_id, config)
-    tolerance_frac = config.cofullness.full_tolerance_days / t_syn_days
     syn = _synodic_frac_body(body, pulse, config)
-    d = abs(syn - 0.5)
-    if d > 0.5:
-        d = 1.0 - d
-    return d <= tolerance_frac
+    illum = (1.0 - math.cos(2.0 * math.pi * syn)) / 2.0
+    return illum >= config.cofullness.full_illumination_threshold
 
 
 def get_lunar_date(pulse: int, calendar_id: str, config: AppConfig) -> LunarDate:

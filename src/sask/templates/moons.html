@@ -73,6 +73,7 @@
         <th>Moon</th>
         <th>Phase</th>
         <th>Lit</th>
+        <th>Albedo</th>
         <th>Visible</th>
         <th>Eclipse</th>
         <th>Altitude</th>
@@ -89,6 +90,7 @@
         <td><strong>{{ m.name }}</strong></td>
         <td>{{ m.phase_name }}</td>
         <td>{{ m.illuminated_pct }}</td>
+        <td>{{ m.albedo }}</td>
         <td>{{ "Yes" if m.is_visible else "No" }}</td>
         <td>{{ m.eclipse }}</td>
         <td>{{ m.altitude }}</td>

@@ -136,7 +136,12 @@ def moons() -> str:
 
         body_cfg_map = {b.name: b for b in cfg.bodies}
         moon_views = [
-            to_moon_view(state, pos, body_cfg_map[state.name].notes or "")
+            to_moon_view(
+                state,
+                pos,
+                body_cfg_map[state.name].notes or "",
+                albedo=body_cfg_map[state.name].albedo,
+            )
             for state, pos in zip(all_states, all_positions)
             if state.body_type == "moon"
         ]

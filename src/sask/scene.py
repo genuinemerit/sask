@@ -99,7 +99,7 @@ def get_sky_scene(pulse: int, config: AppConfig) -> SkyScene:
                 direction=_direction_label(sp.altitude_deg, sp.azimuth_deg),
                 altitude=sp.altitude_deg,
                 color=body_cfg_map[bs.name].apparent_color,
-                brightness=bs.brightness,
+                brightness=body_cfg_map[bs.name].albedo * bs.illuminated_fraction,
                 phase=_phase_label(bs.synodic_fraction),
             )
         )
@@ -178,8 +178,8 @@ def get_sky_scene(pulse: int, config: AppConfig) -> SkyScene:
     if tonight_events:
         ev = tonight_events[0]
         # Observable if any near-full moon is already above the horizon or will
-        # rise before the end of the current Astro day (±1-synodic-day tolerance
-        # means it will still be near-full when it rises).
+        # rise before the end of the current Astro day. Illumination changes
+        # slowly enough that a moon near-full at midnight remains near-full at rise.
         observable = any(
             sky_pos_map[mid.capitalize()].above_horizon
             or (

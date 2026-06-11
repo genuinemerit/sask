@@ -9,7 +9,7 @@ dds=["DD-0007","DD-0002"]
 [scope]
 in_scope=[
   "Config for the four lunar calendars and the co-fullness tracker, with the lunar-calendar meta-schema.",
-  "A shared full-moon-series core: per moon, the full-moment pulses (synodic phase 0.5) and a near-full test within the global one-day tolerance.",
+  "A shared full-moon-series core: per moon, the full-moment pulses (synodic phase 0.5) and a near-full test based on a configured illumination threshold.",
   "Per-calendar lunar date computation: lunation, day, and (turn-based) month, turn, Round long/short count.",
   "The Round computation: the recorded number of turns that realigns a calendar with the AstroYear within tolerance.",
   "The co-fullness tracking query over a date range, using the eight real moons.",
@@ -25,16 +25,16 @@ out_of_scope=[
 [deliverables]
 config=[
   "/config/lunar_calendar_template.toml and /config/lunar_calendar_data.toml - the four calendars and Round-tolerance setting.",
-  "/config/cofullness_data.toml - the near-full tolerance, minimum count, and trusted-coverage anchor.",
+  "/config/cofullness_data.toml - the near-full illumination threshold, minimum count, and trusted-coverage anchor.",
 ]
 full_moon_core="""
 For a moon, the synodic period is derived from its sidereal period and the
 AstroYear (1/T_syn = 1/T_sid - 1/AstroYear). For the Terpin calendar the moon is
 'mean': use the arithmetic mean of all eight moons' synodic periods. A full-moment
-is where synodic phase = 0.5. near_full(moon, pulse) is true when the pulse is
-within full_tolerance_days of a full-moment; the day window is converted to that
-moon's phase tolerance (full_tolerance_days / T_syn). Pure functions of pulse and
-config.
+is where synodic phase = 0.5; illuminated_fraction = (1 - cos(2π×syn)) / 2.
+near_full(moon, pulse) is true when illuminated_fraction >= full_illumination_threshold,
+treating all moons equally regardless of synodic period length. Pure functions of
+pulse and config.
 """
 lunar_date="""
 get_lunar_date(pulse, calendar) is pure:
@@ -70,7 +70,7 @@ checks=[
   "A month equals one synodic cycle of the calendar's moon; the Terpin month equals the mean of the eight synodic cycles.",
   "Turn-based dates report long count, short count, turn, month, day; the recorded Round length realigns turns with the AstroYear within tolerance.",
   "The dog (Jembor) calendar reports a running lunation count and day only, with null turn and Round fields.",
-  "near_full is true exactly within one day of a moon's full-moment, using each moon's own phase tolerance.",
+  "near_full is true when a moon's illuminated fraction meets the configured threshold; false at quarter and new phases.",
   "Co-fullness lists every night in range with at least min_moons near-full moons among the eight real moons, with the moons and solar date; counts rise correctly as more moons coincide.",
   "Dropping caches and recomputing yields identical lunar dates and co-fullness results; nothing uses live randomness.",
   "Changing a civil-calendar definition leaves lunar dates and co-fullness unchanged for a fixed pulse.",

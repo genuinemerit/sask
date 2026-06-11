@@ -238,7 +238,7 @@ class LunarCalendarSettings:
 class CofullnessConfig:
     """Co-fullness tracking settings from cofullness_data.toml (SPEC-012)."""
 
-    full_tolerance_days: float  # near-full window: 1 day per moon's synodic period
+    full_illumination_threshold: float  # near-full: illuminated_fraction >= this value
     min_moons: int  # minimum count to report a co-fullness event
     coverage_anchor: str  # informational: trusted-coverage start anchor
     coverage_note: str | None
@@ -718,7 +718,9 @@ def _load_cofullness(raw: dict, src: str) -> CofullnessConfig:
         raise ConfigError(f"{src}: [cofullness] must be a table")
     ns = f"{src} [cofullness]"
     return CofullnessConfig(
-        full_tolerance_days=float(_require(c, "full_tolerance_days", ns)),  # type: ignore[arg-type]
+        full_illumination_threshold=float(
+            _require(c, "full_illumination_threshold", ns)
+        ),  # type: ignore[arg-type]
         min_moons=int(_require(c, "min_moons", ns)),  # type: ignore[arg-type]
         coverage_anchor=str(_require(c, "coverage_anchor", ns)),
         coverage_note=str(c["coverage_note"]) if "coverage_note" in c else None,

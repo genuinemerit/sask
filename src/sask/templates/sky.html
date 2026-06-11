@@ -74,7 +74,7 @@
     {% for cal, ld in lunar_entries %}
     <tr>
       <td>{{ cal.name }}</td>
-      <td>{{ cal.moon }}</td>
+      <td>{{ cal.moon if cal.moon == 'mean' else cal.moon | capitalize }}</td>
       <td>{{ ld.long_count if ld.has_turns else "—" }}</td>
       <td>{{ ld.short_count if ld.has_turns else "—" }}</td>
       <td>{{ ld.turn if ld.has_turns else "—" }}</td>
@@ -99,7 +99,7 @@
       <td>{{ b.color }}</td>
       <td>{{ b.phase }}</td>
       <td>{{ b.direction }}</td>
-      <td>{% if b.brightness >= 0.9 %}Brilliant{% elif b.brightness >= 0.7 %}Bright{% elif b.brightness >= 0.45 %}Moderate{% elif b.brightness >= 0.2 %}Faint{% else %}Dim{% endif %}</td>
+      <td>{% if b.brightness >= 0.32 %}Brilliant{% elif b.brightness >= 0.20 %}Bright{% elif b.brightness >= 0.10 %}Moderate{% elif b.brightness >= 0.04 %}Faint{% else %}Dim{% endif %}</td>
     </tr>
     {% endfor %}
   </tbody>
@@ -141,7 +141,7 @@
       <td>{{ b.color }}</td>
       <td>{{ b.phase }}</td>
       <td>{{ b.direction }}</td>
-      <td>{% if b.brightness >= 0.9 %}Brilliant{% elif b.brightness >= 0.7 %}Bright{% elif b.brightness >= 0.45 %}Moderate{% elif b.brightness >= 0.2 %}Faint{% else %}Dim{% endif %}</td>
+      <td>{% if b.brightness >= 0.32 %}Brilliant{% elif b.brightness >= 0.20 %}Bright{% elif b.brightness >= 0.10 %}Moderate{% elif b.brightness >= 0.04 %}Faint{% else %}Dim{% endif %}</td>
     </tr>
     {% endfor %}
   </tbody>
