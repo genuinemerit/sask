@@ -1,0 +1,15 @@
+# /config/lore/hearth.toml  (dog-sint; as uncomplicated as it gets)
+id   = "hearth"
+kind = "lunar"
+
+[era]
+mode = "none"
+
+[week]
+kind = "none"
+moon_word = "Old Jem"
+phase_terms = ["the waxing","the full","the waning"]
+
+[format]
+full  = "{phase_term}, the {day} day of {moon_word}'s {moon_count} turning"
+short = "{phase_term}, {moon_count}"

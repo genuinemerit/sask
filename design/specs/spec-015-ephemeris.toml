@@ -1,0 +1,46 @@
+id="SPEC-015"
+title="Sky-scene ephemeris: generator and JSON renderers"
+status="accepted"
+
+[implements]
+requirements=["REQ-FUN-010"]
+dds=["DD-0009","DD-0002"]
+
+[scope]
+in_scope=[
+  "get_sky_series(start_pulse, end_pulse, step_pulses, profile): a pure iterator over the per-pulse surfaces.",
+  "Throttle enforcement: step >= 300 pulses (5 min), range <= 604800 pulses (7 days); reject otherwise.",
+  "Per-day context (rise/transit/set, season) computed once per Astro day.",
+  "Scribal and kinematic JSON renderers per the accepted formats.",
+  "Ephemeris config (throttle bounds, tracked-body set).",
+]
+out_of_scope=[
+  "The web page and download endpoint (SPEC-016).",
+  "Civil/lore rendering (the DD-0010 overlay, applied on demand).",
+  "Any server-side persistence.",
+]
+[deliverables]
+config=["/config/ephemeris_data.toml - step_floor_pulses, range_cap_pulses, tracked_bodies."]
+generator="""
+get_sky_series iterates pulses start..end by step, reusing the SPEC-013 sky_scene
+composition at each step. Per-day facts (rise/transit/set, season) are computed
+once per distinct Astro day in range and referenced by the steps. Pure and
+deterministic over (start, end, step, profile, config).
+"""
+renderers="""
+Two renderers over the series, per the accepted formats:
+- scribal: shared envelope + per-day context + readable steps (pulse, astro_day,
+  time_of_day; bodies_up with direction/alt/az/colour/brightness/phase; stars_up;
+  houses; apparitions; co_fullness; a prose summary line).
+- kinematic: shared envelope + tracked_bodies + steps of { pulse, bodies: { id ->
+  {alt, az, ill, up} } } for all tracked bodies including below-horizon.
+Both keyed by pulse; no civil/lore terms.
+"""
+[acceptance]
+checks=[
+  "Steps are produced at exactly the requested cadence; step < 5 min or range > 7 days is refused.",
+  "Identical (start, end, step, profile, config) yields byte-identical JSON.",
+  "Per-day context appears once per Astro day; steps reference it.",
+  "Kinematic includes below-horizon bodies (negative altitude) with up=false.",
+  "No export field carries a Fatunik, Terpin, or lore term.",
+]

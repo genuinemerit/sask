@@ -1,0 +1,20 @@
+# /config/lore/untamed.toml
+id   = "untamed"
+kind = "lunar"
+
+[era]
+mode = "round"
+round_word = "Reave"
+turn_word = "Range"
+
+[months]
+names = ["Varro","Dakka","Skell","Brunt","Olvar","Threx","Maug","Sarn","Vekk","Drumm","Hask","Volkar"]
+
+[week]
+kind = "phase"
+moon_word = "Selha"
+quarter_names = ["the Dark","the Rising","the Full","the Falling"]
+
+[format]
+full  = "{quarter}, day {day} of {month}, {turn_word} {short} of the {round_word} {long}"
+short = "{day} {month}, {short}/{long}"

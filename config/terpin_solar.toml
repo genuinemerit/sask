@@ -1,0 +1,28 @@
+# /config/lore/terpin_solar.toml
+id   = "terpin_solar"
+kind = "solar"
+
+[era]
+mode = "ages"
+era_name = "the Long Count of Terpa"
+turn_word = "Year"
+ages = [                                    # authored placeholders
+  { name = "the First Watching", start_turn = 0 },
+  { name = "the Age of Stone",   start_turn = 700 },
+  { name = "the Deepening",      start_turn = 1600 },
+]
+
+[months]
+festival = { index = 1, name = "Brennald" }
+names = ["Omarra","Tessith","Belunna","Sorvath","Numael","Hovath","Methsa","Yumber","Korreth","Vannath","Esoph","Tulmarr"]
+
+[week]
+kind = "fixed"
+length_days = 10
+word = "deshan"
+ordinal = true
+day_names = ["Adda","Bessen","Corwen","Dovan","Emarn","Fells","Gessa","Hurneth","Issal","Lonn"]
+
+[format]
+full  = "{day_name}, the {week_ordinal} {week_word} of {month}, {turn_word} {turn} of {age}"
+short = "{day}/{month} {turn}"

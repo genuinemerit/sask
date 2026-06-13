@@ -112,6 +112,16 @@ Code uses these stable categories; lore overloads several names (see below).
 
 ## Engineering terms
 
+- **Ephemeris** — a deterministic time-series of sky scenes sampled at a fixed step (≥ 5 min,
+  ≤ 7 days), iterated from the existing per-pulse surfaces. Two profiles: *scribal* (readable
+  per-step record) and *kinematic* (compact per-body alt/az for all tracked bodies including
+  below-horizon, for smooth animation arcs). Regenerated on demand from its parameters;
+  never stored server-side. SPEC-015.
+- **Scribal profile** — the readable ephemeris output format: per-step records carrying pulse,
+  Astro day, time-of-day (HH:MM:SS), bodies above horizon with direction/colour/brightness/phase,
+  visible stars, active house, co-fullness state, and a prose summary. No lore terms in the export.
+- **Kinematic profile** — the compact ephemeris output format: per-step records carrying alt/az,
+  illumination, and above-horizon flag for every tracked body, including bodies below the horizon.
 - **Config** — the source of truth for all bodies, calendars, names, and lore.
 - **Authored event** — a hand-crafted fact, the only persisted source of truth besides config.
 - **Derived data** — anything computable from config (phases, conjunctions, ephemerides); regenerable, cacheable, never authoritative.

@@ -1,0 +1,25 @@
+# /config/lore/terpin_lunar.toml  (the mean-moon calendar; continuous Ages, computed quarters)
+id   = "terpin_lunar"
+kind = "lunar"
+
+[era]
+mode = "ages"
+era_name = "the Long Count of Terpa"
+turn_word = "Year"
+ages = [
+  { name = "the First Watching", start_turn = 0 },
+  { name = "the Age of Stone",   start_turn = 700 },
+  { name = "the Deepening",      start_turn = 1600 },
+]
+
+[months]
+names = ["Praal","Suneth","Olreth","Mehven","Corsa","Druin","Lasseth","Ombrul","Tevan","Nurra","Esseth","Volmarr"]
+
+[week]
+kind = "phase"
+moon_word = "the Mean Moon"
+quarter_names = ["First Quarter","Second Quarter","Third Quarter","Fourth Quarter"]  # computed, not observed
+
+[format]
+full  = "{quarter}, day {day} of {month}, {turn_word} {turn} of {age}"
+short = "{day}/{month} {turn}"

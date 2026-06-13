@@ -1,0 +1,28 @@
+# /config/lore/fatunik_solar.toml
+id   = "fatunik_solar"
+kind = "solar"
+
+[era]
+mode = "ages"
+era_name = "the Reckoning of Fatune"
+turn_word = "Year"
+ages = [                                    # authored placeholders; set from timeline
+  { name = "the Age of Embers",        start_turn = 0 },
+  { name = "the Age of the Open Hand", start_turn = 980 },
+  { name = "the Bright Age",           start_turn = 1531 },
+]
+
+[months]
+festival = { index = 1, name = "Gleaming" }
+names = ["Solenne","Maradd","Harvenn","Ombren","Frenna","Vossul","Halveth","Iskren","Tarnel","Verel","Blomwen","Aurech"]
+
+[week]
+kind = "fixed"
+length_days = 5
+word = "kell"
+ordinal = true
+day_names = ["Sune","Aweth","Morrin","Velden","Hesk"]
+
+[format]
+full  = "{day_name}, the {week_ordinal} {week_word} of {month}, {turn_word} {turn} of {age}"
+short = "{day}/{month} {turn}"

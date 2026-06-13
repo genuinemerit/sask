@@ -1,9 +1,9 @@
-"""Load and validate engine config from TOML files (SPEC-002, SPEC-006/007/010).
+"""Load and validate engine config from TOML files (SPEC-002, SPEC-006/007/010/015).
 
 The config directory must contain:
   time_constants.toml, calendars.toml, seasons.toml, timeline.toml,
   body_data.toml, observation_data.toml,
-  star_data.toml, house_data.toml
+  star_data.toml, house_data.toml, ephemeris_data.toml
 
 All validation is done at load time; callers receive a typed AppConfig or
 a ConfigError is raised.
@@ -264,6 +264,15 @@ class SkyStyleSettings:
 
 
 @dataclass(frozen=True)
+class EphemerisConfig:
+    """Ephemeris throttle settings and tracked body list (SPEC-015)."""
+
+    step_floor_pulses: int  # minimum step size; default 300 (5 minutes)
+    range_cap_pulses: int  # maximum span; default 604800 (7 days)
+    tracked_bodies: tuple[str, ...]  # body ids included in kinematic output
+
+
+@dataclass(frozen=True)
 class AppConfig:
     time_constants: TimeConstants
     astro: CalendarConfig
@@ -283,6 +292,7 @@ class AppConfig:
     cofullness: CofullnessConfig  # co-fullness tracking config (SPEC-012)
     sky_styles: tuple[SkyStyleConfig, ...]  # named image-prompt styles (SPEC-013)
     sky_style_settings: SkyStyleSettings  # default style selection (SPEC-013)
+    ephemeris: EphemerisConfig  # throttle + tracked bodies (SPEC-015)
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
@@ -679,6 +689,27 @@ def _load_lunar_calendars(
     return calendars, settings
 
 
+def _load_ephemeris_data(raw: dict, src: str) -> EphemerisConfig:
+    settings = _require(raw, "settings", src)
+    if not isinstance(settings, dict):
+        raise ConfigError(f"{src}: [settings] must be a table")
+    ns = f"{src} [settings]"
+    step_floor = int(_require(settings, "step_floor_pulses", ns))  # type: ignore[arg-type]
+    range_cap = int(_require(settings, "range_cap_pulses", ns))  # type: ignore[arg-type]
+    tracked_raw = _require(settings, "tracked_bodies", ns)
+    if not isinstance(tracked_raw, list) or not tracked_raw:
+        raise ConfigError(f"{ns}: tracked_bodies must be a non-empty list")
+    if step_floor <= 0:
+        raise ConfigError(f"{ns}: step_floor_pulses must be positive")
+    if range_cap <= 0:
+        raise ConfigError(f"{ns}: range_cap_pulses must be positive")
+    return EphemerisConfig(
+        step_floor_pulses=step_floor,
+        range_cap_pulses=range_cap,
+        tracked_bodies=tuple(str(b) for b in tracked_raw),
+    )
+
+
 def _load_sky_styles(
     raw: dict, src: str
 ) -> tuple[tuple[SkyStyleConfig, ...], SkyStyleSettings]:
@@ -764,6 +795,9 @@ def load_config(config_dir: Path) -> AppConfig:
     sky_styles, sky_style_settings = _load_sky_styles(
         _load_toml(config_dir / "sky_style_data.toml"), "sky_style_data.toml"
     )
+    ephemeris = _load_ephemeris_data(
+        _load_toml(config_dir / "ephemeris_data.toml"), "ephemeris_data.toml"
+    )
     return AppConfig(
         time_constants=tc,
         astro=astro,
@@ -783,4 +817,5 @@ def load_config(config_dir: Path) -> AppConfig:
         cofullness=cofullness,
         sky_styles=sky_styles,
         sky_style_settings=sky_style_settings,
+        ephemeris=ephemeris,
     )

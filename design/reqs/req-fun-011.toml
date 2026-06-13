@@ -1,0 +1,15 @@
+id="REQ-FUN-011"
+title="Lore overlays for dates and time-of-day"
+category="functional"
+priority="must"
+statement="The engine renders technical dates and times into lore-appropriate names through config-driven, output-only overlays: a time-of-day overlay (watch / shur / keyt, reckoned from each culture's day-start, 1-indexed) and a per-calendar date overlay (era or Round/turn, month, week or phase-quarter, and day names). Overlays consume the technical values the engine already produces and never feed back into it. They drive display alongside the technical date and time, and serve as the on-demand meta-transform that renders a scribal ephemeris in a culture's terms. All names and formats live in editable config."
+rationale="Lore names give the world its voice without entangling the engine: a one-way, config-driven translator keeps the technical core stable and testable while names can be tuned, swapped, or extended - eventually with real conlang work - by editing config alone."
+acceptance=[
+  "A pulse renders to a culture's lore time-of-day (e.g., 'Second Watch, shur 3 : keyt 7'), reckoned from that culture's day-start, 1-indexed; Fatunik and Terpin differ only by the day-start offset.",
+  "A technical date renders to its calendar's lore form using the configured era/Round, month, week or phase-quarter, and day names.",
+  "Overlays are pure, output-only functions of the technical values plus config; they are never inputs to the engine.",
+  "The same overlays render a scribal ephemeris record into a culture's terms on demand, without changing the exported technical series.",
+  "Every name and format string is read from config; none is hardcoded.",
+]
+[links]
+dds=["DD-0010","DD-0002","DD-0003"]

@@ -1,0 +1,44 @@
+id="SPEC-016"
+title="Ephemeris web page and regen-on-download export"
+status="proposed"
+
+[implements]
+requirements=["REQ-FUN-010","REQ-OPS-007","REQ-OPS-008"]
+dds=["DD-0009","DD-0003"]
+
+[scope]
+in_scope=[
+  "A server-rendered page with a form for start, end, step, and profile (scribal, kinematic, or both), accepting endpoints in the four standard input forms (pulse / Astro day+time / Fatunik date+time / Terpin date+time).",
+  "A truncated JSON preview per requested profile (metadata + first few steps).",
+  "A download link per profile carrying the request parameters in the query string.",
+  "A download endpoint that regenerates the JSON from those parameters and streams it as an attachment.",
+]
+out_of_scope=[
+  "JavaScript (DD-0003).",
+  "Server-side temp files or a saved-export library.",
+  "Lore-rendered preview (technical JSON is shown; lore is a separate overlay).",
+]
+[deliverables]
+page="""
+The form accepts endpoints in any of the four standard input forms (resolved to
+pulses via the existing translators) plus step and profile. On submit, the server
+runs get_sky_series (SPEC-015) and renders a truncated preview per profile in a
+text box, plus a download link per profile of the form
+/ephemeris/download?start=&end=&step=&profile=. The selected parameters also ride
+in the page URL so the view is shareable.
+"""
+download="""
+/ephemeris/download regenerates the series for the given parameters (SPEC-015) and
+returns it with Content-Disposition: attachment and a filename encoding range,
+step, and profile, e.g. ephemeris_kinematic_p<start>-<end>_s<step>.json. No temp
+file is written; the browser owns the save location. 'Both' is two links (a single
+zip is an optional alternative).
+"""
+[acceptance]
+checks=[
+  "Submitting a valid range and profile shows a truncated preview and a working download link per profile.",
+  "The download returns regenerated JSON as an attachment with a descriptive filename; refreshing the download URL reproduces the bytes.",
+  "Out-of-bounds step or range is refused with a clear message.",
+  "The page uses no JavaScript; the selected parameters appear in the page URL.",
+  "Endpoints may be entered as pulse, Astro day+time, Fatunik date+time, or Terpin date+time, resolved via the existing translators.",
+]

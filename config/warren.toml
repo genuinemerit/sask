@@ -1,0 +1,20 @@
+# /config/lore/warren.toml
+id   = "warren"
+kind = "lunar"
+
+[era]
+mode = "round"
+round_word = "Wend"
+turn_word = "Litter"
+
+[months]
+names = ["Tum","Fenn","Lilla","Pripp","Sennel","Mossa","Dell","Brackel","Hopsel","Clovel","Nibb","Sprigg","Bramm","Quill","Furze","Loma","Vetch","Sedda","Gorra","Pell","Mirn"]
+
+[week]
+kind = "phase"
+moon_word = "Shunsa"
+quarter_names = ["the Dark","the Swelling","the Full","the Fading"]
+
+[format]
+full  = "{quarter}, day {day} of {month}, {turn_word} {short} of the {round_word} {long}"
+short = "{day} {month}, {short}/{long}"

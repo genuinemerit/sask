@@ -1,0 +1,16 @@
+# /config/lore_time.toml - lore time-of-day units and per-culture day-start (DD-0010).
+[units]                                   # lengths in pulses, counts per 86,400-pulse day
+watch  = { pulses = 14400, per_day = 6 }
+shur   = { pulses = 7200,  per_day = 12 }
+satava = { pulses = 1440,  per_day = 60 }   # scholarly/ritual grid
+keyt   = { pulses = 720,   per_day = 120 }  # 10 per shur
+wayt   = { pulses = 180,   per_day = 480 }  # quarter-keyt
+
+[cultures]
+fatunik = { day_start_pulses = 21600 }      # 6 AM
+terpin  = { day_start_pulses = 0 }          # midnight
+
+[display]
+indexing = "one"                            # 1-indexed: First Watch, shur 1, keyt 1
+watch_names = ["First", "Second", "Third", "Fourth", "Fifth", "Sixth"]
+format = "{watch} Watch . shur {shur} : keyt {keyt}"

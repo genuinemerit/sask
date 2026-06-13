@@ -1,0 +1,54 @@
+id="SPEC-017"
+title="Lore overlays: time-of-day and calendar date rendering"
+status="proposed"
+
+[implements]
+requirements=["REQ-FUN-011","REQ-OPS-007","REQ-OPS-008"]
+dds=["DD-0010","DD-0002","DD-0003"]
+
+[scope]
+in_scope=[
+  "render_lore_time(pulse, culture): watch/shur/keyt from the culture's day-start, 1-indexed.",
+  "render_lore_date(technical_date, calendar): era/Round, month, week or phase-quarter, day, via the per-calendar config and format template.",
+  "The lore_time config and the per-calendar calendar_lore configs (one per calendar) plus their template.",
+  "Display integration: a lore time line beside the astro clock, and a lore date line beside the technical date, config-toggleable.",
+  "The on-demand meta-transform applying both overlays to a scribal ephemeris record.",
+]
+out_of_scope=[
+  "Lore terms as engine inputs (only shur:keyt as an optional civil-endpoint time, parsed to a pulse).",
+  "Festival-day names and finalized Age spans (authored later).",
+  "Real conlang generation.",
+]
+[deliverables]
+config=[
+  "/config/lore_time.toml - units, per-culture day-start, indexing, watch names, format.",
+  "/config/calendar_lore_template.toml - the per-calendar overlay schema.",
+  "/config/{fatunik_solar,terpin_solar,untamed,warren,terpin_lunar,hearth}.toml - the six instances.",
+]
+time_overlay="""
+render_lore_time(pulse, culture): t = ((pulse mod 86400) - day_start_pulses) mod
+86400; shur = t div 7200; keyt = (t mod 7200) div 720; watch = shur div 2. Emit
+1-indexed via the configured watch_names and format. Pure.
+"""
+date_overlay="""
+render_lore_date(technical_date, calendar): look up the month name (festival
+handled as its short block), the week or phase-quarter and day, and either the era
+(ages mode: the Age whose span contains the turn) or the Round and turn (round
+mode); fill the calendar's format template. Lunar weeks are the moon's phase-
+quarters from the engine's computed phase; the mean-lunar uses computed even
+quarters; Hearth uses visible phase only. Pure.
+"""
+meta_transform="""
+Given a scribal ephemeris (technical), render each record's date and time-of-day in
+a chosen culture's terms by applying render_lore_date and render_lore_time on
+demand. The stored and exported series is unchanged.
+"""
+[acceptance]
+checks=[
+  "render_lore_time gives 'First Watch, shur 1 : keyt 1' for Terpin five minutes after midnight, and 'Fifth Watch, shur 10 : keyt 1' for Fatunik at the same instant.",
+  "render_lore_date renders each calendar using its configured era/Round, months, weeks or quarters, and day names.",
+  "Ages mode selects the Age whose span contains the turn; Round mode shows resetting long and short counts.",
+  "Overlays are pure and output-only; no overlay value is ever an engine input.",
+  "Applying the overlays to a scribal ephemeris changes only the rendering, not the exported technical series.",
+  "All names and formats come from config.",
+]

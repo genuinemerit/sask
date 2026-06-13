@@ -1,0 +1,25 @@
+# /config/lore/calendar_lore_template.toml - one instance per calendar; output-only.
+# id and kind always present; the rest varies by kind/mode (noted inline).
+
+id   = "<calendar id>"
+kind = "solar" | "lunar"
+
+[era]                       # how the multi-year frame is named
+mode = "ages" | "round" | "none"
+#  ages  -> era_name, turn_word, ages = [{name, start_turn}, ...]   (Fatunik, Terpin x2)
+#  round -> round_word, turn_word                                   (Untamed, Warren)
+#  none  -> nothing                                                 (Hearth)
+
+[months]                    # omit entirely for Hearth (moons are only counted)
+festival = { index = 1, name = "<name>" }   # solar only; the short month
+names    = [ "<in order>", ... ]            # the regular months
+
+[week]
+kind = "fixed" | "phase" | "none"
+#  fixed -> length_days, word, ordinal, day_names = [...]           (solar)
+#  phase -> moon_word, quarter_names = [4]                          (lunar, real moon)
+#  none  -> moon_word, phase_terms = [...]                          (Hearth)
+
+[format]
+full  = "<template: {day_name} {week_ordinal} {week_word} {month} {turn_word} {turn} {age} / {quarter} {day} {round_word} {long} {short} {phase_term} {moon_word} {moon_count}>"
+short = "<terse template>"

@@ -1,5 +1,35 @@
 # Dev log
 
+## 2026-06-13 — SPEC-015: sky-scene ephemeris generator and JSON renderers
+
+**Phase 0 — Design doc housekeeping (same session):**
+
+- DD-0009, DD-0010, REQ-FUN-010/011, SPEC-015–017 authored and validated.
+- `dd-0010-caelndar-rending.toml` renamed to `dd-0010-calendar-rendering.toml`.
+- SPEC-017 deliverable paths corrected from `config/lore/` to `config/` (flat layout).
+- Nine new config files committed: `ephemeris_data.toml` (required by SPEC-015);
+  `lore_time.toml`, `calendar_lore_template.toml`, and six per-calendar lore overlay
+  files (`fatunik_solar`, `terpin_solar`, `terpin_lunar`, `untamed`, `warren`, `hearth`)
+  — authored, pending SPEC-017 implementation.
+
+**SPEC-015 implemented** (29 tests, 523 total — no UAT gate; backend-only spec):
+
+- `src/sask/config_loader.py` — `EphemerisConfig` dataclass (step floor, range cap,
+  tracked bodies); `_load_ephemeris_data()`; `AppConfig` extended with `ephemeris`.
+- `src/sask/ephemeris.py` — new module:
+  - `get_sky_series(start, end, step, config)`: validates throttle (step ≥ 300 pulses /
+    5 min; range ≤ 604,800 pulses / 7 days), iterates `get_sky_scene()` at each pulse,
+    computes per-day context (season, body rise/transit/set) once per distinct Astro day.
+    Returns `EphemerisSeries`. Pure and deterministic.
+  - `render_scribal_json(series, config)`: readable per-step record — pulse, Astro day,
+    time-of-day (HH:MM:SS), bodies above horizon, stars, active house, co-fullness,
+    prose summary. No Fatunik, Terpin, or lore terms.
+  - `render_kinematic_json(series, config)`: compact per-body alt/az, illumination, and
+    above-horizon flag for all 15 tracked bodies including below-horizon positions (for
+    smooth animation arcs).
+
+---
+
 ## 2026-06-11 — SPEC-014: UAT complete (all 20 TCs pass)
 
 UAT surfaced several corrections applied before sign-off:

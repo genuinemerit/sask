@@ -1,0 +1,72 @@
+id     = "DD-0010"
+title  = "Lore overlays: time-of-day and calendar date rendering"
+status = "accepted"
+date   = "2026-06-13"
+
+[context]
+problem = """
+The engine produces technical dates and times; the world wants them spoken in lore
+terms - watches and shur, eras and Ages, month and day names, weeks and lunar
+phase-quarters. This DD fixes the overlay model and the per-calendar and per-culture
+name structures, kept entirely as config-driven, output-only translators.
+"""
+constraints = [
+  "Output-only: overlays render technical values into names and never feed the engine.",
+  "Config-driven: every name and format is editable without code; placeholder names now, real conlang later.",
+  "Server-rendered, no JavaScript (DD-0003).",
+  "Lore time is display-only, with the single exception of shur:keyt as an optional time-of-day for a civil-date ephemeris endpoint.",
+]
+alternatives = [
+  "Bake names into code or messages - rejected: names must be tunable and swappable.",
+  "Let lore terms be engine inputs - rejected: lore is one-way; inputs stay pulses/Astro/civil dates.",
+  "A resetting cycle for the Terpin mean-lunar - rejected: the scholarly Terpins keep an unbroken count with Ages, like their solar calendar.",
+]
+
+[decision]
+summary = """
+1. Two overlays, both config-driven and output-only:
+   a. Time-of-day: watch (4h), shur (2h, 12/day), satava (24min, scholarly), keyt
+      (12min, 10/shur), wayt (3min). Reckoned from each culture's day-start
+      (Fatunik 6 AM, Terpin midnight); 1-indexed; displayed "Watch . shur : keyt".
+   b. Calendar date: per-calendar tables for era/cycle, months, week, and day
+      names, plus a format template, in one schema instantiated per calendar.
+2. Multi-year presentation by culture: Fatunik solar and both Terpin calendars use
+   a continuous, non-resetting turn count with named Ages; the sint calendars
+   (Untamed, Warren) use a resetting Round (long count) and turn (short count).
+3. Weeks: solar calendars use fixed, ordinal weeks (Fatunik 5-day 'kell', Terpin
+   10-day 'deshan'); lunar calendars use the moon's four phase-quarters (named);
+   Hearth uses visible phase only (waxing/full/waning) with no week, month, or era.
+4. Festival months are short; the overlay renders their days by number unless
+   festival-day names are added later. Age spans are authored from the timeline.
+5. Lore time is display-only, shown beside the astro clock, except as an optional
+   shur:keyt time-of-day for a civil-date ephemeris endpoint. Lore dates show as
+   an added line beside the technical date.
+6. The same overlays serve as the on-demand meta-transform that renders a scribal
+   ephemeris in a culture's terms; the exported series itself stays technical.
+"""
+rationale = """
+A one-way, config-driven translator keeps the technical core stable and testable
+while giving every culture its own voice that can be retuned by editing config.
+The per-culture multi-year and week choices fall straight out of the cultures we
+established, and reusing the overlays as the ephemeris meta-transform avoids a
+second naming mechanism.
+"""
+
+[consequences]
+positive = [
+  "Names are fully tunable; conlang work later needs no code change.",
+  "One overlay schema covers all calendars; one time overlay covers both cultures.",
+  "The ephemeris meta-transform reuses the same overlays - no duplication.",
+]
+negative = [
+  "Age spans and any festival-day names remain authored data to finalize.",
+  "Placeholder month and day names are first-pass and will want refinement.",
+]
+followups = [
+  "SPEC-017: the two overlays, the per-calendar and time configs, the display integration, and the ephemeris meta-transform.",
+  "Later: finalize Age spans; real Eibar/Sogomsh/Arql conlang naming.",
+]
+
+[links]
+requirements = ["REQ-FUN-011"]
+dds = ["DD-0002","DD-0003","DD-0007","DD-0008"]

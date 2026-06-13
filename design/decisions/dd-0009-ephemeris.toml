@@ -1,0 +1,70 @@
+id     = "DD-0009"
+title  = "Sky-scene ephemeris: time-series generation, export, and page"
+status = "accepted"
+date   = "2026-06-13"
+
+[context]
+problem = """
+Describing the sky across a span of time - an hour-by-hour manuscript record, or a
+fine-cadence series for a future animation - currently needs many hand-built
+single-moment queries. This DD fixes a meta-query (an ephemeris) over the existing
+per-pulse surfaces, its two output profiles, how it is exported, and the page that
+drives it.
+"""
+constraints = [
+  "No new astronomy: the ephemeris iterates surfaces the engine already computes.",
+  "Deterministic and regenerable; no series is a source of truth.",
+  "Server-rendered, no JavaScript (DD-0003).",
+  "No civil-calendar or lore terms in the export; those are a separate overlay applied on demand.",
+]
+alternatives = [
+  "Persist each series to a temp file and copy on export - rejected: the result is cheap to regenerate, a server cannot write to the client's disk anyway, and regeneration leaves nothing to clean up.",
+  "A server-side library of saved exports - deferred: not needed, and edges into the persistence we postponed.",
+  "Civil/lore terms baked into the export - rejected: keeping it technical makes the file reusable.",
+]
+
+[decision]
+summary = """
+1. Ephemeris = a deterministic time-series of sky scenes over [start, end] at a
+   fixed step, iterating the existing per-pulse surfaces. Throttle: step floor
+   5 minutes, range cap 7 days (~2,016 steps worst case).
+2. Two profiles. Scribal: a readable descriptive record per step (the manuscript
+   payload), carrying pulse, Astro day, and time-of-day. Kinematic: compact
+   per-body alt/az, illumination, and above-horizon flag for every tracked body,
+   including below-horizon positions so an animation gets smooth arcs; pulse-keyed.
+3. Per-day context (rise/transit/set, season) is computed once per Astro day; the
+   steps reference it.
+4. Export is JSON only, regenerated on demand from the request parameters - no
+   temp file, no stored library. The results page shows a truncated preview and a
+   download link per profile; the link re-requests the same parameters and the
+   server streams the JSON as an attachment with a descriptive filename. The
+   browser owns the save location. Parameters-in-URL make results shareable.
+5. Time stays pulse-keyed in both profiles (scribal also Astro day + time-of-day);
+   civil/lore rendering is a separate overlay applied on demand, never in the file.
+"""
+rationale = """
+One meta-query over existing surfaces covers both the manuscript and future-animation
+needs with no new astronomy. Because a series is derived and cheap, regeneration
+from parameters is simpler and safer than temp files - nothing to clean up, no
+client-disk writes a server cannot do - and yields shareable, reproducible links.
+"""
+
+[consequences]
+positive = [
+  "Both use cases solved by assembly over existing surfaces.",
+  "No temp files, copy step, or cleanup; no disk liability on the droplet.",
+  "Shareable, reproducible result URLs.",
+]
+negative = [
+  "Preview computes once and the download regenerates; negligible at this scale.",
+  "Downloading both profiles is two links (or an optional zip), since a response is one file.",
+]
+followups = [
+  "SPEC-015: ephemeris generator and the scribal/kinematic JSON renderers.",
+  "SPEC-016: the ephemeris web page and the regen-on-download endpoint.",
+  "Later: applying the lore overlay (DD-0010) to a scribal series as an on-demand meta-transform.",
+]
+
+[links]
+requirements = ["REQ-FUN-010"]
+dds = ["DD-0002","DD-0003","DD-0008"]
