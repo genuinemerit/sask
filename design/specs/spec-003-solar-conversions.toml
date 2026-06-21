@@ -1,6 +1,6 @@
 id     = "SPEC-003"
 title  = "Solar calendar conversions (Astro, Fatunik, Terpin)"
-status = "draft"
+status = "accepted"
 experiment_id = "baseline"
 
 [implements]

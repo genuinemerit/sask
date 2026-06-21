@@ -1,6 +1,6 @@
 id     = "SPEC-008"
 title  = "Local-sky position: altitude/azimuth and rise/transit/set"
-status = "draft"
+status = "accepted"
 experiment_id = "baseline"
 
 [implements]

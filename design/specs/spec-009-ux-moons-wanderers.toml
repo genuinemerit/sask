@@ -1,6 +1,6 @@
 id     = "SPEC-009"
 title  = "Web UX: lunar and planetary sky for a given pulse"
-status = "draft"
+status = "accepted"
 experiment_id = "baseline"
 
 [implements]

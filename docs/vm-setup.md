@@ -125,12 +125,13 @@ the environment is fully reproducible from a clean clone.
 ## 6. Create the project venv for dev tooling
 
 The project `.venv` is gitignored and must be created manually. It provides
-`pymarkdownlnt`, `pytest`, `flask`, and `gunicorn` outside of the nix devShell
-so pre-commit checks and the Flask app can run without `nix develop` active:
+`pymarkdownlnt`, `pytest`, `pytest-benchmark`, `flask`, and `gunicorn` outside
+of the nix devShell so pre-commit checks and the Flask app can run without
+`nix develop` active:
 
 ```bash
 python3 -m venv .venv
-.venv/bin/pip install pymarkdownlnt pytest flask gunicorn
+.venv/bin/pip install pymarkdownlnt pytest pytest-benchmark flask gunicorn
 ```
 
 Verify:

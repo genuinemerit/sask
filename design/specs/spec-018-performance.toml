@@ -1,6 +1,6 @@
 id="SPEC-018"
 title="Performance test harness: engine benchmarks and end-to-end timings (local-first)"
-status="proposed"
+status="accepted"
 
 [implements]
 requirements=["REQ-OPS-010"]

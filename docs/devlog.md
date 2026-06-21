@@ -1,5 +1,74 @@
 # Dev log
 
+## 2026-06-21 — SPEC-021: kinematic ephemeris rendering fix
+
+**SPEC-021 (DD-0013 / REQ-OPS-012) implemented.** `render_kinematic_json`
+recomputed `all_body_states`/`all_sky_positions` from scratch for every
+ephemeris step, even though `get_sky_series` already computed both (inside
+`get_sky_scene`) for that exact pulse. `get_sky_scene` now takes optional
+`body_states`/`sky_positions` keyword parameters (computed internally if
+omitted - every existing caller, including the `/sky` route, is
+unaffected). `get_sky_series` computes both once per step, passes them into
+`get_sky_scene`, and stores them on the internal `_Step` record;
+`render_kinematic_json` reads them from there instead of recomputing. 3 new
+tests in `tests/test_spec_021.py`, including a byte-exact golden-snapshot
+regression, confirm no behavior change. Full suite: 607 passed, no
+regressions.
+
+**Measured impact:** `render_kinematic_json`'s worst-case cost (8,640
+steps) dropped from 2.37s to 0.98s (~2.4x). The end-to-end kinematic
+ephemeris download, which had measured 5.25s (5% over REQ-OPS-010's 5.0s
+upper bound), now measures **4.135s** - back within budget. The scribal
+download remains within budget at 4.058s. **All six SPEC-018 budget checks
+now pass** (four interactive pages + both ephemeris-download profiles).
+
+`design/decisions/dd-0013-kinematic-body-positions.toml` and
+`design/specs/spec-021-kinematic-body-positions.toml` status updated to
+"accepted". Updated baseline JSON written to `tests/results/perf/`.
+
+**Next:** present diff and results for review; commit on confirmation.
+
+## 2026-06-21 — SPEC-020 fix + SPEC-018 performance baseline
+
+**SPEC-020 (DD-0012 / REQ-OPS-011) implemented.** `get_cofullness`'s
+per-night loop is now a private generator (`_cofullness_events` in
+`src/sask/lunar.py`); `get_cofullness` is `list(...)` of it (unchanged
+behavior), and a new `next_cofullness(start_pulse, config)` consumes the
+same generator lazily, stopping at the first qualifying night instead of
+scanning the full 5-year horizon and converting calendar dates for every
+match along the way. `scene.py`'s `get_sky_scene` now calls
+`next_cofullness` instead of taking the first item of `get_cofullness`'s
+result. 5 new tests in
+`tests/test_spec_020.py`, including golden-snapshot regressions captured
+from the pre-refactor output, confirm no behavior change. Full suite: 604
+passed, no regressions.
+
+**Measured impact:** `get_sky_scene` dropped from ~27ms to ~258µs per call
+(~105x). The worst-case `get_sky_series` (30-day/5-min, 8,640 steps), which
+hadn't completed even one pytest-benchmark round in 30+ minutes before the
+fix, now runs in 2.73s.
+
+**SPEC-018 baseline recorded** (both layers, against the fixed engine):
+
+- Layer 1 (`tests/perf/`, `tests/results/perf/benchmarks/`): all 20
+  benchmarks complete in 59s total (previously didn't finish).
+- Layer 2 (`tools/perf_http.py`, `tests/results/perf/2026-06-21_http.json`):
+  all four interactive pages render in 0.7-1.2ms (budget 500ms, comfortably
+  passed). Ephemeris download worst case: scribal 3.64s (within the 3-5s
+  budget); **kinematic 5.25s (fails the 5.0s upper bound by ~5%)**.
+
+**New finding, not yet addressed:** the kinematic worst case isn't a
+cofullness problem — `render_kinematic_json` itself costs ~2.37s for the
+8,640-step/~15-tracked-body worst case, comparable to `get_sky_series`'s own
+2.73s. SPEC-020 only targeted the cofullness search; this is a separate,
+now-dominant cost left for a future spec if/when prioritized.
+
+`design/decisions/dd-0012-cofullness-next-event.toml`,
+`design/specs/spec-020-cofullness-next-event.toml`, and
+`design/specs/spec-018-performance.toml` status updated to "accepted".
+
+**Next:** present diff and results for review; commit on confirmation.
+
 ## 2026-06-19 — SPEC-019: UAT complete (all 6 TCs pass)
 
 **SPEC-019 UAT passed** (TC-019-01 through TC-019-06). During TC-019-04,

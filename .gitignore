@@ -9,6 +9,9 @@ build/
 .venv/
 venv/
 
+# pytest-benchmark default storage (redirected to tests/results/perf/ — see tools/run_perf.sh)
+.benchmarks/
+
 # Nix
 result
 result-*

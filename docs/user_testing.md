@@ -1089,7 +1089,7 @@ http://localhost:5000/ephemeris
 | Story now | `104548096103` | Start pulse for most tests |
 | Story now + 1 h | `104548099703` | End pulse for Pulse-mode short-range tests (+3600 pulses) |
 | Min step | `5` minutes | Floor allowed by the throttle (300 pulses) |
-| Over-range end | `104549004903` | Start + 950,400 pulses — exceeds the 7-day cap (604,800) |
+| Over-range end | `104550774503` | Start + 2,678,400 pulses (31 days) — exceeds the 30-day cap (2,592,000) |
 | Story now Astro day | `1210048` | Astro day corresponding to story_now_pulse |
 | Story now Fatunik | T`1782` M`10` D`29` | Fatunik date at story_now (resolves to 06:00:00 Astro) |
 

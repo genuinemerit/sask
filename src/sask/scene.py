@@ -20,12 +20,14 @@ from __future__ import annotations
 from .apparitions import get_apparitions
 from .bodies import all_body_states
 from .config_loader import AppConfig
-from .lunar import get_cofullness
+from .lunar import DEFAULT_COFULLNESS_HORIZON_DAYS, get_cofullness, next_cofullness
 from .message import (
     BodyInScene,
+    BodyState,
     CofullnessTonightRef,
     HouseRef,
     NextCofullnessRef,
+    SkyPosition,
     SkyScene,
     StarInScene,
 )
@@ -75,12 +77,26 @@ def _phase_label(synodic_frac: float) -> str:
     return "waning crescent"
 
 
-def get_sky_scene(pulse: int, config: AppConfig) -> SkyScene:
-    """Compose the full sky scene for the given pulse."""
+def get_sky_scene(
+    pulse: int,
+    config: AppConfig,
+    *,
+    body_states: tuple[BodyState, ...] | None = None,
+    sky_positions: tuple[SkyPosition, ...] | None = None,
+) -> SkyScene:
+    """Compose the full sky scene for the given pulse.
+
+    body_states/sky_positions are computed internally if omitted. A caller
+    that already has them for this exact pulse (e.g. get_sky_series, which
+    also needs them for the kinematic ephemeris renderer) can pass them in
+    to avoid recomputing - the result is identical either way.
+    """
     si = season_info(pulse, config)
 
-    body_states = all_body_states(pulse, config)
-    sky_positions = all_sky_positions(pulse, body_states, config)
+    if body_states is None:
+        body_states = all_body_states(pulse, config)
+    if sky_positions is None:
+        sky_positions = all_sky_positions(pulse, body_states, config)
     sky_pos_map = {sp.name: sp for sp in sky_positions}
     body_cfg_map = {b.name: b for b in config.bodies}
 
@@ -193,16 +209,17 @@ def get_sky_scene(pulse: int, config: AppConfig) -> SkyScene:
         )
 
     next_start = today_midnight + ppd
-    next_events = get_cofullness(next_start, next_start + 5 * 365 * ppd, config)
-    if next_events:
-        nev = next_events[0]
-        next_cofullness = NextCofullnessRef(
+    nev = next_cofullness(next_start, config)
+    if nev is not None:
+        next_cofullness_ref = NextCofullnessRef(
             pulse=nev.pulse, count=nev.count, moons=nev.moons
         )
     else:
-        # Sentinel: no co-fullness found in 5 years
-        next_cofullness = NextCofullnessRef(
-            pulse=next_start + 5 * 365 * ppd, count=0, moons=()
+        # Sentinel: no co-fullness found within the horizon
+        next_cofullness_ref = NextCofullnessRef(
+            pulse=next_start + DEFAULT_COFULLNESS_HORIZON_DAYS * ppd,
+            count=0,
+            moons=(),
         )
 
     return SkyScene(
@@ -213,7 +230,7 @@ def get_sky_scene(pulse: int, config: AppConfig) -> SkyScene:
         active_house=active_house,
         circumpolar_houses=circumpolar_houses,
         co_fullness_tonight=co_fullness_tonight,
-        next_co_fullness=next_cofullness,
+        next_co_fullness=next_cofullness_ref,
     )
 
 

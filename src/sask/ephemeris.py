@@ -21,7 +21,7 @@ from dataclasses import dataclass
 
 from .bodies import all_body_states
 from .config_loader import AppConfig
-from .message import SkyScene
+from .message import BodyState, SkyPosition, SkyScene
 from .scene import get_sky_scene, render_night_summary
 from .season import season_info
 from .sky import all_sky_positions
@@ -42,11 +42,18 @@ class _DayCtx:
 
 @dataclass
 class _Step:
-    """One step in the ephemeris series."""
+    """One step in the ephemeris series.
+
+    body_states/sky_positions are the same per-pulse data already folded
+    into scene (via get_sky_scene); stored here too so render_kinematic_json
+    can reuse them instead of recomputing all_body_states/all_sky_positions.
+    """
 
     pulse: int
     astro_day: int
     scene: SkyScene
+    body_states: tuple[BodyState, ...]
+    sky_positions: tuple[SkyPosition, ...]
 
 
 @dataclass
@@ -116,20 +123,27 @@ def get_sky_series(
 
     for pulse in range(start_pulse, end_pulse + 1, step_pulses):
         aday = pulse // ppd
-        scene = get_sky_scene(pulse, config)
+        step_body_states = all_body_states(pulse, config)
+        step_sky_positions = all_sky_positions(pulse, step_body_states, config)
+        scene = get_sky_scene(
+            pulse,
+            config,
+            body_states=step_body_states,
+            sky_positions=step_sky_positions,
+        )
 
         if aday not in day_contexts:
             day_start = aday * ppd
             si = season_info(day_start, config)
-            body_states = all_body_states(day_start, config)
-            sky_pos = all_sky_positions(day_start, body_states, config)
+            day_body_states = all_body_states(day_start, config)
+            day_sky_pos = all_sky_positions(day_start, day_body_states, config)
             body_rts: dict[str, dict[str, int | None]] = {
                 sp.name.lower(): {
                     "rise": sp.rise_pulse,
                     "transit": sp.transit_pulse,
                     "set": sp.set_pulse,
                 }
-                for sp in sky_pos
+                for sp in day_sky_pos
             }
             day_contexts[aday] = _DayCtx(
                 season_id=si.season_id,
@@ -137,7 +151,15 @@ def get_sky_series(
                 body_rts=body_rts,
             )
 
-        steps.append(_Step(pulse=pulse, astro_day=aday, scene=scene))
+        steps.append(
+            _Step(
+                pulse=pulse,
+                astro_day=aday,
+                scene=scene,
+                body_states=step_body_states,
+                sky_positions=step_sky_positions,
+            )
+        )
 
     return EphemerisSeries(
         start_pulse=start_pulse,
@@ -240,10 +262,8 @@ def render_kinematic_json(series: EphemerisSeries, config: AppConfig) -> str:
 
     steps_list: list[dict] = []
     for step in series.steps:
-        body_states = all_body_states(step.pulse, config)
-        sky_pos_list = all_sky_positions(step.pulse, body_states, config)
-        sky_map = {sp.name.lower(): sp for sp in sky_pos_list}
-        ill_map = {bs.name.lower(): bs.illuminated_fraction for bs in body_states}
+        sky_map = {sp.name.lower(): sp for sp in step.sky_positions}
+        ill_map = {bs.name.lower(): bs.illuminated_fraction for bs in step.body_states}
 
         bodies_obj: dict[str, dict] = {}
         for body_id in tracked:

@@ -113,7 +113,7 @@ Code uses these stable categories; lore overloads several names (see below).
 ## Engineering terms
 
 - **Ephemeris** — a deterministic time-series of sky scenes sampled at a fixed step (≥ 5 min,
-  ≤ 7 days), iterated from the existing per-pulse surfaces. Two profiles: *scribal* (readable
+  ≤ 30 days), iterated from the existing per-pulse surfaces. Two profiles: *scribal* (readable
   per-step record) and *kinematic* (compact per-body alt/az for all tracked bodies including
   below-horizon, for smooth animation arcs). Regenerated on demand from its parameters;
   never stored server-side. SPEC-015.

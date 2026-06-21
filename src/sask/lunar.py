@@ -21,10 +21,13 @@ from __future__ import annotations
 
 import functools
 import math
+from collections.abc import Iterator
 
 from .config_loader import AppConfig, BodyConfig
 from .message import CalendarDate, CofullnessEvent, LunarDate
 from .pulse import astro_to_fatunik, astro_to_terpin
+
+DEFAULT_COFULLNESS_HORIZON_DAYS = 5 * 365
 
 
 def _ay_days(config: AppConfig) -> float:
@@ -154,19 +157,19 @@ def get_lunar_date(pulse: int, calendar_id: str, config: AppConfig) -> LunarDate
     )
 
 
-def get_cofullness(
+def _cofullness_events(
     start_pulse: int, end_pulse: int, config: AppConfig
-) -> list[CofullnessEvent]:
-    """Return all nights in [start_pulse, end_pulse] where >= min_moons are near-full.
+) -> Iterator[CofullnessEvent]:
+    """Yield each night in [start_pulse, end_pulse] where >= min_moons are near-full.
 
-    Checks at midnight (Astro day boundary) of each day in the range.
-    solar_dates are rendered via the civil-calendar translators.
+    Checks at midnight (Astro day boundary) of each day in the range, lazily:
+    a caller that only wants the first match (next_cofullness) stops the
+    scan there instead of paying for the rest of the range.
     """
     ppd = config.time_constants.pulses_per_day
     min_moons = config.cofullness.min_moons
     moon_ids = [b.name.lower() for b in config.bodies if b.body_type == "moon"]
 
-    events: list[CofullnessEvent] = []
     p = math.ceil(start_pulse / ppd) * ppd  # first midnight at or after start_pulse
     while p <= end_pulse:
         nf_ids = [mid for mid in moon_ids if near_full(mid, p, config)]
@@ -175,14 +178,39 @@ def get_cofullness(
                 astro_to_fatunik(p, config),
                 astro_to_terpin(p, config),
             )
-            events.append(
-                CofullnessEvent(
-                    pulse=p,
-                    count=len(nf_ids),
-                    moons=tuple(nf_ids),
-                    solar_dates=solar_dates,
-                )
+            yield CofullnessEvent(
+                pulse=p,
+                count=len(nf_ids),
+                moons=tuple(nf_ids),
+                solar_dates=solar_dates,
             )
         p += ppd
 
-    return events
+
+def get_cofullness(
+    start_pulse: int, end_pulse: int, config: AppConfig
+) -> list[CofullnessEvent]:
+    """Return all nights in [start_pulse, end_pulse] where >= min_moons are near-full.
+
+    See _cofullness_events for the per-night rule. Use next_cofullness
+    instead when only the first qualifying night is needed - it stops at
+    the first match rather than scanning the whole range.
+    """
+    return list(_cofullness_events(start_pulse, end_pulse, config))
+
+
+def next_cofullness(
+    start_pulse: int,
+    config: AppConfig,
+    *,
+    horizon_days: int = DEFAULT_COFULLNESS_HORIZON_DAYS,
+) -> CofullnessEvent | None:
+    """Return the first qualifying night at or after start_pulse, or None.
+
+    Stops scanning at the first match - unlike get_cofullness, it never
+    pays for nights beyond the answer. None means no qualifying night
+    occurred within horizon_days.
+    """
+    ppd = config.time_constants.pulses_per_day
+    end_pulse = start_pulse + horizon_days * ppd
+    return next(_cofullness_events(start_pulse, end_pulse, config), None)

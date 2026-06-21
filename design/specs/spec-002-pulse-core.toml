@@ -1,6 +1,6 @@
 id     = "SPEC-002"
 title  = "Configuration and pulse/day core"
-status = "draft"
+status = "accepted"
 experiment_id = "baseline"
 
 [implements]

@@ -1,6 +1,6 @@
 id     = "SPEC-005"
 title  = "UI thin vertical slice (MVP presentation)"
-status = "draft"
+status = "accepted"
 experiment_id = "baseline"
 
 [implements]

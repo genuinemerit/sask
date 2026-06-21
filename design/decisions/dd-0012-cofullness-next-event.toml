@@ -1,0 +1,72 @@
+id     = "DD-0012"
+title  = "Co-fullness next-event lookup: early exit instead of a full-range rescan"
+status = "accepted"
+date   = "2026-06-19"
+
+[context]
+problem = """
+get_sky_scene's "next co-fullness" field is produced by calling
+get_cofullness(next_start, next_start + 5 years, config) and taking
+events[0]. get_cofullness has no early exit: it always scans the entire
+requested range and, for every qualifying night, builds full Fatunik and
+Terpin calendar dates - even though only the first night is ever used.
+Measured during SPEC-018 Layer 1 benchmarking: with the current min_moons=2
+threshold, qualifying nights are frequent (922 in 5 years, about one every
+2 days), so the lookup almost always finds its answer within a few days -
+yet it pays for an up-to-1,825-day scan and ~922 unused date conversions
+every time. The call costs ~27ms and is responsible for essentially all of
+get_sky_scene's per-call cost. That's negligible for one interactive
+request, but get_sky_series calls get_sky_scene once per step, so the
+30-day/5-minute worst-case sweep (8,640 steps) measured at roughly 233s -
+47-78x over REQ-OPS-010's ~3-5s budget for that request shape.
+"""
+constraints = [
+  "No behavior change: the selected event, and get_sky_scene's next_co_fullness value, must be identical before and after.",
+  "get_cofullness's existing full-range list-all-events contract is unchanged, for any other or future caller (e.g. a date-range query UI).",
+  "Engine stays pure and deterministic (DD-0002); no new config, no caching (REQ-OPS-009 defers any cache to its own measured trigger - this is wasted eager work, not a caching problem).",
+]
+alternatives = [
+  "Cache the next-event result - rejected: masks the redundant scan/conversion work rather than removing it, and adds staleness/invalidation concerns REQ-OPS-009 explicitly defers.",
+  "Shrink the 5-year horizon - rejected: reduces the worst case proportionally but doesn't fix the root inefficiency (eager full scan + eager date conversion for unused events).",
+  "Add an early-exit parameter directly to get_cofullness - rejected: would couple the 'list all' and 'find first' use cases into one signature; a lazy generator gives both for free with no duplicated logic.",
+]
+
+[decision]
+summary = """
+1. Extract get_cofullness's per-night qualification loop into a private
+   generator _cofullness_events(start_pulse, end_pulse, config) that yields
+   a CofullnessEvent for each qualifying night, lazily.
+2. get_cofullness(start, end, config) becomes
+   list(_cofullness_events(start, end, config)) - identical signature,
+   identical return value, for every existing and future caller.
+3. Add next_cofullness(start_pulse, config) -> CofullnessEvent | None:
+   next(_cofullness_events(start_pulse, start_pulse + horizon, config), None),
+   using the existing 5-year horizon (named, not inline). Because the
+   generator is lazy, this naturally stops scanning at the first match -
+   no separate early-exit logic to write or keep in sync.
+4. scene.py's get_sky_scene calls next_cofullness instead of
+   get_cofullness(...)[0]; the sentinel-at-horizon fallback when nothing is
+   found is unchanged.
+"""
+rationale = """
+A lazy generator is the minimal fix: one shared definition of "what counts
+as a qualifying night" serves both the full-range listing and the
+find-first lookup, so there is nothing to duplicate or let drift. It
+removes the measured waste at its source instead of caching around it.
+"""
+
+[consequences]
+positive = [
+  "get_sky_scene's next-co-fullness cost drops from a ~1,825-day worst-case scan to roughly the days actually needed to find a match (~2-3 on average given the current threshold) - over 100x for that call, which dominates get_sky_scene.",
+  "get_cofullness's full-range contract is untouched, so nothing else that might call it needs to change.",
+  "No new config, cache, or dependency.",
+]
+negative = [
+  "get_cofullness's implementation moves from a single loop to a generator plus list(); covered by existing and new equivalence tests, so this is a low-risk refactor.",
+]
+followups = ["SPEC-020 implements the generator refactor, next_cofullness, and the scene.py switch-over; SPEC-018's Layer 1/2 round is re-run afterward for an updated baseline."]
+
+[links]
+requirements = ["REQ-OPS-011"]
+dds = ["DD-0002"]
+specs = ["SPEC-018"]

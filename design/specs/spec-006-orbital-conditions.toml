@@ -1,6 +1,6 @@
 id     = "SPEC-006"
 title  = "Generate and freeze orbital initial conditions"
-status = "draft"
+status = "accepted"
 experiment_id = "baseline"
 
 [implements]

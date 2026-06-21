@@ -1,0 +1,16 @@
+id="REQ-OPS-011"
+title="Co-fullness next-event lookup avoids full-range rescans"
+category="operational"
+priority="should"
+statement="The next-co-fullness lookup used by get_sky_scene (and therefore every step of an ephemeris sweep) returns the first qualifying night without scanning past it or computing calendar dates for nights beyond it. get_cofullness's existing full-range, list-all-qualifying-nights behavior is unchanged for any caller that needs every event in a range."
+rationale="Measured during SPEC-018 Layer 1 benchmarking: get_sky_scene's next-co-fullness call costs ~27ms, almost entirely from scanning up to a 1,825-day horizon and building Fatunik and Terpin dates for roughly 922 qualifying nights even though only the first is used. Negligible for a single interactive request, but multiplied across an 8,640-step ephemeris sweep this measured roughly 233 seconds for the worst-case grid point - 47-78x over REQ-OPS-010's ~3-5s budget. Removing the redundant scan and conversion work fixes the inefficiency at its source rather than caching around it."
+acceptance=[
+  "next_cofullness(start_pulse, config) returns the same event get_cofullness(start_pulse, start_pulse + horizon, config)[0] would have returned, for the same inputs.",
+  "next_cofullness's measured cost scales with the number of days actually scanned to find a match, not with the full horizon.",
+  "get_cofullness(start, end, config)'s full-range return value (same events, same order) is unchanged for any range, before and after the refactor.",
+  "get_sky_scene's next_co_fullness field is unchanged in value (same pulse/count/moons, or the same sentinel) for any pulse, before and after the refactor - a performance change only.",
+  "Re-running SPEC-018's Layer 1 worst-case get_sky_series benchmark completes without an extended timeout, with a measurably lower median.",
+]
+[links]
+dds=["DD-0012","DD-0002"]
+specs=["SPEC-020"]

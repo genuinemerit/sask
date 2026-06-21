@@ -1,0 +1,59 @@
+id="SPEC-020"
+title="Co-fullness next-event early exit via a lazy generator"
+status="accepted"
+
+[implements]
+requirements=["REQ-OPS-011"]
+dds=["DD-0012","DD-0002"]
+
+[scope]
+in_scope=[
+  "Extract get_cofullness's per-night qualification loop into a private generator _cofullness_events(start_pulse, end_pulse, config).",
+  "get_cofullness(start, end, config) becomes list(_cofullness_events(start, end, config)) - same signature, same return value.",
+  "Add next_cofullness(start_pulse, config) -> CofullnessEvent | None, built on the same generator, stopping at the first qualifying night.",
+  "scene.py's get_sky_scene switches its 'next co-fullness' lookup to next_cofullness, keeping the existing 5-year horizon and sentinel-at-not-found fallback.",
+  "Equivalence and regression tests confirming no behavior change.",
+]
+out_of_scope=[
+  "Any caching of co-fullness results (REQ-OPS-009 - no cache without its own measured trigger).",
+  "Changing the co-fullness selection rule (min_moons, full_illumination_threshold) or the 'tonight' lookup (already cheap; unaffected).",
+  "Re-running the full SPEC-018 Layer 1/2 round - that happens afterward, as a fresh baseline, not part of this spec's deliverables.",
+]
+[deliverables]
+generator="""
+_cofullness_events(start_pulse, end_pulse, config) -> Iterator[CofullnessEvent]:
+the existing per-night near_full/min_moons/solar_dates logic from
+get_cofullness, now yielding lazily one night at a time instead of
+appending to a list.
+"""
+get_cofullness="""
+Becomes list(_cofullness_events(start_pulse, end_pulse, config)). Same
+signature, same return type, byte-identical values for any given range.
+"""
+next_cofullness="""
+next_cofullness(start_pulse, config) -> CofullnessEvent | None:
+next(_cofullness_events(start_pulse, start_pulse + horizon_pulses, config), None),
+where horizon_pulses is the existing 5-year cap, named as a constant rather
+than inlined in scene.py. Laziness gives the early exit for free - no
+separate early-exit branch to write or maintain.
+"""
+scene_integration="""
+get_sky_scene calls next_cofullness instead of get_cofullness(...)[0]; the
+sentinel NextCofullnessRef returned when nothing is found within the
+horizon is unchanged.
+"""
+tests="""
+Parametrised equivalence tests asserting next_cofullness matches
+get_cofullness(...)[0] across several representative pulses (including
+story_now). A regression test asserting get_cofullness's full output is
+unchanged for at least one multi-event range, before vs. after the
+refactor. A get_sky_scene test confirming next_co_fullness is unchanged in
+value for story_now and at least one other pulse.
+"""
+[acceptance]
+checks=[
+  "next_cofullness returns the same event as get_cofullness(...)[0] for every tested pulse.",
+  "get_cofullness's full-range output is unchanged for every tested range.",
+  "get_sky_scene's next_co_fullness value is unchanged for every tested pulse.",
+  "No new config, no new runtime dependency, no change to the co-fullness selection rule.",
+]

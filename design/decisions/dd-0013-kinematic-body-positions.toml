@@ -1,0 +1,74 @@
+id     = "DD-0013"
+title  = "Ephemeris kinematic rendering: reuse body positions instead of recomputing them"
+status = "accepted"
+date   = "2026-06-21"
+
+[context]
+problem = """
+render_kinematic_json recomputes all_body_states and all_sky_positions from
+scratch for every ephemeris step, even though get_sky_series already
+computed both inside get_sky_scene for that exact pulse moments earlier.
+get_sky_scene discards them after filtering to bodies_up (above-horizon AND
+visible only), so the kinematic renderer - which needs every tracked body
+including below-horizon ones for smooth animation arcs - has no way to
+reuse that work and recomputes it itself. render_scribal_json has no such
+problem: it reuses scene.bodies_up directly. Measured during the SPEC-018
+baseline: the worst-case (30-day/5-minute, 8,640-step) ephemeris download
+costs ~2.37s in render_kinematic_json alone, versus ~0.80s for
+render_scribal_json over the identical series - the gap is almost entirely
+the duplicated all_body_states/all_sky_positions calls (measured at ~169us
+each per step; ~1.46s of the 2.37s total). The kinematic worst case
+measured 5.25s end to end, 5% over REQ-OPS-010's 5.0s upper bound; removing
+the duplication is expected to bring it back in line with scribal's 3.64s.
+"""
+constraints = [
+  "No behavior change: get_sky_scene's return value and render_kinematic_json's output must be byte-identical before and after, for the same inputs.",
+  "get_sky_scene's existing two-argument call sites (the /sky route, any other single-pulse caller) keep working unchanged - this is an internal efficiency change, not a new requirement on callers.",
+  "Engine stays pure and deterministic (DD-0002); no caching (REQ-OPS-009) - the fix removes duplicated work, it does not memoize around it.",
+]
+alternatives = [
+  "Add an unfiltered all-bodies field to SkyScene - rejected: SkyScene is the live-page 'what's relevant for a rendered scene' message unit; bloating it with the full kinematic roster for a need only the ephemeris renderer has mixes concerns and grows the payload for every existing caller (the /sky page, render_scribal_json) that doesn't want it.",
+  "Cache all_body_states/all_sky_positions results keyed by pulse - rejected: introduces a cache for a need that's naturally satisfiable by passing the value along, with no invalidation question to answer; simpler and more in keeping with DD-0002's purity than a hidden cache.",
+  "Have render_kinematic_json approximate below-horizon positions from what SkyScene already exposes - rejected: the data isn't there at all (bodies_up excludes below-horizon and not-visible bodies), so there is nothing to approximate from.",
+]
+
+[decision]
+summary = """
+1. get_sky_scene(pulse, config, *, body_states=None, sky_positions=None)
+   gains two optional keyword parameters. When omitted (every existing
+   caller), behavior is unchanged - it computes them itself exactly as
+   today. When provided, it uses them directly instead of recomputing.
+2. get_sky_series's loop computes body_states and all_sky_positions once
+   per step, passes them into get_sky_scene for that step, and stores both
+   on the step record (alongside the resulting SkyScene) in the internal
+   EphemerisSeries/_Step structures - not on the public SkyScene.
+3. render_kinematic_json reads the stored body_states/sky_positions from
+   each step instead of calling all_body_states/all_sky_positions itself.
+   render_scribal_json is unaffected (it already reuses scene.bodies_up).
+"""
+rationale = """
+Optional keyword parameters with a compute-if-absent default keep
+get_sky_scene's existing contract intact for every current caller while
+giving get_sky_series a way to compute the per-pulse body data exactly
+once and hand it to both the scene builder and the kinematic renderer.
+Storing the richer data on the ephemeris module's own internal series
+structure - not on SkyScene - keeps the live-page scene type focused on
+what a rendered scene needs, while the ephemeris series (which already
+exists purely to serve exports) carries what its own renderers need.
+"""
+
+[consequences]
+positive = [
+  "Removes ~169us of duplicated work per ephemeris step from the kinematic path - roughly 1.46s off the measured worst case, expected to bring the worst-case download back within REQ-OPS-010's budget.",
+  "get_sky_scene's public contract and SkyScene's shape are unchanged for every existing caller.",
+  "No cache, no new config, no new runtime dependency.",
+]
+negative = [
+  "EphemerisSeries holds body_states/sky_positions per step in addition to the derived SkyScene - a modest memory increase (tuples of small dataclasses) for the worst-case 8,640-step series, traded for removing real measured CPU cost.",
+]
+followups = ["SPEC-021 implements the optional-parameter change, the series storage, and the kinematic renderer switch-over; SPEC-018's Layer 1/2 round is re-run afterward for an updated baseline."]
+
+[links]
+requirements = ["REQ-OPS-012"]
+dds = ["DD-0002", "DD-0009"]
+specs = ["SPEC-015", "SPEC-018"]

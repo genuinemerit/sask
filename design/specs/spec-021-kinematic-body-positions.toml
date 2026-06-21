@@ -1,0 +1,61 @@
+id="SPEC-021"
+title="Ephemeris kinematic rendering: reuse body positions via optional get_sky_scene inputs"
+status="accepted"
+
+[implements]
+requirements=["REQ-OPS-012"]
+dds=["DD-0013","DD-0002"]
+
+[scope]
+in_scope=[
+  "get_sky_scene gains optional keyword parameters body_states and sky_positions; when omitted it computes them itself exactly as today (unchanged behavior for every existing caller).",
+  "get_sky_series computes all_body_states/all_sky_positions once per step, passes them into get_sky_scene for that step, and stores both on the internal _Step record alongside the resulting SkyScene.",
+  "render_kinematic_json reads body_states/sky_positions from each _Step instead of calling all_body_states/all_sky_positions itself.",
+  "Equivalence and regression tests confirming no behavior change.",
+]
+out_of_scope=[
+  "Any change to SkyScene's public shape (the all-bodies data lives on the ephemeris module's internal _Step, not on SkyScene).",
+  "Any change to render_scribal_json (already reuses scene.bodies_up; unaffected).",
+  "Any caching of body positions across different pulses (REQ-OPS-009 - no cache without its own measured trigger; this fix removes duplicated work within a single pulse's computation, it does not cache across pulses).",
+  "Re-running the full SPEC-018 Layer 1/2 round - that happens afterward, as a fresh baseline, not part of this spec's deliverables.",
+]
+[deliverables]
+get_sky_scene_signature="""
+get_sky_scene(pulse, config, *, body_states=None, sky_positions=None) -> SkyScene.
+When both are None (every existing call site), behavior is identical to
+today. When provided, get_sky_scene uses them directly in place of calling
+all_body_states/all_sky_positions itself; the rest of the function
+(bodies_up filtering, comets/Spark, stars/houses, co-fullness) is
+unchanged.
+"""
+step_storage="""
+The internal _Step dataclass (src/sask/ephemeris.py) gains
+body_states: tuple[BodyState, ...] and sky_positions: tuple[SkyPosition, ...].
+get_sky_series's loop computes both once per step pulse, passes them to
+get_sky_scene, and stores them on the _Step alongside scene. EphemerisSeries
+itself is unchanged (still a dict of day contexts plus a list of steps).
+"""
+renderer_update="""
+render_kinematic_json's per-step loop reads step.body_states and
+step.sky_positions instead of calling all_body_states(step.pulse, config)
+and all_sky_positions(step.pulse, body_states, config). The rest of the
+function (sky_map, ill_map, tracked-body filtering, JSON structure) is
+unchanged.
+"""
+tests="""
+A get_sky_scene equivalence test: calling it with explicit body_states/
+sky_positions (computed the same way it would compute them internally)
+returns an identical SkyScene to calling it without them, for several
+representative pulses. A get_sky_series test confirming each _Step's stored
+body_states/sky_positions match a direct all_body_states/all_sky_positions
+call for that step's pulse. A render_kinematic_json golden-snapshot
+regression test (output captured from the pre-refactor implementation for
+a small multi-step range) confirming byte-identical JSON after the change.
+"""
+[acceptance]
+checks=[
+  "get_sky_scene's return value is unchanged for any pulse, with or without the new optional parameters.",
+  "Each _Step's stored body_states/sky_positions match what a direct call for that step's pulse would produce.",
+  "render_kinematic_json's output is unchanged (golden-snapshot regression) for the same series, before and after.",
+  "No new config, no new runtime dependency, no change to render_scribal_json.",
+]

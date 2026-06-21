@@ -1,6 +1,6 @@
 id     = "SPEC-004"
 title  = "Seasonal context"
-status = "draft"
+status = "accepted"
 experiment_id = "baseline"
 
 [implements]

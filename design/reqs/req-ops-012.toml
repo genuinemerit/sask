@@ -1,0 +1,15 @@
+id="REQ-OPS-012"
+title="Ephemeris kinematic rendering avoids recomputing body positions"
+category="operational"
+priority="should"
+statement="The kinematic ephemeris renderer uses the body position data the ephemeris generator already computed for each step, instead of recomputing all_body_states and all_sky_positions from scratch. get_sky_scene's existing contract for single-pulse callers (e.g. the /sky route) is unchanged."
+rationale="Measured during the SPEC-018 baseline: render_kinematic_json recomputes all_body_states/all_sky_positions for every one of an ephemeris sweep's steps, even though get_sky_series already computed both (inside get_sky_scene) for that exact pulse. The duplication costs roughly 169us per step - about 1.46s of the worst case's measured 2.37s rendering time - and is the dominant reason the worst-case kinematic download (5.25s) breaches REQ-OPS-010's 5.0s upper bound while the equivalent scribal download (3.64s) does not. Removing the duplication, rather than caching around it, fixes the inefficiency at its source."
+acceptance=[
+  "render_kinematic_json's output is byte-identical, for the same series, before and after the change.",
+  "get_sky_scene's return value is unchanged for any pulse, whether called with or without the new optional body_states/sky_positions parameters.",
+  "Existing two-argument calls to get_sky_scene (the /sky route, render_scribal_json's path via get_sky_series) require no changes.",
+  "Re-running SPEC-018's Layer 1 worst-case render_kinematic_json benchmark and Layer 2's worst-case kinematic download both show a measurably lower median, with the Layer 2 number back within REQ-OPS-010's ephemeris budget.",
+]
+[links]
+dds=["DD-0013","DD-0002"]
+specs=["SPEC-021"]

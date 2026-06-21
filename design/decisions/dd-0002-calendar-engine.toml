@@ -1,6 +1,6 @@
 id     = "DD-0002"
 title  = "Calendrical and astronomical engine architecture"
-status = "proposed"
+status = "accepted"
 date   = "2026-06-01"
 
 [context]

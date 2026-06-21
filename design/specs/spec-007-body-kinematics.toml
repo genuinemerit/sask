@@ -1,6 +1,6 @@
 id     = "SPEC-007"
 title  = "Body kinematics: orbital position, phase, visibility, eclipse"
-status = "draft"
+status = "accepted"
 experiment_id = "baseline"
 
 [implements]

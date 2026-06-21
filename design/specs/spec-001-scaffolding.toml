@@ -1,6 +1,6 @@
 id            = "SPEC-001"
 title         = "Scaffold sask repository and development environment"
-status        = "draft"
+status        = "accepted"
 experiment_id = "baseline"
 
 [implements]

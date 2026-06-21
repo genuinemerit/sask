@@ -15,6 +15,7 @@ gunicorn  = ">=22.0"
 [tool.poetry.group.dev.dependencies]
 ruff = "*"
 pytest = "*"
+pytest-benchmark = "^5.2.3"
 
 [build-system]
 requires = ["poetry-core"]
@@ -25,5 +26,6 @@ line-length = 88
 target-version = "py312"
 
 [tool.pytest.ini_options]
-testpaths   = ["tests"]
-pythonpath  = ["src", "tools"]
+testpaths      = ["tests"]
+pythonpath     = ["src", "tools"]
+norecursedirs  = ["tests/perf"]
