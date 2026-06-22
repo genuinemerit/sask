@@ -1,15 +1,19 @@
 # analysis/
 
-**Status (2026-06-21): superseded by design.** The questions this folder raised
-are now answered in
+**Status (2026-06-22): superseded by design, and now by a real, live
+deployment.** The questions this folder raised are answered in
 [DD-0014](../design/decisions/dd-0014-deploy.toml),
 [SPEC-022](../design/specs/spec-022-tofu.toml),
 [SPEC-023](../design/specs/spec-023-ansible.toml), and
-[SPEC-024](../design/specs/spec-024-acceptance.toml). This folder remains as
+[SPEC-024](../design/specs/spec-024-acceptance.toml) — all four are now
+`accepted`, implemented, and verified against the live droplet at
+sask.davidstitt.net, not just designed. See `tests/results/SPEC-022.md`
+through `SPEC-024.md` and `docs/devlog.md` for what was actually built and
+the real bugs found running each piece for the first time;
+`docs/deploy-runbook.md` for day-to-day operation. This folder remains as
 supporting research and is not being rewritten to match every downstream
-decision — read [deploy-port-plan.md](deploy-port-plan.md) first for the
-current, self-contained implementation plan; treat anything below that
-conflicts with the DD/SPECs as historical, not authoritative.
+decision — treat anything below that conflicts with the DD/SPECs or the
+evidence files as historical, not authoritative.
 
 Research output, not design. This directory captures what was learned from
 reviewing the sibling `sask` project's infrastructure-as-code and deployment

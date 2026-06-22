@@ -38,6 +38,10 @@ doc or its schema, run `python3 tools/validate_specs.py` and confirm exit 0.
   `/etc/nixos/configuration.nix` on the `sask-dev` VM. Never add project
   tooling here; it belongs in `flake.nix`.
 - `flake.nix` — pinned devShell for the project; pinned to `nixos-25.11`.
+- `infra/tofu/` — OpenTofu IaC for the *production* DigitalOcean droplet,
+  deliberately kept separate from `infra/configuration.nix` (the dev VM's
+  config) — two different machines, two different lifecycles. See
+  `docs/deploy-runbook.md` for day-to-day deploy operations.
 
 ## Git identity
 

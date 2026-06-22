@@ -69,7 +69,7 @@ followups = [
   "DD: calendar engine representation (fixed-day core, 8 moons, wanderers).",
   "DD: data and persistence (config source-of-truth, derived cache, authored event log).",
   "DD: service and Flask UI surface (CLI/API boundary).",
-  "DD: hardened DO deploy/destroy/redeploy lifecycle.",
+  "DD: hardened DO deploy/destroy/redeploy lifecycle - DONE, see DD-0014 (accepted 2026-06-22).",
   "Optional nix-direnv for auto-entering the devShell.",
 ]
 

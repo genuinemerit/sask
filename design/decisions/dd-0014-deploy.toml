@@ -109,15 +109,13 @@ negative = [
   "The `sask` deploy name vs `sask-calendar` repo name is a deliberate mismatch that must be documented to avoid confusion.",
 ]
 followups = [
-  "REQ-OPS-013..015: reproducible deploy/destroy/redeploy, manual SSH + console fallback, systemd non-root service.",
-  "REQ-SEC-003: the enumerated hardening set and the documented escalation levers.",
-  "SPEC-022: droplet provisioning (OpenTofu).",
-  "SPEC-023: service deployment (Ansible: platform + caddy + app roles) and the acceptance/operational test suite.",
+  "DONE 2026-06-22: REQ-OPS-013..015, REQ-SEC-003, SPEC-022 (provisioning), SPEC-023 (Ansible deploy), and SPEC-024 (acceptance/operational test suite) are all implemented and verified live against sask.davidstitt.net, not just designed. See tests/results/SPEC-022.md through SPEC-024.md and docs/devlog.md for the real bugs found and fixed running each piece for the first time.",
   "Resolved by review (2026-06-21): `src/sask/web/__init__.py` resolves `config/` via `Path(__file__).resolve().parent.parent.parent.parent` - a pure file-relative walk-up from the package's own location, not an env var or CWD-relative lookup. No new mechanism is needed; the app role just needs `config/` to land as a sibling of `src/` under `/opt/sask/`, and resolution holds regardless of the unit's WorkingDirectory.",
+  "Not yet done: REQ-OPS-010's performance budgets have not been re-validated against the live deployment target (only ever measured on the dev VM) - the SPEC-018 harness exists and can be pointed at sask.davidstitt.net whenever desired.",
   "Future: revisit remote Tofu state, a CDN front, and authentication when the umbrella app and its multi-user features arrive.",
 ]
 
 [links]
 requirements = ["REQ-OPS-013","REQ-SEC-003","REQ-OPS-010"]
 dds = ["DD-0001","DD-0003"]
-specs = ["SPEC-022","SPEC-023","SPEC-005"]
+specs = ["SPEC-022","SPEC-023","SPEC-024","SPEC-005"]

@@ -25,23 +25,25 @@ ruff --version
 ## Layout
 
 ```text
-ansible/      future Ansible playbooks
+ansible/      Ansible playbooks deploying the app onto the production droplet
 config/       TOML engine configuration (time constants, calendars, seasons, timeline)
 design/       TOML design docs (decisions/, reqs/, specs/)
 docs/         living documents and guides
-infra/        NixOS configuration for the dev VM
+infra/        infra/configuration.nix (dev VM) and infra/tofu/ (production droplet IaC)
 resources/    reference data and assets
 secrets/      local credentials — git-ignored except README.md and *.example
 src/          Python source (package: sask)
 tests/        pytest suites and test results
-tools/        developer tooling (validate_specs.py, pre-commit-check.sh, run-tests.sh)
+tools/        developer tooling and deploy orchestration (see docs/deploy-runbook.md)
 ```
 
 ## Web app
 
-Three browser pages are available. Open an SSH tunnel from the host
-(`ssh -L 5000:localhost:5000 sask-dev`), start the server on the VM, then
-navigate to `http://localhost:5000/` in a host browser.
+Five browser pages are available locally on the dev VM, or live at
+[sask.davidstitt.net](https://sask.davidstitt.net). For local dev, open an
+SSH tunnel from the host (`ssh -L 5000:localhost:5000 sask-dev`), start the
+server on the VM, then navigate to `http://localhost:5000/` in a host
+browser.
 
 | Page | Description |
 |---|---|
@@ -114,3 +116,13 @@ python3 tools/validate_specs.py
 See [docs/vm-setup.md](docs/vm-setup.md) for configuring the NixOS dev VM.
 The dev toolchain is pinned by `flake.lock`; `infra/configuration.nix` defines
 the host. Destroying and re-cloning the repo fully restores the environment.
+
+## Deployment
+
+The app runs live on a DigitalOcean droplet at
+[sask.davidstitt.net](https://sask.davidstitt.net), provisioned with
+OpenTofu (`infra/tofu/`) and configured with Ansible (`ansible/`). See
+[docs/deploy-runbook.md](docs/deploy-runbook.md) for day-to-day operation
+(connect, redeploy, full rebuild, full teardown) and
+[design/decisions/dd-0014-deploy.toml](design/decisions/dd-0014-deploy.toml)
+for the design.

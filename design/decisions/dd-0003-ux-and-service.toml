@@ -57,7 +57,7 @@ negative = [
 ]
 followups = [
   "SPEC: UI thin vertical slice.",
-  "DD: hardened DO deploy / destroy / redeploy lifecycle.",
+  "DD: hardened DO deploy / destroy / redeploy lifecycle - DONE, see DD-0014 (accepted 2026-06-22).",
   "Later: HTTP API wrapping the same seam when an external consumer needs it.",
 ]
 

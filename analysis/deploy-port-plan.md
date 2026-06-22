@@ -1,9 +1,11 @@
 # Deploy-port implementation plan
 
-**Status: current.** Written 2026-06-21 at the end of a review/planning
-session, self-contained so a session opened only within `sask-calendar` (no
-access to the sibling `~/Code/sask` repo) has everything needed to start
-implementing. Authoritative design docs are
+**Status: executed.** Written 2026-06-21 as a review/planning session's
+sequencing plan; fully implemented and verified live 2026-06-22 (see
+`tests/results/SPEC-022.md` through `SPEC-024.md` and `docs/devlog.md` for
+what actually happened, including real bugs the plan didn't anticipate).
+Kept as historical record of the original sequencing/checklist. Authoritative
+design docs are
 [DD-0014](../design/decisions/dd-0014-deploy.toml),
 [SPEC-022](../design/specs/spec-022-tofu.toml),
 [SPEC-023](../design/specs/spec-023-ansible.toml),

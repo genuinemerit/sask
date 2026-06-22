@@ -16,6 +16,14 @@
 
 - [Virtual Machine Manager (virt-manager)](https://virt-manager.org/) — VM host UI
 - [libvirt / QEMU / KVM](https://libvirt.org/) — VM backend
+- [DigitalOcean](https://www.digitalocean.com/) — production droplet host
+- [OpenTofu](https://opentofu.org/) — IaC provisioning (`infra/tofu/`)
+- [Ansible](https://docs.ansible.com/) — droplet configuration management (`ansible/`)
+- [ansible.posix](https://docs.ansible.com/ansible/latest/collections/ansible/posix/) — `synchronize`/`authorized_key` modules
+- [Caddy](https://caddyserver.com/) — reverse proxy and automatic TLS
+- [xcaddy](https://github.com/caddyserver/xcaddy) — builds the custom Caddy binary with plugins
+- [caddy-ratelimit](https://github.com/mholt/caddy-ratelimit) — per-IP rate limiting plugin
+- [requests](https://requests.readthedocs.io/) — HTTP client for the acceptance test suite (`tests/acceptance/`)
 
 ## Design document schemas
 
