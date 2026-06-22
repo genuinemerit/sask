@@ -1,5 +1,33 @@
 # Dev log
 
+## 2026-06-22 — Runbook added; reboot-recovery confirmed for real
+
+Added `docs/deploy-runbook.md` — quick-reference commands (connect,
+status, deploy, full rebuild, full teardown), the OS-maintenance
+procedure discussed below, and the operational facts worth remembering
+(`dave` not root, `destroy.sh` vs `recreate-droplet.sh`, token expiry,
+Caddy's auto-TLS, the DO console fallback).
+
+Decided against automating OS patching as part of the redeploy pipeline:
+`unattended-upgrades` already handles security patches continuously and
+on its own schedule, independent of app-deploy frequency - coupling the
+two would mean a routine code redeploy could also unexpectedly pull in a
+kernel bump or an sshd restart. A kernel update specifically needs a
+reboot to take effect, which would require the playbook to handle a
+"check /var/run/reboot-required, reboot, wait for reachable" sequence -
+real complexity for a benefit unattended-upgrades mostly already
+provides. The existing gated `apt_upgrade` flag (default `false`) stays
+the right mechanism for an occasional, deliberate full upgrade.
+
+Dave ran the documented maintenance procedure for real: `apt upgrade`
+(the ~150-package backlog from the base image) followed by a full host
+reboot. **This also confirms, for real, the one REQ-OPS-015 acceptance
+item that had only ever been "should work" rather than verified** - both
+`sask.service` and `caddy.service` came back automatically after reboot
+(systemd `enabled: true` on both) with no manual intervention, and
+`https://sask.davidstitt.net/health` answered 200 within a couple of
+minutes of the reboot. No issues found.
+
 ## 2026-06-22 — SPEC-024: acceptance suite, and a real destroy/redeploy gap closed
 
 **SPEC-024 implemented and verified live.** Added `tools/acceptance-test.sh`

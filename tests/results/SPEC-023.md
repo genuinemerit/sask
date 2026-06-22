@@ -137,6 +137,17 @@ $ curl -s -o /dev/null -w "%{http_code}" https://sask.davidstitt.net/health
 systemd restarted the killed process automatically (RestartSec=5); the
 service answered correctly immediately after. Status: PASS.
 
+### Host reboot (REQ-OPS-015's other recovery clause, confirmed 2026-06-22)
+
+The kill/restart test above exercises systemd's process-level restart,
+not a full host reboot — that clause went unverified through SPEC-023's
+original evidence. Closed for real during routine OS maintenance (see
+`docs/deploy-runbook.md`): `apt upgrade` (~150 packages) followed by
+`sudo reboot`. Both `sask.service` and `caddy.service` (both
+`enabled: true`) came back automatically with no manual intervention;
+`https://sask.davidstitt.net/health` answered 200 within ~2 minutes of
+the reboot. Status: PASS.
+
 ---
 
 ## Acceptance criteria
