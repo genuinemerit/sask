@@ -17,6 +17,9 @@ ruff = "*"
 pytest = "*"
 pytest-benchmark = "^5.2.3"
 
+[tool.poetry.group.acceptance.dependencies]
+requests = "*"
+
 [build-system]
 requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
@@ -28,4 +31,4 @@ target-version = "py312"
 [tool.pytest.ini_options]
 testpaths      = ["tests"]
 pythonpath     = ["src", "tools"]
-norecursedirs  = ["tests/perf"]
+norecursedirs  = ["tests/perf", "tests/acceptance"]

@@ -1,6 +1,6 @@
 id="SPEC-023"
 title="Service deployment via Ansible (platform / caddy / app roles)"
-status="proposed"
+status="accepted"
 
 [implements]
 requirements=["REQ-OPS-013","REQ-OPS-015","REQ-SEC-003"]
@@ -57,11 +57,14 @@ tools="""
 deploy.sh (preflight: infra.env must exist; re-export requirements; ansible-playbook
 site.yml). connect.sh (exec ssh sask-droplet). export-requirements.sh (read
 poetry.lock + pyproject.toml with tomllib, filtering dev/acceptance groups - not
-poetry export). redeploy.sh: the single mainline act, orchestrating destroy ->
-provision -> deploy -> verify by calling the discrete tools/ scripts, preserving the
-ordering guards (reserved-IP detach; re-provision on IP change). All under tools/,
-sask-calendar's existing orchestration-script convention - not a new scripts/
-directory.
+poetry export). redeploy.sh: the single mainline act, orchestrating recreate-droplet
+-> deploy -> verify by calling the discrete tools/ scripts, preserving the ordering
+guards (reserved-IP detach; known_hosts purge on the new host key). Uses
+tools/recreate-droplet.sh (SPEC-022), not plain destroy.sh + provision.sh - that
+pair tears down the reserved IP itself, breaking REQ-OPS-013's IP-survives
+guarantee, a gap a real destroy/recreate test caught (see spec-022-tofu.toml). All
+under tools/, sask-calendar's existing orchestration-script convention - not a new
+scripts/ directory.
 """
 [acceptance]
 checks=[
@@ -70,6 +73,6 @@ checks=[
   "Caddy serves valid TLS with the configured security headers; the per-IP rate limit is active and tighter on the download route.",
   "sshd refuses root and password auth; unattended security upgrades are enabled.",
   "config/ resolves correctly at runtime under the deployed WorkingDirectory: a known computed value (e.g. a story_now page field) renders correctly end-to-end on the droplet.",
-  "redeploy.sh runs destroy -> provision -> deploy -> verify as one invocation with the ordering guards intact.",
+  "redeploy.sh runs recreate-droplet -> deploy -> verify as one invocation with the ordering guards intact.",
   "No secret appears in Ansible logs; the app-secrets mechanism is present but unused, with only a .example template in the repo.",
 ]

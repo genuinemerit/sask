@@ -1,9 +1,10 @@
 #!/usr/bin/env bash
-# The single mainline act (REQ-OPS-013): destroy -> provision -> deploy, in
-# one invocation, preserving every ordering guard from the discrete scripts
-# it calls (reserved-IP detach, re-provision on IP change, root-then-dave
-# bootstrap). The verify step (SPEC-024's acceptance suite) is wired in
-# once that spec lands.
+# The single mainline act (REQ-OPS-013): recreate the droplet -> deploy ->
+# verify, in one invocation. Uses tools/recreate-droplet.sh, not the
+# combination of destroy.sh + provision.sh — that pair tears down
+# everything including the reserved IP itself, which would break the
+# "DNS and the SSH alias survive unchanged" guarantee this script exists
+# to demonstrate.
 #
 #   bash tools/redeploy.sh        # interactive: prompts at each tofu step
 #   bash tools/redeploy.sh -y     # non-interactive throughout
@@ -14,6 +15,6 @@ cd "$(dirname "$0")/.."
 
 FLAG="${1:-}"
 
-bash tools/destroy.sh "$FLAG"
-bash tools/provision.sh "$FLAG"
+bash tools/recreate-droplet.sh "$FLAG"
 bash tools/deploy.sh
+bash tools/acceptance-test.sh

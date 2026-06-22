@@ -43,6 +43,7 @@ if [[ "${1:-}" == "-y" ]]; then
 fi
 
 cd infra/tofu
+tofu init -upgrade
 
 # Capture the reserved IP before destroying, so its stale known_hosts entry
 # can be purged — the next droplet provisioned at this IP will have a

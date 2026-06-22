@@ -1,6 +1,6 @@
 id="SPEC-022"
 title="Droplet provisioning via OpenTofu"
-status="proposed"
+status="accepted"
 
 [implements]
 requirements=["REQ-OPS-013","REQ-OPS-014","REQ-SEC-003"]
@@ -13,6 +13,7 @@ in_scope=[
   "Providers: digitalocean ~>2.0, http (developer's current IP at apply), local (SSH config snippet). DIGITALOCEAN_TOKEN read from the environment.",
   "Local Tofu state (gitignored), with the DO Spaces remote-backend migration path documented.",
   "tools/provision.sh and tools/destroy.sh: source ~/.config/sask/infra.env, run tofu init/apply or destroy, accept -y, and enforce reserved-IP detach before droplet destroy.",
+  "tools/recreate-droplet.sh: destroys and recreates only the droplet (reserved IP, DNS, firewall, SSH key all stay in Tofu state), so the reserved IP genuinely survives unchanged. Added during SPEC-024 testing: plain destroy.sh + provision.sh tears down everything including the reserved IP itself, which a real destroy/recreate cycle test caught violating REQ-OPS-013's guarantee. destroy.sh remains a full teardown (the right tool when the goal is paying nothing); tools/redeploy.sh (SPEC-023) uses recreate-droplet.sh instead.",
 ]
 out_of_scope=[
   "Ansible/service configuration (SPEC-023).",
@@ -28,10 +29,13 @@ load-bearing choice: DNS and the SSH alias both target it, so neither changes
 across destroy/recreate.
 """
 tools="""
-provision.sh and destroy.sh under tools/ as thin Tofu drivers (set -euo pipefail, cd
-to repo root, source infra.env, -y to skip the prompt). destroy.sh sequences the
-reserved-IP assignment detach before the droplet destroy (a droplet cannot be
-destroyed while a reserved IP is assigned).
+provision.sh, destroy.sh, and recreate-droplet.sh under tools/ as thin Tofu drivers
+(set -euo pipefail, cd to repo root, source infra.env, -y to skip the prompt).
+destroy.sh and recreate-droplet.sh both sequence the reserved-IP assignment detach
+before any droplet destroy (a droplet cannot be destroyed while a reserved IP is
+assigned). destroy.sh targets nothing (full teardown, including the reserved IP);
+recreate-droplet.sh targets only the droplet resource, leaving the reserved IP,
+DNS record, firewall, and SSH key untouched in state.
 """
 [acceptance]
 checks=[

@@ -1,5 +1,61 @@
 # Dev log
 
+## 2026-06-22 — SPEC-024: acceptance suite, and a real destroy/redeploy gap closed
+
+**SPEC-024 implemented and verified live.** Added `tools/acceptance-test.sh`
+(Layer 2: curl-based, asserts TLS validity, `/health` 200, the rendered
+root page contains the real story_now pulse value) and
+`tests/acceptance/conftest.py`/`test_remote.py` (Layer 3: pytest with
+`requests` against the real domain, no token fixture - public app). Both
+ran clean against the live droplet. `tests/acceptance/` is excluded from
+the default `pytest`/`pytest tests/` collection via `norecursedirs`
+(confirmed: still 608, not 611). Added a new Poetry `acceptance` group for
+`requests` - anticipated by the original design's "filter dev/acceptance
+groups" language but never actually created - and confirmed
+`export-requirements.sh` correctly excludes it from `requirements.txt`
+(the droplet has no need for a testing-only HTTP client).
+
+**Layer 4's full destroy -> reprovision -> redeploy cycle found a real
+design gap, not a glitch.** Ran `tools/redeploy.sh -y` for real (with the
+developer's explicit go-ahead, given the live site would be briefly
+unreachable). It completed with `failed=0` - all three of SPEC-023's bugs
+stayed fixed - but the **reserved IP itself changed**
+(`129.212.194.54` -> `104.248.101.239`), contradicting REQ-OPS-013's
+explicit guarantee that DNS and the SSH alias survive "with the reserved
+IP held." Root cause: `destroy.sh`'s second `tofu destroy` call has no
+`-target`, so it tears down every resource in state, including the
+reserved IP itself - correct behavior for a genuine full teardown (which
+is what `destroy.sh` is *for*, run standalone), but wrong for a redeploy
+meant to preserve network identity. The site kept working throughout
+(DNS updated correctly to the new IP) - this broke a guarantee, not
+uptime.
+
+Presented to the developer as a real design choice rather than silently
+patched: keep `destroy.sh` as a full teardown, and add a narrower
+`tools/recreate-droplet.sh` that destroys/recreates *only* the droplet
+resource (reserved IP, DNS record, firewall, and SSH key registration all
+stay untouched in Tofu state - Tofu's dependency graph handles
+reassigning the IP and updating the firewall's `droplet_ids`
+automatically). `tools/redeploy.sh` now calls `recreate-droplet.sh`
+instead of `destroy.sh` + `provision.sh`, and also gained the verify step
+(`acceptance-test.sh`) that didn't exist when SPEC-023 first wrote it -
+the single `redeploy.sh -y` invocation now genuinely performs recreate ->
+deploy -> verify as one act.
+
+Re-ran the corrected cycle for real: `droplet_id` changed
+(`579514354` -> `579520422`); **`reserved_ip` did not**
+(`104.248.101.239` both before and after). `failed=0`, the verify step
+passed automatically, DNS resolution and a follow-up idempotency check
+(`changed=0`) both confirmed clean on the fresh droplet.
+
+`design/specs/spec-022-tofu.toml` and `spec-023-ansible.toml` updated to
+document `recreate-droplet.sh`. Evidence in `tests/results/SPEC-024.md`.
+
+**This closes the deploy lifecycle work started with DD-0014.** SPEC-022,
+023, and 024 are all implemented and verified live, not just designed.
+Next: consider flipping DD-0014/SPEC-022/023/024 from "proposed" to
+"accepted" now that all acceptance criteria are met.
+
 ## 2026-06-22 — SPEC-023: Ansible deploy live, three real bugs found and fixed
 
 **SPEC-023 implemented and deployed for real** against `sask-droplet`:
