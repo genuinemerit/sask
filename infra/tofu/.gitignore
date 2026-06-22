@@ -1,0 +1,9 @@
+# Local state and provider cache
+.terraform/
+.terraform.lock.hcl
+*.tfstate
+*.tfstate.*
+crash.log
+
+# Real tfvars (the .example template stays tracked)
+terraform.tfvars

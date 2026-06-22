@@ -15,6 +15,14 @@
           pkgs.poetry
           pkgs.ruff
           pkgs.sqlite
+          pkgs.opentofu
+          pkgs.ansible
+          pkgs.ansible-lint
+          pkgs.openssh
+          pkgs.jq
+          pkgs.curl
+          pkgs.gh
+          pkgs.xcaddy
         ];
 
         shellHook = ''

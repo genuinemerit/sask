@@ -1,0 +1,14 @@
+# Copy to terraform.tfvars (gitignored) only if you need to override a
+# default — every variable below already has a sensible default in
+# variables.tf, so an empty/missing terraform.tfvars is normal.
+
+# region               = "fra1"
+# droplet_size         = "s-1vcpu-1gb"
+# droplet_image        = "ubuntu-24-04-x64"
+# droplet_name         = "sask-droplet"
+# ssh_public_key_path  = "~/.ssh/sask_ed25519.pub"
+# ssh_private_key_name = "sask_ed25519"
+# ssh_admin_user       = "dave"
+# ssh_config_path      = "~/.ssh/config.d/sask"
+# domain               = "davidstitt.net"
+# subdomain            = "sask"

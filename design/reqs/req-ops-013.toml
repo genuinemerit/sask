@@ -1,0 +1,17 @@
+id="REQ-OPS-013"
+title="Reproducible deploy, destroy, and redeploy"
+category="operational"
+priority="must"
+statement="The app can be provisioned, deployed, destroyed, and rebuilt from zero on a DigitalOcean droplet by a bespoke local OpenTofu + Ansible + bash harness, with no remote CI. A single mainline `redeploy` runs destroy -> provision -> deploy -> verify as one act; the discrete provision/destroy/deploy/connect scripts under tools/ remain available as its building blocks. A second consecutive deploy against a converged droplet reports `changed=0`. DNS and the SSH alias survive destroy/recreate unchanged via a reserved IP."
+rationale="A single-developer hobby service needs to be stood up and torn down cheaply and repeatably; reproducibility-from-zero with a `changed=0` idempotency bar is what distinguishes a real, auditable deploy from one that merely seems to work."
+acceptance=[
+  "`redeploy` rebuilds a working, TLS-serving instance from zero in one invocation, ending with the verification suite passing.",
+  "A second consecutive `deploy` against the converged droplet reports `changed=0` across every Ansible task.",
+  "After a full destroy -> reprovision -> redeploy cycle, the public DNS name and SSH alias resolve unchanged (reserved IP held).",
+  "Each discrete script runs independently and is the building block the orchestrator calls.",
+  "Tofu state is local; the run leaves no secret in state or logs.",
+  "Evidence is recorded under tests/results/: provision counts/timing, the idempotency double-run, and the destroy/reprovision/redeploy cycle with before/after IPs.",
+]
+[links]
+dds=["DD-0014"]
+specs=["SPEC-022","SPEC-023"]

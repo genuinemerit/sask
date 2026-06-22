@@ -1,5 +1,58 @@
 # Dev log
 
+## 2026-06-22 — DO deploy pre-flight: review and credentials check
+
+**Design review.** Read `analysis/*`, `design/decisions/dd-0014-deploy.toml`,
+`design/reqs/req-ops-013/014/015.toml`, `design/reqs/req-sec-003.toml`, and
+`design/specs/spec-022/023/024.toml` for the upcoming DigitalOcean
+deploy/destroy/redeploy work. All consistent; `validate_specs.py` passes.
+Confirmed against the running repo: `flake.nix` is missing the new tooling
+(`opentofu`, `ansible`, `ansible-lint`, `openssh`, `jq`, `curl`, `gh`,
+`xcaddy`) the plan needs; `ansible/` and `infra/` (beyond
+`configuration.nix`) are still empty placeholders; no `/health` route
+exists yet in `routes.py`.
+
+**DO account checked clean.** Confirmed via the DO console:
+`sask.davidstitt.net` is not configured, and no droplet, DNS record, or SSH
+key remains from the retired sibling `sask` project - all torn down
+together. The parent zone `davidstitt.net` is DO-nameservered (3 NS
+records, plus an unrelated existing apex A record). Billing is active;
+droplet limit is 25, with 1 unrelated droplet active (a separate, still-live
+host for a different project, found via an existing `~/.ssh/config` entry
+and confirmed unrelated to this work).
+
+**SSH key.** `~/.ssh/sask_ed25519`/`.pub` already exists on `sask-dev`
+(modes 600/644, predates this session) - well-formed, ready for Tofu's
+`digitalocean_ssh_key` resource to register with DO at `apply` time. No
+manual DO-console step is needed for this.
+
+**Credentials located, not regenerated.** `~/.config/sask/` on `sask-dev`
+holds three files left over from the sibling project's own deploy work:
+`infra.env`, `tokens.toml`, and `token_value`. Inspected structurally only -
+key names and value *lengths*, never the secret values themselves, were
+printed or logged. `infra.env` holds a single `DIGITALOCEAN_TOKEN` export
+and is exactly the file `tools/provision.sh`/`destroy.sh` will source;
+`tokens.toml` and `token_value` are the sibling project's own
+*application*-level bearer-token secrets (unrelated to DO infrastructure)
+and are not used by this deploy. `infra.env`'s token was confirmed live
+with a read-only `GET /v2/account` call (HTTP 200, account/droplet-limit
+details matched what was seen in the DO console) - no regeneration needed,
+regardless of whether it is the same token as the `NIXSASK` Personal Access
+Token (read/write scope, ~10 months remaining) visible under the account's
+API settings.
+
+**Decision: admin account name.** The droplet's SSH/operator login account
+(distinct from the no-shell `sask` service user that REQ-SEC-003/SPEC-023
+create) will be named `dave`, matching the host laptop and `sask-dev` VM
+usernames. Bootstrap sequencing note for the implementation: a fresh,
+no-cloud-init droplet only has `root` until Ansible creates `dave`, so the
+first-ever Ansible connection must be as `root`, before sshd's
+`PermitRootLogin no` hardening is applied.
+
+**Next:** draft the SPEC-022 deliverables (`flake.nix` edit,
+`infra/tofu/*.tf`, `tools/provision.sh`/`destroy.sh`,
+`secrets/infra.env.example`) for review. No cloud action taken yet.
+
 ## 2026-06-21 — SPEC-021: kinematic ephemeris rendering fix
 
 **SPEC-021 (DD-0013 / REQ-OPS-012) implemented.** `render_kinematic_json`

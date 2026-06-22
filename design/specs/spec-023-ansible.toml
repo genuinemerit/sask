@@ -1,0 +1,74 @@
+id="SPEC-023"
+title="Service deployment via Ansible (platform / caddy / app roles)"
+status="proposed"
+
+[implements]
+requirements=["REQ-OPS-013","REQ-OPS-015","REQ-SEC-003"]
+dds=["DD-0014"]
+
+[scope]
+in_scope=[
+  "ansible/ layout: ansible.cfg (host_key_checking off; relies on ~/.ssh/config Include), inventory.yml (host by SSH alias, never IP), site.yml, group_vars/all.yml.",
+  "Roles reflecting the platform/application seam: base, runtime, caddy (platform) and app (application).",
+  "group_vars parametrising all app-specific values (service name sask, synced directories, wsgi entry, domain, gunicorn timeout/workers, rate-limit buckets).",
+  "tools/: deploy.sh, connect.sh, export-requirements.sh, and the mainline redeploy.sh orchestrator.",
+  "The idempotency techniques required to reach changed=0 on a second run.",
+]
+out_of_scope=[
+  "Provisioning (SPEC-022).",
+  "The acceptance/operational test suite (SPEC-024); redeploy.sh's verify step invokes it.",
+  "Authentication and application-secret content (mechanism stubbed only).",
+]
+[deliverables]
+base_role="""
+apt packages (python3-venv, ca-certificates, ...), a non-root `sask` system user
+with no shell login, the three directories (/opt/sask, /etc/sask, /var/log/sask)
+owned by it, sshd hardening (PermitRootLogin no, PasswordAuthentication no,
+PubkeyAuthentication yes), and unattended security upgrades. apt upgrade gated
+behind a group_vars boolean (default false); cache_valid_time on apt update.
+"""
+runtime_role="""
+Python venv, gunicorn, and the systemd unit template: ExecStart targets wsgi:app
+bound to 127.0.0.1, with a request timeout and max_requests recycling, a sane
+worker count for one vCPU, and the sandboxing directives (NoNewPrivileges,
+ProtectSystem=strict, ProtectHome, PrivateTmp, minimal ReadWritePaths). Environment
+file templated from group_vars. WorkingDirectory aligned with how src/sask resolves
+config/ at runtime (see acceptance).
+"""
+caddy_role="""
+A custom Caddy build (via xcaddy) including the rate-limit plugin. Caddyfile
+template: domain, reverse_proxy to the localhost gunicorn, security headers (HSTS,
+X-Content-Type-Options nosniff, frame-ancestors, Referrer-Policy, a strict default
+CSP suitable for a no-JS app), a per-IP rate limit tighter on /ephemeris/download
+than on the interactive pages, and a log path. Caddy auto-issues/renews TLS; no
+manual ACME directives. No `caddy validate` as root; chown /var/log/caddy after the
+template task.
+"""
+app_role="""
+rsync src/sask (ansible.posix.synchronize, --no-owner --no-group, exclude
+__pycache__/*.pyc); copy the config/ data tree; copy wsgi.py to the app root; pip
+install from a requirements.txt staged to a remote path; the application-secrets
+task stubbed (copy + no_log + mode 0600 against a secrets/sask.toml.example,
+present but unused while auth is deferred); recurse-chown; restart handlers defined
+once in fixed order so daemon_reload precedes restart.
+"""
+tools="""
+deploy.sh (preflight: infra.env must exist; re-export requirements; ansible-playbook
+site.yml). connect.sh (exec ssh sask-droplet). export-requirements.sh (read
+poetry.lock + pyproject.toml with tomllib, filtering dev/acceptance groups - not
+poetry export). redeploy.sh: the single mainline act, orchestrating destroy ->
+provision -> deploy -> verify by calling the discrete tools/ scripts, preserving the
+ordering guards (reserved-IP detach; re-provision on IP change). All under tools/,
+sask-calendar's existing orchestration-script convention - not a new scripts/
+directory.
+"""
+[acceptance]
+checks=[
+  "A second consecutive deploy reports changed=0 across every task.",
+  "The service runs as non-root `sask` under systemd, gunicorn on 127.0.0.1, with the sandboxing directives present and effective.",
+  "Caddy serves valid TLS with the configured security headers; the per-IP rate limit is active and tighter on the download route.",
+  "sshd refuses root and password auth; unattended security upgrades are enabled.",
+  "config/ resolves correctly at runtime under the deployed WorkingDirectory: a known computed value (e.g. a story_now page field) renders correctly end-to-end on the droplet.",
+  "redeploy.sh runs destroy -> provision -> deploy -> verify as one invocation with the ordering guards intact.",
+  "No secret appears in Ansible logs; the app-secrets mechanism is present but unused, with only a .example template in the repo.",
+]

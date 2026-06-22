@@ -1,0 +1,14 @@
+id="REQ-OPS-014"
+title="Manual droplet access with console fallback"
+category="operational"
+priority="must"
+statement="The droplet is reachable for manual operation by key-only SSH via a stable alias backed by the reserved IP, and the DigitalOcean web console remains available as an out-of-band fallback when SSH is unavailable (e.g. a firewall-pinned source-IP change). The SSH alias is the only place an IP is referenced."
+rationale="A reproducible deploy still needs a hands-on path for inspection and recovery; a stable alias plus an out-of-band console means a misconfiguration or a changed source IP never locks the operator out irrecoverably."
+acceptance=[
+  "SSH to the alias succeeds with a key and resolves via the reserved IP across redeploys.",
+  "When the developer's source IP changes, re-running provision restores SSH access (~10s), and the DO web console is reachable meanwhile.",
+  "No workflow step references a raw droplet IP; the alias is the sole indirection.",
+]
+[links]
+dds=["DD-0014"]
+specs=["SPEC-022"]

@@ -1,0 +1,123 @@
+id     = "DD-0014"
+title  = "Hardened DigitalOcean deploy / destroy / redeploy lifecycle"
+status = "proposed"
+date   = "2026-06-21"
+
+[context]
+problem = """
+sask-calendar has no remote deployment yet. It needs a reproducible, low-ceremony
+way to stand the app up on a DigitalOcean droplet, tear it down, and rebuild it
+from zero on demand - the destroy/redeploy lifecycle deferred since DD-0001 and
+DD-0003 and pointed at by SPEC-005 ("reusing the sask deploy pattern"). A sibling
+project (the now-retired sask resource server) already solved this with a bespoke
+OpenTofu + Ansible + bash harness; this DD adopts and adapts that pattern into
+sask-calendar's current idiom, fixing the architecture, the deployment unit's
+identity, the platform/application separation, and the security posture.
+"""
+constraints = [
+  "Destroy-and-rebuild-the-whole-server is the model: a deploy reproduces a working, verified service from zero, not an in-place mutation.",
+  "Single act: one mainline `redeploy` command runs the full chain; the discrete tools/ scripts remain available as its building blocks.",
+  "No GitHub Actions or remote CI - everything runs locally via `nix develop`, matching the sibling project's deliberate choice.",
+  "Server-rendered, no-JavaScript app (DD-0003): a single gunicorn-served Flask app behind Caddy.",
+  "Native to sask-calendar's current DD/REQ/SPEC schema and tooling (validate_specs.py), not a translation of the sibling project's older schema.",
+  "Forward-compatible with the umbrella `sask` app: the harness must not assume a single functional area.",
+]
+alternatives = [
+  "Multi-droplet + load balancer, DigitalOcean Kubernetes, App Platform, or Functions - rejected for the same reason the sibling project rejected them: classic single-VM is the lowest-ceremony fit for a single-developer, hobby-scale service, and the layer worth controlling directly.",
+  "A distinct droplet-side name (e.g. `saskcal`) to avoid colliding with the sibling project - rejected: that project's droplet was destroyed and will be superseded, not co-located, so the umbrella identity `sask` is taken now (see decision).",
+  "Remote Tofu state from day one - deferred: local state matches precedent and the single-developer profile; the DO Spaces migration path stays documented for when it is warranted.",
+  "A CDN (e.g. Cloudflare) in front now - deferred: documented as the escalation lever for volumetric DDoS, not built into the first cut (it is a topology change away from DO-managed DNS on the reserved IP).",
+  "Application authentication now - deferred but explicitly not designed out (see decision).",
+]
+
+[decision]
+summary = """
+1. Three-layer bespoke harness, ported and adapted from the sibling project:
+   OpenTofu (cloud resources) -> Ansible (droplet state) -> bash scripts
+   (orchestration). Each layer is independently re-runnable and idempotent; the
+   bar is `changed=0` on a second consecutive deploy.
+2. Lifecycle: a single mainline `redeploy` orchestrates destroy -> provision ->
+   deploy -> verify as one act, preserving the ordering guards (reserved-IP detach
+   before droplet destroy; re-provision when the developer's SSH-source IP changes).
+   The discrete tools/ scripts (provision / destroy / deploy / connect) remain available
+   as the composable building blocks it calls.
+3. Network shape: a DigitalOcean reserved IP carries both DNS and the SSH alias, so
+   neither changes across a destroy/recreate cycle; Tofu manages the DNS A record
+   (pointed at the reserved IP) for `sask.davidstitt.net`; a cloud firewall allows
+   22 from the developer's current IP only and 80/443 from anywhere. Local Tofu
+   state. Region `fra1`, image `ubuntu-24-04-x64`, size `s-1vcpu-1gb` as the
+   starting point, re-measured on the live host after deploy (REQ-OPS-010).
+4. Service shape: a non-root system user runs gunicorn (targeting `wsgi:app`,
+   already resolved at module level) bound to localhost, fronted by Caddy for
+   automatic Let's Encrypt TLS. systemd owns the process with a restart policy.
+5. Platform / application separation: a platform layer (droplet, reserved IP, DNS,
+   firewall; OS prep, system user, Python runtime, gunicorn, the systemd skeleton,
+   Caddy) identical for any `sask` app, and an application layer (the `sask`
+   package, the `config/` data tree, `wsgi.py`, requirements, and - later - app
+   secrets). App-specific values live in `group_vars`; the app deploy is its own
+   Ansible role. Adding a functional area touches only the application layer. This
+   is an internal separation: the deploy stays a single act.
+6. Identity: the deployed app, droplet-side identifiers (system user, `/opt/sask`,
+   `/etc/sask`, `/var/log/sask`, `sask.service`, `sask-*` DO resources, SSH alias),
+   and local secrets path (`~/.config/sask/`) all use `sask` - matching the Python
+   package and reserving the umbrella identity. sask-calendar is the umbrella's
+   first functional area. The repository stays `sask-calendar` for now; the
+   package/deploy name `sask` is the intentional, documented exception.
+7. Access: public, no authentication. The application-secrets mechanism (Ansible
+   `copy` + `no_log` + mode 0600, with a `.example` template) is stubbed and
+   documented but unused, so auth, multi-user, and messaging can be added later
+   without re-architecting; auth is deferred, not designed out.
+8. Security posture: keep the strong baseline (key-only SSH, cloud firewall, non-
+   root service, auto-TLS, no secrets in the repo) and add proportionate, low-cost
+   hardening now - droplet SSH no-root/key-only, localhost-bound gunicorn, systemd
+   sandboxing, Caddy security headers, unattended security upgrades, and a guard on
+   the expensive public ephemeris endpoint (gunicorn request timeout plus a Caddy
+   per-IP rate limit). Cloudflare and other heavier measures are documented
+   escalation levers, not built now. Enumerated in REQ-SEC-003.
+9. Layout and conventions: production IaC under `infra/tofu/` (kept distinct from
+   the dev VM's `infra/configuration.nix`); Ansible under `ansible/`; orchestration
+   under `tools/` (sask-calendar's existing convention for scripts, not a new
+   `scripts/` directory); remote acceptance tests under `tests/acceptance/`.
+   Operational evidence is recorded under `tests/results/` in the current
+   convention; a deploy runbook and operational UAT cases follow the current docs
+   style.
+"""
+rationale = """
+Reusing the sibling project's proven harness loses far less than re-deriving it,
+and adapting rather than transplanting keeps the result native to sask-calendar's
+schema and tooling. The reserved-IP-carries-DNS-and-SSH choice is what makes the
+destroy/redeploy loop require zero manual steps. The platform/application seam is
+the concrete mechanism that lets the umbrella `sask` app gain functional areas
+later without disturbing the harness, while the single-act `redeploy` keeps the
+day-to-day interface simple. The security posture is sized to the real, observed
+threat - background probes, no targeted attacks - strong baseline plus cheap
+incremental guards, heavier measures named but deferred.
+"""
+
+[consequences]
+positive = [
+  "A verified service can be rebuilt from zero on demand, with `changed=0` idempotency as the bar.",
+  "DNS and SSH survive destroy/recreate unchanged (reserved IP).",
+  "Adding a future functional area is an application-layer change only.",
+  "Auth/multi-user/messaging can arrive later without re-architecting the deploy.",
+  "No disk liability or temp-file cleanup; local state, no remote-CI dependency.",
+]
+negative = [
+  "Local Tofu state means state loss orphans cloud resources (manual DO-console cleanup); accepted, with the remote-backend migration path documented.",
+  "The SSH-allowed-IP firewall rule is pinned at apply time; a changed developer IP needs a ~10s re-provision.",
+  "A custom Caddy build is required for the rate-limit plugin (a modest added build step in the caddy role).",
+  "The `sask` deploy name vs `sask-calendar` repo name is a deliberate mismatch that must be documented to avoid confusion.",
+]
+followups = [
+  "REQ-OPS-013..015: reproducible deploy/destroy/redeploy, manual SSH + console fallback, systemd non-root service.",
+  "REQ-SEC-003: the enumerated hardening set and the documented escalation levers.",
+  "SPEC-022: droplet provisioning (OpenTofu).",
+  "SPEC-023: service deployment (Ansible: platform + caddy + app roles) and the acceptance/operational test suite.",
+  "Resolved by review (2026-06-21): `src/sask/web/__init__.py` resolves `config/` via `Path(__file__).resolve().parent.parent.parent.parent` - a pure file-relative walk-up from the package's own location, not an env var or CWD-relative lookup. No new mechanism is needed; the app role just needs `config/` to land as a sibling of `src/` under `/opt/sask/`, and resolution holds regardless of the unit's WorkingDirectory.",
+  "Future: revisit remote Tofu state, a CDN front, and authentication when the umbrella app and its multi-user features arrive.",
+]
+
+[links]
+requirements = ["REQ-OPS-013","REQ-SEC-003","REQ-OPS-010"]
+dds = ["DD-0001","DD-0003"]
+specs = ["SPEC-022","SPEC-023","SPEC-005"]

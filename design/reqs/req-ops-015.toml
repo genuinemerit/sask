@@ -1,0 +1,15 @@
+id="REQ-OPS-015"
+title="systemd-managed non-root service"
+category="operational"
+priority="must"
+statement="The application runs as a non-root system user under a systemd unit with an automatic restart policy, with gunicorn bound to localhost and fronted by Caddy. The service survives process death and host reboot, and its directories (`/opt/sask`, `/etc/sask`, `/var/log/sask`) are owned by the service user."
+rationale="A long-lived public service needs supervised, least-privilege execution that recovers automatically; non-root under systemd with localhost binding keeps the blast radius small and the process self-healing."
+acceptance=[
+  "The service runs as the non-root `sask` user; its three top-level directories are owned by it.",
+  "Killing the process triggers a systemd restart within the configured window and the service responds correctly immediately after (recovery recorded as evidence).",
+  "After a host reboot the service returns automatically.",
+  "gunicorn listens on localhost only; the app is reachable publicly solely via Caddy over TLS.",
+]
+[links]
+dds=["DD-0014"]
+specs=["SPEC-023"]

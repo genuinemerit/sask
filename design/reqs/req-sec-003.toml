@@ -1,0 +1,19 @@
+id="REQ-SEC-003"
+title="Deployment hardening"
+category="security"
+priority="must"
+statement="The deployed service carries proportionate, low-cost hardening: key-only SSH with no root login enforced in sshd; a cloud firewall allowing 22 from the developer's current IP only and 80/443 from anywhere; localhost-bound gunicorn; a sandboxed systemd unit (NoNewPrivileges, ProtectSystem=strict, ProtectHome, PrivateTmp, minimal ReadWritePaths); Caddy security response headers (HSTS, nosniff, frame-ancestors, Referrer-Policy, a basic CSP); unattended security upgrades; and a guard on the public ephemeris endpoint (a gunicorn request timeout plus a Caddy per-IP rate limit, tighter on the download route). Secrets never enter the repo, Tofu state, or Ansible logs. Heavier measures (a CDN/Cloudflare front, fail2ban, egress-firewall tightening, ufw, a WAF) are documented escalation levers, deliberately not implemented now."
+rationale="The observed threat is background probing rather than targeted attack, so the right posture is a strong baseline plus cheap incremental guards - enough to blunt opportunistic abuse and resource-exhaustion on the one expensive public endpoint, without over-engineering a single-developer hobby app or precluding heavier measures later."
+acceptance=[
+  "sshd refuses password auth and root login; the firewall exposes only 22 (developer IP) and 80/443 (any).",
+  "gunicorn is not reachable on the public IP; only Caddy (443/80) and SSH (22) listen externally.",
+  "The systemd unit carries the sandboxing directives and runs read-only outside its declared writable paths.",
+  "Caddy emits the configured security headers; TLS validates without `-k`.",
+  "Unattended security upgrades are enabled.",
+  "A burst of max-range ephemeris requests is rate-limited, and individual requests time out rather than tying up workers indefinitely.",
+  "A git/state/log scan finds no secret values; the repo holds only `.example` templates.",
+  "The escalation levers are recorded in a future-hardening note, not implemented.",
+]
+[links]
+dds=["DD-0014"]
+specs=["SPEC-022","SPEC-023"]

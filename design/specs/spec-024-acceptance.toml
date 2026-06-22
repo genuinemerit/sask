@@ -1,0 +1,56 @@
+id="SPEC-024"
+title="Deployment acceptance and operational test suite"
+status="proposed"
+
+[implements]
+requirements=["REQ-OPS-013","REQ-OPS-015","REQ-SEC-003"]
+dds=["DD-0014"]
+
+[scope]
+in_scope=[
+  "Layer 2: tools/acceptance-test.sh - curl-based smoke test against the live HTTPS endpoint.",
+  "Layer 3: tests/acceptance/conftest.py and test_remote.py - pytest against the real domain.",
+  "Layer 4: the operational tests (kill/restart, idempotency, destroy->reprovision->redeploy), scripted where possible and recorded as evidence.",
+  "The tests/results/ evidence convention for the deployment SPECs.",
+]
+out_of_scope=[
+  "Deploy mechanics (SPEC-022/023).",
+  "Application unit tests (already exist; Layer 1 only gates on them passing before a deploy).",
+  "Token/auth fixtures (public app; none needed).",
+]
+[deliverables]
+layer2="""
+tools/acceptance-test.sh: pass/fail helpers, exits non-zero on first failure.
+Asserts the root (or /health) returns 200, TLS validates without -k, and a rendered
+page contains an expected computed value - the deployed-pipeline analogue of the
+sibling project's byte-identity check, proving DNS -> TLS -> Caddy -> gunicorn ->
+Flask -> engine -> template produced a real result, not just a listening process.
+"""
+layer3="""
+tests/acceptance/conftest.py exposes a session-scoped base_url fixture (the deployed
+https:// domain); test_remote.py provides test_health_returns_200 and
+test_tls_certificate_is_valid. No token fixture (public app). Lives separate from the
+unit suite; uses requests against the live service, not the Flask test client.
+"""
+layer4="""
+Operational tests, recorded as evidence rather than only observed: a kill/restart
+test (systemd recovers within the configured window and serves correctly after); an
+idempotency test (deploy.sh second run reports changed=0); and a full destroy ->
+reprovision -> redeploy-from-zero cycle that re-runs Layers 2 and 3 against the fresh
+instance and records before/after droplet IPs (proving the reserved-IP design held).
+"""
+evidence="""
+tests/results/SPEC-024.md in the current convention: an acceptance checklist
+(item/status), static checks, a live-run section per apply/deploy with resource
+counts and timing, an idempotency section showing the changed=0 second run, and a
+destroy/reprovision/redeploy section with before/after IPs and the re-run of Layers
+2-3. Raw output too long for the table goes in sibling files referenced from it.
+"""
+[acceptance]
+checks=[
+  "Layer 2 passes against the live endpoint (200, valid TLS, expected rendered content) and exits non-zero on first failure.",
+  "Layer 3 pytest acceptance passes against the real domain (health, TLS).",
+  "Layer 4 is recorded: restart recovery measured, the deploy changed=0 second run captured, and a full destroy/reprovision/redeploy cycle run with Layers 2-3 green on the fresh instance and before/after IPs noted.",
+  "Evidence is written to tests/results/ in the current convention.",
+  "The unit suite is confirmed green before any deploy (Layer 1 gate).",
+]

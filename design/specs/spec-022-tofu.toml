@@ -1,0 +1,43 @@
+id="SPEC-022"
+title="Droplet provisioning via OpenTofu"
+status="proposed"
+
+[implements]
+requirements=["REQ-OPS-013","REQ-OPS-014","REQ-SEC-003"]
+dds=["DD-0014"]
+
+[scope]
+in_scope=[
+  "infra/tofu/*.tf (versions, variables, main, ssh-config, outputs) defining all cloud resources for the sask droplet.",
+  "Resources: digitalocean_ssh_key; droplet (s-1vcpu-1gb, fra1, ubuntu-24-04-x64, no cloud-init); reserved_ip + assignment; DNS A record for sask.davidstitt.net pointed at the reserved IP; cloud firewall (22 from the developer's current IP /32, 80/443 from anywhere, egress open); local_file writing ~/.ssh/config.d/sask (mode 0600, Host sask-droplet -> reserved IP).",
+  "Providers: digitalocean ~>2.0, http (developer's current IP at apply), local (SSH config snippet). DIGITALOCEAN_TOKEN read from the environment.",
+  "Local Tofu state (gitignored), with the DO Spaces remote-backend migration path documented.",
+  "tools/provision.sh and tools/destroy.sh: source ~/.config/sask/infra.env, run tofu init/apply or destroy, accept -y, and enforce reserved-IP detach before droplet destroy.",
+]
+out_of_scope=[
+  "Ansible/service configuration (SPEC-023).",
+  "The acceptance/operational test suite (SPEC-024).",
+  "Application secrets (none now; mechanism stubbed in SPEC-023).",
+]
+[deliverables]
+tofu="""
+infra/tofu/ as a subdirectory distinct from the dev VM's infra/configuration.nix.
+A data digitalocean_domain lookup fails fast at plan time if davidstitt.net is not
+DO-nameservered. No token appears in any .tf or in state. The reserved IP is the
+load-bearing choice: DNS and the SSH alias both target it, so neither changes
+across destroy/recreate.
+"""
+tools="""
+provision.sh and destroy.sh under tools/ as thin Tofu drivers (set -euo pipefail, cd
+to repo root, source infra.env, -y to skip the prompt). destroy.sh sequences the
+reserved-IP assignment detach before the droplet destroy (a droplet cannot be
+destroyed while a reserved IP is assigned).
+"""
+[acceptance]
+checks=[
+  "tofu apply creates every resource; the DNS A record resolves to the reserved IP; the firewall exposes 22 (developer IP) and 80/443 (any).",
+  "tofu destroy detaches the reserved IP before destroying the droplet and removes the ~/.ssh/config.d/sask snippet.",
+  "A destroy/recreate cycle assigns a new droplet IP while the reserved IP - and thus DNS and the SSH alias - stays unchanged.",
+  "No token appears in any .tf file or in Tofu state; DIGITALOCEAN_TOKEN is read from the environment.",
+  "Re-running provision.sh is a ~10s no-op except when the developer's IP changed, in which case it updates the firewall rule.",
+]
