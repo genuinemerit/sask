@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+# SSH to the sask droplet via its alias — the only place an IP is ever
+# referenced (REQ-OPS-014).
+#
+#   bash tools/connect.sh                      # interactive shell
+#   bash tools/connect.sh 'systemctl status sask'   # one-off command
+
+set -euo pipefail
+
+exec ssh sask-droplet "$@"

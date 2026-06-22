@@ -16,6 +16,10 @@ venv/
 result
 result-*
 
+# Locally-built Caddy binary (ansible/roles/caddy builds it via xcaddy on
+# the controller, then copies it to the droplet — never commit the binary)
+ansible/.build/
+
 # Secrets — track only README.md and *.example (REQ-SEC-002)
 secrets/*
 !secrets/README.md

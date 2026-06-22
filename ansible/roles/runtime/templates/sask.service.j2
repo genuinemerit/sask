@@ -1,0 +1,29 @@
+[Unit]
+Description=sask gunicorn service
+After=network.target
+
+[Service]
+Type=simple
+User={{ app_user }}
+Group={{ app_group }}
+WorkingDirectory={{ app_root }}
+EnvironmentFile={{ etc_dir }}/environment
+ExecStart={{ venv_dir }}/bin/gunicorn {{ wsgi_module }} \
+    --bind {{ gunicorn_bind }} \
+    --workers {{ gunicorn_workers }} \
+    --timeout {{ gunicorn_timeout }} \
+    --max-requests {{ gunicorn_max_requests }} \
+    --max-requests-jitter {{ gunicorn_max_requests_jitter }} \
+    --access-logfile {{ log_dir }}/access.log \
+    --error-logfile {{ log_dir }}/error.log
+Restart=on-failure
+RestartSec=5
+
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+ReadWritePaths={{ log_dir }}
+
+[Install]
+WantedBy=multi-user.target

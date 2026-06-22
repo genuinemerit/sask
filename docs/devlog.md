@@ -1,5 +1,83 @@
 # Dev log
 
+## 2026-06-22 — SPEC-023: Ansible deploy live, three real bugs found and fixed
+
+**SPEC-023 implemented and deployed for real** against `sask-droplet`:
+`ansible/` (ansible.cfg, inventory.yml, group_vars/all.yml, site.yml, and
+`base`/`runtime`/`caddy`/`app` roles) plus `tools/deploy.sh`, `connect.sh`,
+`export-requirements.sh`, `redeploy.sh`. Also added: a minimal `/health`
+route (`src/sask/web/routes.py`, no engine/config dependency by design),
+`secrets/sask.toml.example` (the stubbed-but-unused app-secrets template),
+and `go` to `flake.nix` (xcaddy needs it on PATH to build Caddy plugins,
+not previously identified).
+
+**`ansible/bootstrap.yml` added, not in the original spec draft.**
+REQ-SEC-003's `PermitRootLogin no` leaves nothing able to log in once
+applied, since the `sask` service user has no shell — discovered during
+drafting, before anything touched the droplet. `bootstrap.yml` connects as
+root (the only account on a fresh, no-cloud-init image) to create `dave`,
+authorize the deploy key, and grant passwordless sudo; `tools/deploy.sh`
+only invokes it when `dave` isn't already reachable. `design/specs/spec-023-ansible.toml`
+updated to document this addition.
+
+**Local validation before touching the droplet:** `ansible-lint` passed at
+the "production" profile (after removing a `pip state=latest` task it
+correctly flagged as a false-"changed"-every-run idempotency bug),
+`--syntax-check` on both playbooks, and — rather than guessing at the
+`mholt/caddy-ratelimit` plugin's Caddyfile syntax — actually built the
+custom Caddy binary via `xcaddy` and ran `caddy validate` against the
+fully-rendered config. All clean.
+
+**Three real bugs surfaced only by running for real, all fixed and
+re-verified:**
+
+1. `bootstrap.yml`'s `remote_user: root` was silently outranked by
+   `group_vars/all.yml`'s `ansible_user: dave` (a known Ansible precedence
+   quirk) — it tried connecting as `dave` before that account existed.
+   Fixed with an explicit `vars: ansible_user: root` in the play.
+2. `rsync` can't create two missing destination directory levels in one
+   pass — `base` only creates `app_root` itself, so the first sync to
+   `app_root/src/sask/` failed (`app_root/src/` didn't exist). Fixed with
+   an explicit directory-creation task first.
+3. The first run's rsync failure aborted the play *before* the
+   end-of-play handler flush, stranding two already-queued handlers: sshd's
+   restart (so `PermitRootLogin no` was on disk but not yet active - root
+   login still worked) and Caddy's restart (`enabled` but never actually
+   `started` - zero journal entries). Fixed with `meta: flush_handlers`
+   right after the sshd-hardening task, and `state: started` added to both
+   the `sask` and `caddy` service-enable tasks. The live droplet's already-
+   stuck state needed one manual `sudo systemctl restart ssh` to catch up
+   (the file was already correct; only the running process wasn't).
+
+None of these three were lint-detectable — all are runtime behaviors
+(`ansible-lint` and `--syntax-check` stayed clean throughout).
+
+**Full verification, all real, against the live droplet:**
+
+- Idempotency: two consecutive `deploy.sh` runs, no manual steps between
+  them, both `changed=0`.
+- Security: `ssh -o User=root sask-droplet` now refused (publickey denied);
+  `dave` works; `systemctl show sask` confirms `NoNewPrivileges`,
+  `ProtectSystem=strict`, `ProtectHome`, `PrivateTmp` all active, not just
+  present in the unit file.
+- End-to-end HTTPS: `curl https://sask.davidstitt.net/health` -> 200 with
+  every REQ-SEC-003 header present, valid TLS with no `-k`; `/` renders the
+  real story_now pulse value (`104548096103`) - proof of the full DNS ->
+  TLS -> Caddy -> gunicorn -> Flask -> engine -> template chain, not just a
+  listening process.
+- Rate limiting: 6 rapid requests to `/ephemeris/download` -> `400 400 400
+  400 429 429`, exactly matching the configured 4-events/1-minute
+  download-zone budget.
+- Kill/restart: `pkill -9 -f gunicorn` -> systemd restarts within
+  `RestartSec=5` (fresh PID, ~2s), `/health` answers 200 immediately after.
+
+Evidence in `tests/results/SPEC-023.md`. The full destroy -> reprovision ->
+redeploy cycle remains deferred to SPEC-024's Layer 4, same as SPEC-022.
+
+**Next:** draft SPEC-024 (acceptance/operational test suite), then revisit
+whether DD-0014/SPEC-022/SPEC-023 should flip from "proposed" to
+"accepted" once that's done.
+
 ## 2026-06-22 — SPEC-022: droplet provisioned for real, sask_ed25519 passphrase removed
 
 **`tofu apply` run for real** (`tools/provision.sh -y`) after a clean local

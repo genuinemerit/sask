@@ -23,6 +23,7 @@
           pkgs.curl
           pkgs.gh
           pkgs.xcaddy
+          pkgs.go
         ];
 
         shellHook = ''

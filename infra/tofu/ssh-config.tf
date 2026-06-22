@@ -4,6 +4,12 @@
 # base role disables root login per REQ-SEC-003 once bootstrap is done).
 # This file documents the long-term steady state, which the SPEC-023
 # Ansible work is responsible for making true.
+#
+# StrictHostKeyChecking accept-new: a destroy/recreate cycle keeps the same
+# reserved IP but gets a fresh droplet with a different host key every
+# time. tools/destroy.sh purges the stale known_hosts entry on teardown, so
+# the next provision's first connection is always genuinely "new" rather
+# than "changed" (which plain accept-new would still refuse).
 resource "local_file" "ssh_config" {
   filename        = pathexpand(var.ssh_config_path)
   file_permission = "0600"
@@ -13,5 +19,6 @@ resource "local_file" "ssh_config" {
         User ${var.ssh_admin_user}
         IdentityFile ~/.ssh/${var.ssh_private_key_name}
         IdentitiesOnly yes
+        StrictHostKeyChecking accept-new
   EOT
 }

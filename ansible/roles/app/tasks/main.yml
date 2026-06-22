@@ -1,0 +1,73 @@
+---
+# rsync can create at most one missing destination directory level; base's
+# role only creates app_root itself, so the src/ parent needs an explicit
+# task or the first-ever sync fails trying to create two levels at once.
+- name: Ensure the src/ parent directory exists
+  ansible.builtin.file:
+    path: "{{ app_root }}/src"
+    state: directory
+    mode: "0755"
+
+# --no-owner --no-group: plain `copy` re-copies __pycache__/.pyc content
+# (which varies between identical runs) and rsync's implicit -o/-g flags
+# reset ownership — both produce false "changed" on every run otherwise.
+- name: Sync the sask package source
+  ansible.posix.synchronize:
+    src: "{{ repo_root }}/src/sask/"
+    dest: "{{ app_root }}/src/sask/"
+    delete: true
+    rsync_opts:
+      - "--exclude=__pycache__"
+      - "--exclude=*.pyc"
+      - "--no-owner"
+      - "--no-group"
+  notify: Restart sask service
+
+- name: Sync the config/ data tree
+  ansible.posix.synchronize:
+    src: "{{ repo_root }}/config/"
+    dest: "{{ app_config_dir }}/"
+    delete: true
+    rsync_opts:
+      - "--no-owner"
+      - "--no-group"
+  notify: Restart sask service
+
+# wsgi.py lives at the repo root, not inside src/sask/, so it needs its own
+# explicit task — the rsync above doesn't carry it.
+- name: Copy wsgi.py to the app root
+  ansible.builtin.copy:
+    src: "{{ repo_root }}/wsgi.py"
+    dest: "{{ app_root }}/wsgi.py"
+    mode: "0644"
+  notify: Restart sask service
+
+# The pip module's `requirements:` path must exist on the managed host, not
+# the controller — stage it first.
+- name: Stage requirements.txt on the remote host
+  ansible.builtin.copy:
+    src: "{{ repo_root }}/requirements.txt"
+    dest: "/tmp/sask-requirements.txt"
+    mode: "0644"
+
+- name: Install application dependencies
+  ansible.builtin.pip:
+    requirements: "/tmp/sask-requirements.txt"
+    virtualenv: "{{ venv_dir }}"
+  notify: Restart sask service
+
+- name: Stage application secrets (stubbed, unused while auth is deferred)
+  ansible.builtin.copy:
+    src: "{{ app_secrets_local_example }}"
+    dest: "{{ app_secrets_remote }}"
+    owner: "{{ app_user }}"
+    group: "{{ app_group }}"
+    mode: "0600"
+  no_log: true
+
+- name: Own the app directory tree
+  ansible.builtin.file:
+    path: "{{ app_root }}"
+    owner: "{{ app_user }}"
+    group: "{{ app_group }}"
+    recurse: true

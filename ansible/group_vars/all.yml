@@ -1,0 +1,62 @@
+---
+# Shared variables for the sask deploy. App-specific values live here so
+# adding a future functional area later only touches the app layer
+# (DD-0014's platform/application seam).
+
+# --- connection ---------------------------------------------------------
+# bootstrap.yml overrides remote_user to root for its one-time run; every
+# other play connects as admin_user.
+ansible_user: "{{ admin_user }}"
+admin_user: dave
+ssh_public_key_path: "~/.ssh/sask_ed25519.pub"
+
+# --- identity -------------------------------------------------------------
+service_name: sask
+app_user: sask
+app_group: sask
+
+# --- filesystem layout (platform layer; REQ-OPS-015's three directories) --
+app_root: "/opt/{{ service_name }}"
+etc_dir: "/etc/{{ service_name }}"
+log_dir: "/var/log/{{ service_name }}"
+venv_dir: "{{ app_root }}/.venv"
+
+# config/ (the engine's own domain/lore data) lands as a sibling of src/
+# under app_root — src/sask/web/__init__.py resolves it via a pure
+# file-relative walk-up, independent of WorkingDirectory (DD-0014 followups).
+app_config_dir: "{{ app_root }}/config"
+
+# --- network / domain -------------------------------------------------------
+domain: "sask.davidstitt.net"
+
+# --- runtime (gunicorn) -------------------------------------------------------
+wsgi_module: "wsgi:app"
+gunicorn_bind: "127.0.0.1:8000"
+gunicorn_workers: 2
+gunicorn_timeout: 30
+gunicorn_max_requests: 500
+gunicorn_max_requests_jitter: 50
+
+# --- caddy / rate limiting -----------------------------------------------------
+caddy_user: caddy
+caddy_etc_dir: /etc/caddy
+caddy_log_dir: /var/log/caddy
+caddy_data_dir: /var/lib/caddy
+caddy_binary_path: /usr/local/bin/caddy
+caddy_ratelimit_module: "github.com/mholt/caddy-ratelimit"
+caddy_build_output: "{{ playbook_dir }}/.build/caddy"
+rate_limit_default_events: 60
+rate_limit_default_window: "1m"
+rate_limit_download_events: 4
+rate_limit_download_window: "1m"
+
+# --- platform maintenance -------------------------------------------------------
+apt_upgrade: false
+apt_cache_valid_time: 3600
+
+# --- app role: controller-side source paths ---------------------------------------
+repo_root: "{{ playbook_dir }}/.."
+
+# --- application secrets (stubbed, unused while auth is deferred) -----------------
+app_secrets_local_example: "{{ repo_root }}/secrets/sask.toml.example"
+app_secrets_remote: "{{ etc_dir }}/sask.toml"

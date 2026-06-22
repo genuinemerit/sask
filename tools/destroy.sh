@@ -9,7 +9,9 @@
 # A droplet can't be destroyed while a reserved IP is still assigned to it,
 # so the reserved-IP assignment is detached first, then everything else
 # (droplet, reserved IP, DNS record, firewall, SSH key, the generated
-# ~/.ssh/config.d/sask snippet) is destroyed in a second pass.
+# ~/.ssh/config.d/sask snippet) is destroyed in a second pass. Finally, the
+# stale known_hosts entry for the reserved IP / alias is purged so the next
+# provision's first connection isn't refused as "changed".
 #
 # Requires ~/.config/sask/infra.env (outside the repo) exporting
 # DIGITALOCEAN_TOKEN — see secrets/infra.env.example for the template.
@@ -41,5 +43,17 @@ if [[ "${1:-}" == "-y" ]]; then
 fi
 
 cd infra/tofu
+
+# Capture the reserved IP before destroying, so its stale known_hosts entry
+# can be purged — the next droplet provisioned at this IP will have a
+# different host key, and ssh would otherwise refuse it as "changed"
+# rather than treating it as new (see infra/tofu/ssh-config.tf).
+RESERVED_IP="$(tofu output -raw reserved_ip 2>/dev/null || true)"
+
 tofu destroy -target digitalocean_reserved_ip_assignment.sask "${AUTO_APPROVE[@]}"
 tofu destroy "${AUTO_APPROVE[@]}"
+
+if [[ -n "$RESERVED_IP" ]]; then
+    ssh-keygen -R "$RESERVED_IP" >/dev/null 2>&1 || true
+fi
+ssh-keygen -R sask-droplet >/dev/null 2>&1 || true

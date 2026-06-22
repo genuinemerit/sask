@@ -1,0 +1,12 @@
+---
+# Defined in this fixed order so daemon_reload always precedes a restart,
+# regardless of which task (this role's unit-file template, or the app
+# role's code sync) notified first in the same play.
+- name: Reload systemd daemon
+  ansible.builtin.systemd:
+    daemon_reload: true
+
+- name: Restart sask service
+  ansible.builtin.systemd:
+    name: "{{ service_name }}"
+    state: restarted

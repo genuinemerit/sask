@@ -1,0 +1,39 @@
+---
+# Run once against a fresh droplet, before site.yml. Connects as root — the
+# only account that exists on a fresh, no-cloud-init image — to create the
+# non-root admin account every other play (including site.yml's base role,
+# which disables root login) connects as from then on. tools/deploy.sh only
+# invokes this when a direct connection as admin_user isn't already working,
+# so it never runs against an already-bootstrapped, root-login-disabled
+# droplet.
+- name: Bootstrap admin account
+  hosts: sask-droplet
+  remote_user: root
+  # group_vars/all.yml's ansible_user (dave) otherwise outranks the
+  # remote_user keyword above — a known Ansible precedence quirk. This
+  # vars: block forces the override for this one bootstrap play only.
+  vars:
+    ansible_user: root
+  gather_facts: true
+
+  tasks:
+    - name: Ensure admin user exists
+      ansible.builtin.user:
+        name: "{{ admin_user }}"
+        shell: /bin/bash
+        groups: sudo
+        append: true
+
+    - name: Authorize the deploy key for the admin user
+      ansible.posix.authorized_key:
+        user: "{{ admin_user }}"
+        key: "{{ lookup('file', ssh_public_key_path) }}"
+
+    - name: Grant passwordless sudo to the admin user
+      ansible.builtin.copy:
+        dest: "/etc/sudoers.d/{{ admin_user }}"
+        content: "{{ admin_user }} ALL=(ALL) NOPASSWD:ALL\n"
+        owner: root
+        group: root
+        mode: "0440"
+        validate: "visudo -cf %s"

@@ -1,0 +1,87 @@
+---
+- name: Create caddy system group
+  ansible.builtin.group:
+    name: "{{ caddy_user }}"
+    system: true
+
+- name: Create caddy system user
+  ansible.builtin.user:
+    name: "{{ caddy_user }}"
+    group: "{{ caddy_user }}"
+    system: true
+    shell: /usr/sbin/nologin
+    create_home: false
+
+- name: Create caddy config/log/data directories
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    owner: "{{ caddy_user }}"
+    group: "{{ caddy_user }}"
+    mode: "0750"
+  loop:
+    - "{{ caddy_etc_dir }}"
+    - "{{ caddy_log_dir }}"
+    - "{{ caddy_data_dir }}"
+
+# Built once on the controller (this devShell already has xcaddy), then
+# shipped to the droplet — avoids installing a Go toolchain on production.
+- name: Build the custom Caddy binary (with the rate-limit plugin)
+  ansible.builtin.command:
+    cmd: "xcaddy build --with {{ caddy_ratelimit_module }} --output {{ caddy_build_output }}"
+    creates: "{{ caddy_build_output }}"
+  delegate_to: localhost
+  become: false
+  run_once: true
+
+- name: Copy the custom Caddy binary to the droplet
+  ansible.builtin.copy:
+    src: "{{ caddy_build_output }}"
+    dest: "{{ caddy_binary_path }}"
+    owner: root
+    group: root
+    mode: "0755"
+  notify:
+    - Reload systemd daemon for caddy
+    - Restart caddy
+
+# No `caddy validate` task here on purpose — running it as root during the
+# play created a root-owned log file in the sibling project's deploy,
+# breaking caddy's own write access afterward. Validated locally instead
+# (see tests/results/SPEC-023.md) before this template was committed.
+- name: Template the Caddyfile
+  ansible.builtin.template:
+    src: Caddyfile.j2
+    dest: "{{ caddy_etc_dir }}/Caddyfile"
+    owner: "{{ caddy_user }}"
+    group: "{{ caddy_user }}"
+    mode: "0640"
+  notify:
+    - Reload systemd daemon for caddy
+    - Restart caddy
+
+- name: Own the caddy log and data directories
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    owner: "{{ caddy_user }}"
+    group: "{{ caddy_user }}"
+    recurse: true
+  loop:
+    - "{{ caddy_log_dir }}"
+    - "{{ caddy_data_dir }}"
+
+- name: Template the caddy systemd unit
+  ansible.builtin.template:
+    src: caddy.service.j2
+    dest: /etc/systemd/system/caddy.service
+    mode: "0644"
+  notify:
+    - Reload systemd daemon for caddy
+    - Restart caddy
+
+- name: Enable and start the caddy service
+  ansible.builtin.systemd:
+    name: caddy
+    enabled: true
+    state: started

@@ -1,0 +1,23 @@
+[Unit]
+Description=Caddy web server (custom build with the rate-limit plugin)
+After=network.target
+
+[Service]
+Type=notify
+User={{ caddy_user }}
+Group={{ caddy_user }}
+ExecStart={{ caddy_binary_path }} run --config {{ caddy_etc_dir }}/Caddyfile
+ExecReload={{ caddy_binary_path }} reload --config {{ caddy_etc_dir }}/Caddyfile
+Restart=on-failure
+RestartSec=5
+AmbientCapabilities=CAP_NET_BIND_SERVICE
+LimitNOFILE=1048576
+
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+ReadWritePaths={{ caddy_log_dir }} {{ caddy_data_dir }} {{ caddy_etc_dir }}
+
+[Install]
+WantedBy=multi-user.target

@@ -42,6 +42,14 @@ def test_get_root_returns_200(client):
     assert client.get("/").status_code == 200
 
 
+def test_health_returns_200_ok(client):
+    # No engine/config dependency by design (DD-0014) — deploy/restart checks
+    # shouldn't depend on rendering succeeding.
+    resp = client.get("/health")
+    assert resp.status_code == 200
+    assert resp.get_json() == {"status": "ok"}
+
+
 def test_default_pulse_prefilled(client):
     # story_now_pulse from config should appear as the form's default value.
     assert b"104548096103" in client.get("/").data

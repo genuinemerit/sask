@@ -1,0 +1,38 @@
+{
+	order rate_limit before basicauth
+	storage file_system {{ caddy_data_dir }}
+}
+
+{{ domain }} {
+	encode gzip
+
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		X-Content-Type-Options "nosniff"
+		X-Frame-Options "DENY"
+		Referrer-Policy "no-referrer-when-downgrade"
+		Content-Security-Policy "default-src 'self'; frame-ancestors 'none'"
+	}
+
+	rate_limit {
+		zone interactive {
+			key {remote_host}
+			events {{ rate_limit_default_events }}
+			window {{ rate_limit_default_window }}
+		}
+		zone download {
+			match {
+				path /ephemeris/download*
+			}
+			key {remote_host}
+			events {{ rate_limit_download_events }}
+			window {{ rate_limit_download_window }}
+		}
+	}
+
+	reverse_proxy {{ gunicorn_bind }}
+
+	log {
+		output file {{ caddy_log_dir }}/access.log
+	}
+}

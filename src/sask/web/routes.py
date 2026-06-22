@@ -147,6 +147,12 @@ def _resolve_endpoint(
 # ── Routes ─────────────────────────────────────────────────────────────────────
 
 
+@bp.route("/health")
+def health() -> Response:
+    """Liveness check — process up and responding, no engine/config dependency."""
+    return make_response({"status": "ok"}, 200)
+
+
 @bp.route("/")
 def index() -> str:
     cfg = current_app.config["SASK_CONFIG"]

@@ -1,0 +1,9 @@
+---
+- name: Configure platform and deploy the sask application
+  hosts: sask-droplet
+  become: true
+  roles:
+    - base
+    - runtime
+    - caddy
+    - app

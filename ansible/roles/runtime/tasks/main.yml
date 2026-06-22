@@ -1,0 +1,38 @@
+---
+# Setup runs as root (admin_user + become); ownership is fixed up via
+# chown/file tasks rather than become_user, since app_user's shell is
+# /usr/sbin/nologin and can't exec a become session.
+- name: Create the venv
+  ansible.builtin.command:
+    cmd: "python3 -m venv {{ venv_dir }}"
+    creates: "{{ venv_dir }}/bin/python"
+
+- name: Own the venv by the app service user
+  ansible.builtin.file:
+    path: "{{ venv_dir }}"
+    owner: "{{ app_user }}"
+    group: "{{ app_group }}"
+    recurse: true
+
+- name: Template the environment file
+  ansible.builtin.template:
+    src: environment.j2
+    dest: "{{ etc_dir }}/environment"
+    owner: "{{ app_user }}"
+    group: "{{ app_group }}"
+    mode: "0640"
+
+- name: Template the systemd unit
+  ansible.builtin.template:
+    src: sask.service.j2
+    dest: "/etc/systemd/system/{{ service_name }}.service"
+    mode: "0644"
+  notify:
+    - Reload systemd daemon
+    - Restart sask service
+
+- name: Enable and start the sask service
+  ansible.builtin.systemd:
+    name: "{{ service_name }}"
+    enabled: true
+    state: started

@@ -9,6 +9,7 @@ dds=["DD-0014"]
 [scope]
 in_scope=[
   "ansible/ layout: ansible.cfg (host_key_checking off; relies on ~/.ssh/config Include), inventory.yml (host by SSH alias, never IP), site.yml, group_vars/all.yml.",
+  "ansible/bootstrap.yml: a one-time, root-connection play creating the non-root admin account (distinct from the no-shell sask service user) that site.yml's base role connects as thereafter, before disabling root login. Not named in the original draft of this spec; added when implementation surfaced that REQ-SEC-003's PermitRootLogin no leaves no account able to log in otherwise, since the service user has no shell.",
   "Roles reflecting the platform/application seam: base, runtime, caddy (platform) and app (application).",
   "group_vars parametrising all app-specific values (service name sask, synced directories, wsgi entry, domain, gunicorn timeout/workers, rate-limit buckets).",
   "tools/: deploy.sh, connect.sh, export-requirements.sh, and the mainline redeploy.sh orchestrator.",
