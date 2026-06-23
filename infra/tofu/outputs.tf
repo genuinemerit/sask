@@ -8,6 +8,21 @@ output "droplet_id" {
   value       = digitalocean_droplet.sask.id
 }
 
+output "droplet_size" {
+  description = "DigitalOcean size slug (e.g. s-1vcpu-1gb) — host identity stamp for SPEC-025 perf results."
+  value       = digitalocean_droplet.sask.size
+}
+
+output "droplet_region" {
+  description = "DigitalOcean region slug (e.g. fra1) — host identity stamp for SPEC-025 perf results."
+  value       = digitalocean_droplet.sask.region
+}
+
+output "droplet_vcpus" {
+  description = "Provider-reported vCPU count — host identity stamp for SPEC-025 perf results."
+  value       = digitalocean_droplet.sask.vcpus
+}
+
 output "fqdn" {
   description = "The public domain name pointed at the reserved IP."
   value       = local.fqdn

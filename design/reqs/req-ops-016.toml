@@ -1,0 +1,16 @@
+id="REQ-OPS-016"
+title="Reproducible, non-destructive remote performance re-validation"
+category="operational"
+priority="should"
+statement="The performance budgets are re-validated on the live DigitalOcean host by a reproducible procedure that does not degrade or permanently alter the service: per-core engine cost is measured on the droplet over SSH with no development dependency added to the production venv and no file left behind; end-to-end interactive and ephemeris latencies are measured against the live HTTPS endpoint while respecting the production rate limit (no sweep, no disabling); results are recorded dated and stamped with host identity; and the run leaves no residue and repeats after a redeploy with no manual host change. The measured outcome is evaluated against the budgets and either confirms them or records the documented cache/resize decision."
+rationale="Measuring a hardened, single-vCPU, public, ephemeral host needs a method that isolates the per-core hardware cost driving the cache/resize decision while treating the running service as untouchable; without that, the numbers are distorted by the rate limit or network, or the live host is left in an altered state."
+acceptance=[
+  "Per-core engine timings are captured on the droplet over SSH with no dev dependency installed and no file left behind.",
+  "Interactive and ephemeris-download latencies are captured against the live domain without disabling or exceeding the rate limit.",
+  "Results are written dated and stamped with host identity (size, vCPU, region, droplet_id), comparable to the local baseline and across reruns.",
+  "The full procedure repeats after a redeploy with no manual host change.",
+  "The outcome is evaluated against the budgets, and the rubric result (confirm / cache-trigger / resize-or-accept) is recorded.",
+]
+[links]
+dds=["DD-0015","DD-0014"]
+specs=["SPEC-025"]

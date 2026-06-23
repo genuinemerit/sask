@@ -1,0 +1,65 @@
+id="SPEC-025"
+title="Remote performance re-validation harness and procedure"
+status="proposed"
+
+[implements]
+requirements=["REQ-OPS-016","REQ-OPS-010"]
+dds=["DD-0015"]
+
+[scope]
+in_scope=[
+  "A stdlib-only engine timing script runnable both locally and on the droplet over SSH.",
+  "Remote end-to-end HTTP measurement against the live domain, reusing the SPEC-018 HTTP harness.",
+  "A tools/perf-remote.sh orchestrator that runs the whole procedure as one repeatable act.",
+  "Dated, host-stamped results under tests/results/perf/, comparable to the local baseline.",
+  "An evaluation step comparing remote medians to the budgets and recording the DD-0015 rubric outcome.",
+]
+out_of_scope=[
+  "Implementing any regenerable cache (a future spec only if the trigger fires).",
+  "Concurrency or load testing (single-author site).",
+  "Changing the production rate limit, or resizing the droplet (a downstream decision, possibly a Tofu change).",
+]
+[deliverables]
+engine_timer="""
+tools/perf_engine.py (stdlib only: time.perf_counter, statistics, json, argparse):
+imports the sask engine and times the SPEC-018 hot paths and the ephemeris grid
+(1/7/30-day x 5-min/1-hour x scribal/kinematic, including the 30-day/5-min worst
+case), emitting JSON with median and spread. The dependency-free sibling of the
+tests/perf/ pytest-benchmark suite, so it runs unchanged on the production droplet
+(against its deployed venv/code) where dev deps are deliberately absent. Run locally
+in the same invocation to produce a comparable same-tool local figure.
+"""
+remote_http="""
+Reuse tools/perf_http.py (SPEC-018) pointed at https://sask.davidstitt.net: time the
+four interactive pages at story_now as client wall-clock, and sample the
+ephemeris-download path (both profiles, worst case included) with deliberate spacing
+to stay within the 4-events/minute budget. Record median/spread, download payload
+sizes, and wall-clock; no rate-limit change.
+"""
+orchestrator="""
+tools/perf-remote.sh: precondition that tools/acceptance-test.sh is green; scp
+perf_engine.py to the droplet, run it over SSH (connect.sh), capture the JSON, and
+delete the script; run perf_http.py from sask-dev against the live domain; merge both
+into one dated result; stamp host identity (size, vCPU, region, droplet_id) from a
+Tofu output or the DO API. Idempotent and residue-free; safe to re-run after any
+redeploy.
+"""
+results="""
+tests/results/perf/REMOTE-<date>.json plus a short markdown summary, in the current
+tests/results/perf/ convention, recording host identity and placing the remote
+medians beside the local baseline and the budgets.
+"""
+evaluation="""
+A docs/devlog.md entry comparing remote medians to the budgets and recording the
+DD-0015 rubric outcome: confirm-and-close, cache-trigger (open a follow-up spec), or
+resize-or-accept (record the decision). On confirm, note that the export-time-estimate
+feature is unblocked.
+"""
+[acceptance]
+checks=[
+  "perf_engine.py produces per-core timings on the droplet with no dev dependency installed and no file left behind, and a comparable local run from the same tool.",
+  "perf_http.py captures interactive and ephemeris-download latencies against the live domain within the rate-limit budget.",
+  "Results are dated and host-stamped under tests/results/perf/, comparable to the local baseline and across reruns.",
+  "A single tools/perf-remote.sh run performs the whole procedure and repeats cleanly after a redeploy with no manual host change.",
+  "The outcome is evaluated against the budgets and the rubric result recorded in the devlog; if the cache trigger fires, a follow-up spec is opened rather than implemented here.",
+]

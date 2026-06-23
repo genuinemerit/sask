@@ -42,16 +42,20 @@ def _timed_get(url: str) -> tuple[float, int, int]:
     return elapsed, status, len(body)
 
 
-def _measure(label: str, url: str, *, warmup: int, repeats: int) -> dict:
-    for _ in range(warmup):
-        _timed_get(url)
-
+def _measure(
+    label: str, url: str, *, warmup: int, repeats: int, delay: float = 0.0
+) -> dict:
+    """Issue warmup+repeats GETs to url, sleeping `delay` seconds between
+    every request (warmup included) — needed when url is rate-limited."""
     timings: list[float] = []
     status = 0
     payload_bytes = 0
-    for _ in range(repeats):
+    for i in range(warmup + repeats):
+        if i > 0 and delay:
+            time.sleep(delay)
         elapsed, status, payload_bytes = _timed_get(url)
-        timings.append(elapsed)
+        if i >= warmup:
+            timings.append(elapsed)
 
     return {
         "label": label,
@@ -65,7 +69,17 @@ def _measure(label: str, url: str, *, warmup: int, repeats: int) -> dict:
     }
 
 
-def _run_sweep(base_url: str, story_now: int, *, warmup: int, repeats: int) -> dict:
+def _run_sweep(
+    base_url: str,
+    story_now: int,
+    *,
+    warmup: int,
+    repeats: int,
+    skip_preview: bool = False,
+    download_warmup: int | None = None,
+    download_repeats: int | None = None,
+    download_delay: float = 0.0,
+) -> dict:
     interactive = [
         _measure(
             f"interactive_{page.strip('/') or 'index'}",
@@ -76,27 +90,35 @@ def _run_sweep(base_url: str, story_now: int, *, warmup: int, repeats: int) -> d
         for page in INTERACTIVE_PAGES
     ]
 
-    ephemeris_preview = [
-        _measure(
-            f"ephemeris_preview_{gp.range_label}_{gp.step_label}_{profile}",
-            f"{base_url}/ephemeris?start_pulse={story_now}"
-            f"&end_pulse={story_now + gp.range_pulses}"
-            f"&step_minutes={gp.step_pulses // 60}&profile={profile}",
-            warmup=warmup,
-            repeats=repeats,
-        )
-        for gp in EPHEMERIS_GRID
-        for profile in PROFILES
-    ]
+    ephemeris_preview = (
+        []
+        if skip_preview
+        else [
+            _measure(
+                f"ephemeris_preview_{gp.range_label}_{gp.step_label}_{profile}",
+                f"{base_url}/ephemeris?start_pulse={story_now}"
+                f"&end_pulse={story_now + gp.range_pulses}"
+                f"&step_minutes={gp.step_pulses // 60}&profile={profile}",
+                warmup=warmup,
+                repeats=repeats,
+            )
+            for gp in EPHEMERIS_GRID
+            for profile in PROFILES
+        ]
+    )
 
+    # The download path carries its own (much stricter) rate limit, so it
+    # gets its own warmup/repeats/delay rather than reusing the interactive
+    # values — see tools/perf-remote.sh for the spaced-sampling invocation.
     ephemeris_download_worst_case = [
         _measure(
             f"ephemeris_download_worst_case_{profile}",
             f"{base_url}/ephemeris/download?start={story_now}"
             f"&end={story_now + WORST_CASE.range_pulses}"
             f"&step={WORST_CASE.step_pulses}&profile={profile}",
-            warmup=warmup,
-            repeats=repeats,
+            warmup=warmup if download_warmup is None else download_warmup,
+            repeats=repeats if download_repeats is None else download_repeats,
+            delay=download_delay,
         )
         for profile in PROFILES
     ]
@@ -142,6 +164,21 @@ def main() -> int:
     parser.add_argument("--warmup", type=int, default=1)
     parser.add_argument("--repeats", type=int, default=5)
     parser.add_argument("--out", default=None)
+    parser.add_argument(
+        "--skip-preview",
+        action="store_true",
+        help="Skip the 12-combination ephemeris preview sweep (remote runs "
+        "only need interactive pages + the download path).",
+    )
+    parser.add_argument("--download-warmup", type=int, default=None)
+    parser.add_argument("--download-repeats", type=int, default=None)
+    parser.add_argument(
+        "--download-delay-s",
+        type=float,
+        default=0.0,
+        help="Seconds to sleep between every request to the rate-limited "
+        "ephemeris-download path.",
+    )
     args = parser.parse_args()
 
     config = load_config(REAL_CONFIG)
@@ -149,7 +186,14 @@ def main() -> int:
 
     print(f"Targeting {args.base_url} (story_now pulse={story_now})")
     sweep = _run_sweep(
-        args.base_url, story_now, warmup=args.warmup, repeats=args.repeats
+        args.base_url,
+        story_now,
+        warmup=args.warmup,
+        repeats=args.repeats,
+        skip_preview=args.skip_preview,
+        download_warmup=args.download_warmup,
+        download_repeats=args.download_repeats,
+        download_delay=args.download_delay_s,
     )
     budget_checks = _check_budgets(sweep)
 

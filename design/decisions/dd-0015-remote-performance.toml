@@ -1,0 +1,91 @@
+id     = "DD-0015"
+title  = "Remote performance re-validation: measurement approach and the resize-vs-cache decision"
+status = "proposed"
+date   = "2026-06-23"
+
+[context]
+problem = """
+SPEC-018 recorded a local performance baseline; REQ-OPS-010 requires the budgets to
+be re-validated on the deployment target. The live host differs from the dev VM in
+ways that distort a naive measurement: it is a single-vCPU box (so per-core latency
+is the binding constraint), it is hardened with a per-IP rate limit on the ephemeris
+download route, it is public, and it is ephemeral (rebuilt by `redeploy`). This DD
+fixes how to measure it cleanly and non-destructively, and - the real purpose - the
+rubric that turns the numbers into the long-deferred cache/resize decision.
+"""
+constraints = [
+  "Non-destructive: the production service is untouchable - no rate-limit disabling, no dev dependency added to the production venv, no residue left on the host.",
+  "Reproducible across redeploys, with results dated and stamped with host identity so a run on a resized box compares cleanly.",
+  "The per-core engine cost must be isolated from network, Caddy, and the rate limit, because that number alone drives the resize-vs-cache fork.",
+  "Reuse SPEC-018's harness shape and hot-path list; introduce no new runtime dependency.",
+]
+alternatives = [
+  "Temporarily disable or exempt the rate limit for a high-rate sweep - rejected: a single worst-case request yields worst-case latency, so spaced sampling within the 4/min budget suffices and the production guard is never weakened.",
+  "Install pytest-benchmark on the droplet to reuse the Layer-1 suite there - rejected: pollutes the clean production venv; a stdlib timing script gives the same per-core figure with no dependency.",
+  "Judge the interactive budget by client wall-clock from sask-dev - rejected: that folds in Madrid->fra1 network RTT, which the app does not control; wall-clock is recorded as informational, not judged.",
+]
+
+[decision]
+summary = """
+1. Two complementary measurements.
+   a. On-droplet engine timing (authoritative per-core cost): a stdlib-only timing
+      script, run over SSH against the deployed code, with no Caddy, network, or
+      rate limit in the path. It times the SPEC-018 hot paths and the ephemeris grid
+      including the 30-day / 5-min worst case, prints JSON, and is removed after the
+      run. The same script runs locally too, so local-vs-remote per-core comparison
+      is apples-to-apples.
+   b. End-to-end HTTP from sask-dev against the live HTTPS domain: interactive pages
+      (not rate-limited) and a few spaced samples of the ephemeris-download path,
+      kept within the 4/min budget. Captures real serialization, Caddy, TLS, and
+      network cost as the user experiences it.
+2. Budget interpretation. The <=500 ms interactive budget is a server-side
+   (engine+render) budget, judged by the on-droplet path; client wall-clock is
+   recorded as informational end-to-end UX, not judged. The ~3-5 s ephemeris budget
+   applies to the end-to-end download, cross-checked against the on-droplet
+   generation cost.
+3. Reproducibility. The procedure re-runs after any redeploy with no manual host
+   change; results are written dated and stamped with host identity (size, vCPU,
+   region, droplet_id); nothing persists on the droplet.
+4. Evaluation rubric (the decision this exercise exists to make):
+   - Within budget -> budgets confirmed; REQ-OPS-010's remote clause closed; the
+     parked export-time-estimate feature is unblocked (per-record cost now known on
+     real hardware).
+   - Ephemeris breach, and the on-droplet number shows redundant/cacheable
+     recompute -> the deferred regenerable-cache trigger (REQ-OPS-009/010) fires ->
+     a future spec for a regenerable SQLite/DuckDB cache.
+   - Ephemeris breach that is raw per-core compute (recompute already minimal) ->
+     choose among a CPU-Optimized droplet tier (higher per-core clock; a Tofu size
+     change, then re-measure), the regenerable cache anyway, or accept-and-document
+     with the export-time estimate as UX mitigation - recorded as its own decision.
+   - Explicit guard: more vCPUs raise concurrency, not single-request latency, so
+     resizing for core count is never the fix for worst-case ephemeris time.
+"""
+rationale = """
+Re-validating on a live, hardened, single-vCPU public host needs a method that
+isolates the hardware cost driving the cache/resize decision while treating the
+production service as untouchable; otherwise the numbers are distorted by the rate
+limit or network, or the host is left altered. Writing the rubric down in advance
+makes the outcome actionable - confirm, or open one specific follow-up - rather than
+a debate held after the numbers land.
+"""
+
+[consequences]
+positive = [
+  "A clean per-core figure plus a real end-to-end figure, with the production guard untouched.",
+  "Repeatable across redeploys; comparable to the local baseline and to a future resized box.",
+  "The deferred cache decision becomes evidence-based and pre-framed.",
+]
+negative = [
+  "Two measurement paths (on-droplet engine + remote HTTP) instead of one; modest extra harness.",
+  "A resize-or-cache outcome spawns further design work - expected, not a defect.",
+]
+followups = [
+  "REQ-OPS-016 and SPEC-025: the reproducible, non-destructive remote procedure and harness.",
+  "Conditional: a regenerable-cache spec, or a droplet-resize decision, if the rubric fires.",
+  "On a within-budget outcome: unblock the ephemeris export-time-estimate feature.",
+]
+
+[links]
+requirements = ["REQ-OPS-016","REQ-OPS-010","REQ-OPS-009"]
+dds = ["DD-0014","DD-0009"]
+specs = ["SPEC-025","SPEC-018"]

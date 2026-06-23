@@ -1,5 +1,69 @@
 # Dev log
 
+## 2026-06-23 — SPEC-025: remote perf re-validation, ephemeris breach found
+
+**DD-0015/REQ-OPS-016/SPEC-025 implemented and run for real against the
+live droplet.** New `tools/perf_engine.py` (stdlib-only sibling of
+`tests/perf/test_engine_benchmarks.py`) times the SPEC-018 hot paths and
+ephemeris grid with plain `time.perf_counter()`, so it runs unmodified
+against the production venv, which deliberately has no pytest-benchmark.
+`tools/perf_http.py` gained `--skip-preview` and
+`--download-warmup`/`--download-repeats`/`--download-delay-s` so the
+remote HTTP sweep samples only the four interactive pages plus one spaced
+request per ephemeris-download profile, staying well inside Caddy's
+4-events/minute download limit. `infra/tofu/outputs.tf` gained
+`droplet_size`/`droplet_region`/`droplet_vcpus` (applied: 0 resources
+changed, output-only) so results carry a host stamp without a DO API
+call. `tools/perf-remote.sh` orchestrates the whole procedure: acceptance
+precondition, host identity, on-droplet engine timing over SSH (scp'd to
+a tmp dir, run via `sudo` since `/opt/sask` is `sask:sask` mode 0750 and
+`dave` has no group access, removed via a trap on exit regardless of
+outcome), a comparable local engine run, the remote HTTP sweep, and a
+merged `tests/results/perf/REMOTE-2026-06-23.json` + `.md`.
+
+**Result: interactive budget confirmed; ephemeris budget breached, and
+the breach is raw per-core compute, not redundant recompute.**
+
+- Interactive pages: on-droplet `get_sky_scene` costs 0.70ms (0.26ms
+  locally) - nowhere near the 500ms budget. Client wall-clock (117-181ms)
+  is informational per DD-0015 and comfortable too.
+- Ephemeris download worst case (30-day/5-min): end-to-end HTTP measured
+  **16.60s (scribal)** and **12.03s (kinematic)** against the
+  `[3.0, 5.0]`s budget - both fail by a wide margin.
+- The on-droplet cross-check (no Caddy, network, or rate limit in the
+  path) shows why: `get_sky_series` for the worst-case grid point alone
+  costs 7.04s on the droplet vs 2.998s locally (2.35x); the worst-case
+  renderers cost 2.03s/2.82s vs 0.75s/0.97s locally (2.71x/2.92x). Engine
+  compute alone (series + render) already totals 9.07s (scribal) / 9.86s
+  (kinematic) on the droplet - over budget before a single network byte
+  moves. Every other hot path in the grid shows the same 2.3x-2.9x
+  remote/local ratio, consistent with "this $6/mo single shared vCPU is
+  genuinely slower per-core," not a deployment bug - SPEC-020/021 already
+  removed the two real algorithmic redundancies (2026-06-21), and nothing
+  new turned up here.
+- The remaining gap between engine cost and end-to-end (7.53s scribal,
+  2.17s kinematic) is transferring a 25.7MB / 16.5MB uncompressed JSON
+  payload over the Madrid-fra1 link on a cold, single-sample, unwarmed
+  request - DD-0015 deliberately takes one spaced sample per profile to
+  respect the rate limit, so this isn't a median; real variance is
+  expected here.
+
+**DD-0015 rubric outcome: raw per-core compute.** Per DD-0015's explicit
+guard, more vCPUs raise concurrency, not single-request latency, so a
+same-tier resize is never the fix. The actual choice - a CPU-optimized
+droplet tier, the regenerable cache anyway, or accept-and-document with
+the export-time-estimate as UX mitigation - is recorded as its own future
+decision, not implemented here; SPEC-025 is measurement-only by design
+(its own out-of-scope line rules out implementing a cache or resizing in
+this pass).
+
+**Next:** present these results and the rubric reading to Dave for
+review. Flip DD-0015/REQ-OPS-016/SPEC-025 to "accepted" (the *procedure*
+is what's being accepted - it ran cleanly, repeatably, non-destructively,
+and produced a clear, evidenced answer) only after Dave confirms; open a
+follow-up decision doc for the resize/cache/accept choice if and when
+Dave wants to pursue one.
+
 ## 2026-06-22 — Runbook added; reboot-recovery confirmed for real
 
 Added `docs/deploy-runbook.md` — quick-reference commands (connect,
