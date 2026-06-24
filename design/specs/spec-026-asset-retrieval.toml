@@ -1,0 +1,207 @@
+id     = "SPEC-026"
+title  = "Asset retrieval engine, catalog config, and HTML adapter"
+status = "accepted"
+
+[implements]
+requirements = ["REQ-FUN-013"]
+decisions    = ["DD-0016"]
+
+[scope]
+in = """
+- An asset catalog config file and its loader, joined to AppConfig as a
+  load-once, exhaustively-validated concern (size + existence captured by a
+  startup stat of each payload file).
+- A new ASSETS_DIR base path naming the deploy-ready assets root (currently
+  assets/v0/), sibling to config_dir, that asset_catalog_data.toml's path
+  field resolves relative to.
+- Two frozen message units in src/sask/message.py: AssetDescriptor and
+  AssetPayload.
+- A Flask-free engine module src/sask/asset.py exposing two operations:
+  resolve_descriptor((kind, id), config) and fetch_payload(descriptor, config).
+- A typed AssetNotFoundError raised on a catalog miss.
+- One thin HTML consumer adapter (a Flask route, /asset/<kind>/<id>) wrapping
+  the two operations.
+- Unit tests covering catalog loading/validation, descriptor resolution,
+  payload fetch, the miss path, message-unit validate() conformance, the
+  Flask-free layer-purity check, and the HTML adapter.
+"""
+
+out = """
+- Application authentication/authorization of any kind; no token or role
+  model. The route is public, consistent with DD-0014's current posture.
+- The asset management/write path: no upload, no new-version, no inventory
+  mutation, no config editing over any interface.
+- API and CLI adapters: anticipated by the consumer-neutral design but NOT
+  built in this spec. Only the HTML adapter is implemented.
+- Caching, ETag/Cache-Control headers, conditional GET, streaming/range
+  responses, content negotiation, structured logging/metrics.
+- Per-request catalog reload / hot-reload.
+- Any subpackage reorganization (src/sask/asset/) or repo rename: the
+  module is the flat src/sask/asset.py per DD-0016; reorg is deferred to
+  the rename round.
+- Object-store or non-filesystem payload backends: the locator is a
+  filesystem path in this pass, though confined to the catalog so a later
+  backend swap touches no message unit.
+- Multi-version coexistence or auto-discovery of "the latest" assets
+  version: ASSETS_DIR names one literal version directory (v0 today),
+  updated by hand when a new version is promoted; serving multiple versions
+  simultaneously or detecting the newest one automatically is deferred.
+- Anything that reads assets/<world>.manifest.json: it is a deployed-state
+  ledger for humans/build tooling, not an input to this spec's load path.
+"""
+
+[deliverables]
+config_template = """
+config/asset_catalog_template.toml — the meta-schema for a catalog entry,
+in the same shape as comet_template.toml: a title and a [fields] table giving
+{required, type} per AUTHORED field. Authored fields are id (string),
+content_type (string), path (string) — three, not four: "kind" is NOT
+authored (refined during implementation; see DD-0016's kind_is_config). Two
+fields are derived, not authored, and so are deliberately absent from the
+template: "size" (the loader stat-s each payload file at startup) and "kind"
+(the loader derives it from the asset's top-level subdirectory under
+ASSETS_DIR — assets/v0/image/... -> kind "image"). The template
+intentionally does not — and cannot — express (kind, id) cross-entry
+uniqueness or path-target existence; those are the loader's job. This is
+the contract a human author today, and future management tooling later,
+validate catalog entries against. (This file already exists on disk;
+update it to drop the kind field rather than recreating it from scratch.)
+"""
+
+config_data = """
+config/asset_catalog_data.toml — array-of-tables, one [[asset]] per
+entry, each with the three authored fields the template defines: id,
+content_type, path (resolved relative to ASSETS_DIR — see assets_base below;
+mirrors sask-proto's manifest-relative convention in spirit, but relative to
+the dedicated assets root rather than the catalog file's own directory, and
+the directory structure under ASSETS_DIR IS the kind taxonomy — no separate
+kind field is written). (kind, id) is unique across the catalog, where kind
+is derived per-entry from path's top-level segment. This file is the single
+source of truth for which assets exist; no kind list is hardcoded anywhere.
+Real entries are authored by the developer with Claude Code during
+implementation; include at least one case where two ids share a kind
+(naturally satisfied by any directory holding more than one file).
+content_type values in the real catalog are accurate (matching what each
+file actually is — setting an inaccurate content_type would break playback/
+rendering for a real consumer, not just violate a convention). The
+content_type-independent-of-extension code path (per sask-proto's
+documented intent) is exercised by tests/test_spec_026.py's synthetic
+fixtures instead, where a deliberately mismatched content_type doesn't
+carry the cost of lying to a real client.
+"""
+
+assets_base = """
+A new ASSETS_DIR constant/parameter, sibling to config_dir (same
+detect-by-walking-up-from-__file__ default, same override mechanism), names
+the deploy-ready assets root — currently assets/v0/. "v0" is the first of an
+open-ended, incrementing sequence (v0, v1, v2, ...), not a permanent name;
+for this pass the "current version" is simply a literal path segment in
+ASSETS_DIR, updated by hand whenever a new version is promoted — no
+auto-discovery of the latest version, no multi-version-coexistence handling,
+consistent with DD-0016's pattern of deliberately deferring sophistication
+until it's actually needed (same treatment as hot-reload and auth).
+asset_catalog_data.toml's path field resolves relative to ASSETS_DIR.
+assets/local/ is never read by the app. assets/<world>.manifest.json is not
+read by the loader — it is a deployed-state ledger for humans/build tooling,
+out of scope for this spec's load path, per DD-0016's asset_directory_layout
+section.
+"""
+
+config_loader = """
+src/sask/config_loader.py — add an AssetCatalogEntry dataclass
+(kind, id, content_type, path, size) and an AssetCatalogConfig holding the
+entries indexed for (kind, id) lookup. Add _load_asset_catalog(config_dir,
+assets_dir) following the existing loader conventions: parse the TOML,
+validate each entry's required fields (id, content_type, path) and types,
+derive kind from path's top-level segment relative to assets_dir, stat each
+entry's payload file (resolved under assets_dir) to populate size and
+confirm existence (raise ConfigError naming the entry on a missing file or
+malformed entry), and reject duplicate (kind, id) pairs (kind included,
+even though it's derived rather than authored). Extend AppConfig with an
+asset_catalog field and wire the new loader into load_config(), threading
+the new ASSETS_DIR value through alongside config_dir. Match the
+exact-validation discipline already used for body_data (cardinality/type/
+cross-reference checks).
+"""
+
+message_units = """
+src/sask/message.py — add two frozen dataclasses:
+- AssetDescriptor(kind: str, id: str, content_type: str, size: int)
+- AssetPayload(descriptor: AssetDescriptor, data: bytes)
+Both snake_case-fielded, frozen, and validate()-compatible (no non-Optional
+field may hold None). No locator/path field appears on either unit.
+"""
+
+engine = """
+src/sask/asset.py — new Flask-free engine module:
+- resolve_descriptor(kind, id, config) -> AssetDescriptor: pure lookup
+  against config.asset_catalog; raises AssetNotFoundError on a miss;
+  reads no payload file.
+- fetch_payload(descriptor, config) -> AssetPayload: re-resolves the
+  catalog entry by (descriptor.kind, descriptor.id), reads the bytes at the
+  entry's locator (the single explicit I/O boundary), returns AssetPayload.
+- AssetNotFoundError(Exception): typed miss signal.
+Imports no Flask, no web-layer module. (A combined convenience that resolves
+then fetches in one call is permitted but must be built FROM the two
+operations, not instead of them.)
+"""
+
+html_adapter = """
+src/sask/web/routes.py — one thin route, /asset/<kind>/<id>, serving an
+asset by (kind, id): call resolve_descriptor then fetch_payload, return a
+Flask Response with Content-Type from the descriptor and the payload bytes
+as the body; catch AssetNotFoundError and return the adapter's not-found
+response (status and shape chosen at the adapter, not the engine). The
+route contains no lookup or I/O logic of its own beyond wrapping the two
+engine calls. Add a nav entry only if it fits the existing template pattern;
+otherwise leave navigation unchanged (a raw asset endpoint is not
+necessarily a browsable page).
+"""
+
+tests = """
+tests/test_spec_026.py — cover:
+- Catalog load success; ConfigError on a missing payload file, on a malformed
+  entry, and on a duplicate (kind, id).
+- Accurate size captured from the stat.
+- resolve_descriptor returns the right descriptor and reads no file (assert
+  via a no-open guard or equivalent); raises AssetNotFoundError on a miss.
+- fetch_payload returns correct bytes and content_type; round-trips with the
+  descriptor.
+- AssetDescriptor/AssetPayload pass validate().
+- Layer-purity: asset.py imports no flask (AST check, mirroring the
+  existing engine-purity tests).
+- HTML adapter: 200 + correct Content-Type for a real (kind, id); not-found
+  path for a bad one.
+All existing tests must still pass; run the full suite, not just this file.
+"""
+
+design_doc_status = """
+On acceptance, set DD-0016 and SPEC-026 status to "accepted" and update the
+devlog per the established pattern.
+"""
+
+[acceptance]
+criteria = """
+1. config/asset_catalog_data.toml exists with the entries described and is
+   the sole source of truth for asset existence.
+2. load_config() loads and exhaustively validates the catalog once at
+   create_app() time; all four failure modes (missing file, malformed entry,
+   duplicate key, bad type) raise ConfigError at startup with a naming
+   message.
+3. resolve_descriptor and fetch_payload behave per the deliverables, with the
+   descriptor/payload split and locator-stays-in-catalog property intact.
+4. A catalog miss raises AssetNotFoundError; no hardcoded kind enum exists.
+5. asset.py is Flask-free (AST layer-purity test passes).
+6. The two message units are frozen and validate()-clean.
+7. The HTML adapter serves real assets with the catalog's content_type and
+   handles a miss without leaking engine internals.
+8. Full test suite passes (current count + the new SPEC-026 tests), pre-commit
+   checks clean, validate_specs.py passes.
+"""
+
+uat = """
+None required at the engine layer (backend-only, like SPEC-015). For the HTML
+adapter: [manual] request a known (kind, id) in a browser and confirm the
+asset loads with the expected Content-Type; request an unknown one and
+confirm the not-found response.
+"""

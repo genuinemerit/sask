@@ -1,0 +1,61 @@
+id        = "REQ-FUN-013"
+title     = "Consumer-neutral asset retrieval"
+category  = "FUN"
+priority  = "should"
+
+statement = """
+The application shall provide an asset-retrieval capability that, given an
+asset kind and id, resolves a typed descriptor (kind, id, content_type,
+size) from a load-once validated catalog without reading any payload file,
+and separately fetches the asset payload bytes on demand against that
+descriptor at a single explicit I/O boundary. The retrieval operation shall
+be Flask-free and consumer-neutral: it returns typed message units and is
+wrapped by thin per-consumer adapters (a server-rendered HTML route initially;
+API and CLI adapters anticipated but not built here). A request for a
+(kind, id) pair not present in the catalog shall raise a typed
+AssetNotFoundError for the adapter to express.
+"""
+
+rationale = """
+Asset retrieval must serve more than one consumer over the project's life
+(HTML page, calling API, developer/admin CLI). Making the operation
+consumer-neutral and message-shaped — rather than inline in a Flask route
+returning raw bytes, as in the sask-proto prototype — extends sask-calendar's
+established message-unit seam (DD-0003, REQ-OPS-008) and Flask-free engine
+discipline (DD-0002) to this new functional area. Separating a lightweight
+descriptor from the on-demand payload lets inventory/examination consumers
+operate without payload I/O and keeps streaming reachable without reshaping
+the contract. Loading the catalog once into AppConfig preserves the app's
+zero-per-request-I/O property and applies the same exhaustive load-time
+validation as every other config file. See DD-0016.
+"""
+
+acceptance = """
+1. An asset catalog config file is loaded exactly once at create_app()
+   time into AppConfig, validated exhaustively: every entry has the required
+   fields, well-typed; every referenced payload file is stat-ed at load to
+   record its size and confirm existence; any malformed entry or missing file
+   raises ConfigError at startup, not at request time.
+2. Resolving a descriptor for a valid (kind, id) returns an AssetDescriptor
+   message unit (kind, id, content_type, size) and performs no payload file
+   read.
+3. Fetching a payload for a resolved descriptor returns an AssetPayload
+   message unit carrying the bytes, re-resolving the storage locator from the
+   catalog by (kind, id); the locator never appears on either message unit.
+4. A (kind, id) pair absent from the catalog raises AssetNotFoundError; no
+   separate "unknown kind" path exists (kind is config-driven, not a
+   hardcoded enum).
+5. The retrieval module (src/sask/asset.py) imports no Flask; an
+   AST/layer-purity check confirms this, consistent with the existing
+   engine-purity checks.
+6. AssetDescriptor and AssetPayload are frozen dataclasses in
+   src/sask/message.py and pass message.py's validate() contract.
+7. An HTML consumer adapter (Flask route) serves an asset by (kind, id):
+   200 with Content-Type from the descriptor on success; a not-found
+   condition rendered/returned by the adapter (not the engine) on a miss.
+"""
+
+[links]
+implements   = ["DD-0016"]
+relates_to   = ["DD-0002", "DD-0003", "REQ-OPS-006", "REQ-OPS-008"]
+specified_by = ["SPEC-026"]

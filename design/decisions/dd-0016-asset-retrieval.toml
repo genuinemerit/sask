@@ -1,0 +1,258 @@
+id     = "DD-0016"
+title  = "Asset retrieval: consumer-neutral descriptor/payload engine"
+status = "accepted"
+date   = "2026-06-24"
+
+[context]
+summary = """
+The sask-proto sibling project built a small authenticated Flask resource
+server (resource retrieval by kind/id, returning bytes). The next phase of
+sask work ports an improved asset-retrieval capability into the active
+sask-calendar codebase, rebuilt against sask-calendar's own conventions
+rather than copied. This DD covers retrieval ONLY: the read path. The
+management/write half (asset setup, uploads, versioning, inventory
+mutation), application authentication/authorization, and the eventual
+umbrella "sask app" merger are explicitly out of scope here and tracked
+separately. See analysis/ (source-inventory, functional-architecture,
+persistence, integration-seams, open-questions) for the prior-art review
+this decision rests on.
+"""
+
+prior_art = """
+sask-proto's retrieval is functionally adequate but weak by sask-calendar
+conventions in two ways: the lookup logic lives inline inside the Flask
+route (not in a Flask-free engine module), and it returns raw bytes rather
+than a typed message unit. sask-proto also reloads its manifest from disk on
+every request, hardcodes the supported kinds as a frozenset in app code, and
+collapses three distinct miss causes behind one status. None of these are
+ported. The constant-time token comparison and the manifest-as-catalog idea
+are sound; the token model and per-request reload are not carried over.
+"""
+
+problem = """
+Retrieval must be expressible to more than one consumer over time: a
+server-rendered HTML page (now), a calling API (soon), and a CLI for
+developers/admins (inventory and examination). The design must make
+consumer-neutrality a structural property, not a feature, while remaining
+lean: define the message shapes and the I/O boundary now, build no transport
+machinery, no auth, no management path, no caching, no streaming.
+"""
+
+[decision]
+summary = """
+Implement asset retrieval as a Flask-free, engine-style operation that
+returns typed message units, wrapped by thin consumer adapters. The retrieval
+operation knows nothing about who calls it; each consumer (HTML route now;
+API and CLI later) is a separate thin adapter over the identical core.
+"""
+
+descriptor_payload_split = """
+Retrieval is modeled as two message units, not one:
+- A DESCRIPTOR: lightweight, consumer-facing metadata (kind, id,
+  content_type, size). Resolvable entirely from the in-memory catalog with
+  zero file reads.
+- A PAYLOAD: the asset bytes, fetched on demand against a resolved
+  descriptor at a single explicit I/O boundary.
+This split lets descriptor-only consumers (e.g. a future CLI inventory)
+operate without reading any payload file, keeps the door open to streaming
+later without reshaping the message contract, and factors retrieval cleanly
+into resolve-descriptor (pure over config) then fetch-payload (the one I/O
+call).
+"""
+
+locator_placement = """
+The storage locator (today a filesystem path; potentially an object-store
+key or blob handle later) lives ONLY in the catalog config entry and never
+appears on the descriptor message unit. Payload-fetch re-resolves the locator
+from the in-memory catalog by (kind, id). The locator concept therefore never
+enters the consumer-visible message contract, leaving the payload store fully
+swappable behind the fetch boundary without ever reshaping a message unit.
+"""
+
+catalog_as_config = """
+The asset catalog joins AppConfig as a load-once, startup-validated
+configuration concern, consistent with every other config file in the app
+(time_constants, calendars, body_data, ...). It is loaded exactly once at
+create_app() time, validated exhaustively (each entry's required fields
+present and well-typed; each referenced payload file stat-ed at load to
+capture accurate size AND confirm existence), and held in the frozen
+AppConfig for the process lifetime. sask-proto's per-request reload-from-disk
+is deliberately NOT adopted: hot-reload only benefits the management/write
+side, which is out of scope, so dropping it costs nothing now and keeps the
+zero-per-request-I/O property the rest of the app holds.
+"""
+
+catalog_template_and_data = """
+The catalog follows the established template/data config habit (cf.
+comet_template.toml / comet_data.toml): a meta-schema file,
+config/asset_catalog_template.toml, describes the per-field shape of an
+[[asset]] entry, alongside config/asset_catalog_data.toml, which carries the
+actual entries. Because the catalog is inherently open and meant to grow —
+and will eventually be appended to by the management/write side, not only
+hand-edited — the contract-first template is arguably more load-bearing here
+than for a closed, fixed-cardinality set like the comets.
+
+Two deliberate boundaries:
+- The template describes only AUTHORED fields (id, content_type, path).
+  Two fields are derived, not authored, and so are deliberately absent from
+  the template: "size" (the loader stat-s each payload file at startup to
+  populate it) and "kind" (see kind_is_config below) — both appear on the
+  AssetCatalogEntry dataclass but neither is ever written by a human or
+  tool.
+- The template's per-field {required, type} vocabulary cannot express the
+  catalog's cross-entry and filesystem constraints — (kind, id) uniqueness
+  across entries, and the path target existing on disk. Those live in the
+  loader's validation logic, exactly as the comet template cannot express its
+  own fixed cardinality. The division (template covers per-field shape; loader
+  covers cardinality, uniqueness, existence) is intentional and documented,
+  not a gap.
+"""
+
+asset_directory_layout = """
+/assets/ has two top-level areas, by convention, not by code enforcement:
+- assets/local/ — a hands-on working area for the developer/artist: source
+  originals, editing-tool project files, in-progress exports. Never read by
+  the running app; never referenced by a catalog path.
+- assets/<version>/ (today, assets/v0/) — the deploy-ready tree. Catalog path
+  entries in asset_catalog_data.toml resolve relative to this versioned base,
+  not to assets/local/. "v0" is the first of an open-ended, incrementing
+  sequence (v0, v1, v2, ...): each future promotion of a new asset set gets
+  its own version directory. v0 is not a special permanent name, just the
+  current one.
+- assets/<world>.manifest.json is a ledger of what has actually been
+  promoted into the versioned tree, maintained by build/publish tooling
+  (conceptually, the kind of thing tools/candidates/build_assets.py does) —
+  it records deployed state for humans/ops. The asset-retrieval engine never
+  reads it; asset_catalog_data.toml remains the sole source of truth for
+  what the engine can serve. Keeping the manifest and the catalog mutually
+  consistent is a process responsibility, not an automated check, in this
+  pass.
+"""
+
+kind_is_config = """
+"kind" is not a hardcoded enum, and — refined during implementation — it is
+not a separately authored field either. "kind" is derived from the asset's
+top-level subdirectory under ASSETS_DIR (e.g. assets/v0/image/... -> kind
+"image"), computed by the loader, not written by a human in
+asset_catalog_data.toml. This is still 100% catalog/filesystem-driven, so
+DD-0002 point 1 and REQ-OPS-006 (domain data lives in config, never
+hardcoded in engine code) hold exactly as before; what changed is only
+where within the catalog's own shape "kind" comes from. An unknown kind is
+still simply a catalog lookup miss, not a separate validated code path.
+
+This is a deliberate simplification over the original draft of this
+decision, which had kind as a fourth authored field alongside id,
+content_type, and path. Authoring kind separately made it possible for a
+human to write a kind that disagreed with where the file actually lives —
+sask-proto's own ambient-video.mp4 (kind="audio", physically anywhere) was
+the demonstrated case for why that independence could matter. Once
+implementation reached the point of organizing real assets into
+per-category subdirectories (image/, audio/, json/, video/), that
+independence had no concrete use for this project, and deriving kind from
+the directory removes a field that could only ever disagree with the
+filesystem by author error. content_type's independence from the file
+extension is unaffected and remains fully authored — only kind/directory
+independence is given up. If a future need for kind to diverge from
+physical placement appears, this is revisited then; not designed out, just
+not paid for now.
+"""
+
+failure_signaling = """
+A catalog miss raises a typed AssetNotFoundError, caught at the consumer
+adapter exactly as existing routes already catch ValueError from the calendar
+converters. sask-proto's three-way distinction (unknown kind / unknown id /
+file-present-in-manifest-but-missing-on-disk) is collapsed: missing files are
+caught at load time by the startup stat, so at request time the only
+retrieval miss is "no such (kind, id)". Adapters decide how to express a miss
+(HTTP status, CLI exit code) — the engine does not.
+"""
+
+module_placement = """
+Retrieval lives in a flat, Flask-free engine module, src/sask/asset.py,
+in-grain with the existing flat topic-module layout (pulse.py, scene.py,
+lunar.py, ...). It is NOT promoted to a src/sask/asset/ subpackage now: a
+single subpackage amid flat modules would imply the others are not functional
+areas. Genuine physical functional-area separation is a whole-tree
+reorganization and is deliberately slotted to the future repo-rename round
+(sask-calendar -> sask), where calendar, asset, and any other areas are
+promoted to subpackages together under one coherent restructuring. See
+consequences.
+"""
+
+message_units = """
+Two frozen dataclasses are added to src/sask/message.py
+(AssetDescriptor, AssetPayload), snake_case, validate()-compatible,
+consistent with REQ-OPS-008's rule that every engine function returns a
+defined message unit. Downstream consumers import message units only from
+message.py, never from asset.py internals.
+"""
+
+[consequences]
+positive = """
+- Consumer-neutrality is structural, not bolted on: one engine operation,
+  many thin adapters; the HTML route, a future API, and a future CLI all wrap
+  identical core logic.
+- Descriptor/payload split makes inventory/examination cheap (no payload I/O)
+  and keeps streaming reachable without a contract change.
+- Catalog-into-AppConfig keeps the app's zero-per-request-I/O property intact
+  and applies the same exhaustive load-time validation discipline as all
+  other config.
+- The payload store is swappable (filesystem now, object store later) without
+  touching any message unit, because the locator never leaves the catalog.
+- The template/data split makes the catalog contract-first, ready for future
+  management tooling to validate writes against the same schema a human uses.
+- The implementation is lean: no auth, no management path, no broker, no
+  caching, no streaming, no reload machinery in this pass.
+"""
+
+negative_or_deferred = """
+- Locator re-resolution at fetch time is a second catalog lookup rather than
+  carrying the path forward on the descriptor: marginally more code for a
+  cleaner seam. Accepted deliberately.
+- No hot-reload of the catalog: a catalog change requires a process restart,
+  same as every other config file. Acceptable until the management side
+  exists; revisit then.
+- Flat asset.py is an interim placement. The functional-area subpackage
+  separation is deferred, NOT declined — it is slotted to the repo-rename /
+  semantic-reorg round so that all functional areas are separated together in
+  one deliberate pass with a single rationale. A future reorg DD should link
+  back to this decision.
+- Deriving kind from the top-level subdirectory (see kind_is_config) means a
+  file's kind can no longer disagree with where it physically lives — an
+  asset can't be reorganized into a different directory without that also
+  changing its kind. Accepted: this project has no concrete case needing
+  that independence today, only sask-proto's prior art demonstrating it was
+  possible. Revisit if one appears.
+"""
+
+out_of_scope = """
+Explicitly not decided here: application authentication/authorization and
+any role/token model; the asset management/write path (uploads, new
+versions, inventory mutation, config editing); messaging-protocol
+strengthening beyond typed in-process message units; server / client-server
+architecture options; asset-preparation/validation maintenance tooling;
+the umbrella "sask app" merger and the sask-calendar -> sask rename. Each is
+tracked as its own future effort.
+"""
+
+[links]
+analysis = [
+  "analysis/functionality/Analysis_README.md",
+  "analysis/functionality/source-inventory.md",
+  "analysis/functionality/functional-architecture.md",
+  "analysis/functionality/persistence.md",
+  "analysis/functionality/integration-seams.md",
+  "analysis/functionality/open-questions.md",
+]
+depends_on  = ["DD-0002", "DD-0003"]
+relates_to  = ["REQ-OPS-006", "REQ-OPS-008", "DD-0014"]
+implemented_by = ["REQ-FUN-013", "SPEC-026", "REQ-OPS-017", "SPEC-027"]
+resolves_open_questions = [
+  "open-questions.md item 2 (catalog joins AppConfig: yes)",
+  "open-questions.md item 5 (kind is config, not enum: config)",
+  "open-questions.md item 9 (hot-reload: not preserved for retrieval)",
+]
+defers_open_questions = [
+  "open-questions.md items 1,3,4 (consumer identity / auth shape)",
+  "open-questions.md item 10 (management vs retrieval as concepts)",
+]

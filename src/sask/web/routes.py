@@ -17,6 +17,7 @@ from flask import (
     request,
 )
 
+from ..asset import AssetNotFoundError, fetch_payload, resolve_descriptor
 from ..bodies import all_body_states
 from ..config_loader import AppConfig
 from ..lunar import get_lunar_date
@@ -544,4 +545,21 @@ def ephemeris_download() -> Response:
     resp = make_response(body)
     resp.headers["Content-Type"] = "application/json"
     resp.headers["Content-Disposition"] = f"attachment; filename={filename}"
+    return resp
+
+
+@bp.route("/asset/<kind>/<id>")
+def get_asset(kind: str, id: str) -> Response:
+    cfg: AppConfig = current_app.config["SASK_CONFIG"]
+
+    try:
+        descriptor = resolve_descriptor(kind, id, cfg)
+        payload = fetch_payload(descriptor, cfg)
+    except AssetNotFoundError:
+        resp = make_response(f"Unknown asset: {kind}/{id}", 404)
+        resp.content_type = "text/plain"
+        return resp
+
+    resp = make_response(payload.data)
+    resp.content_type = payload.descriptor.content_type
     return resp

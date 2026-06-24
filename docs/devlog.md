@@ -1,5 +1,87 @@
 # Dev log
 
+## 2026-06-24 — SPEC-026 accepted; SPEC-027 awaits redeploy
+
+**DD-0016/REQ-FUN-013/SPEC-026 implemented, UAT passed, and accepted.**
+Ported an improved version of the sibling `sask` project's small resource
+server into a consumer-neutral, Flask-free asset-retrieval capability:
+`src/sask/asset.py` (`resolve_descriptor`/`fetch_payload`/
+`AssetNotFoundError`), two new frozen message units
+(`AssetDescriptor`/`AssetPayload` in `message.py`), a load-once,
+exhaustively-validated catalog joined to `AppConfig`
+(`config/asset_catalog_data.toml`, loaded by `config_loader.py`'s new
+`_load_asset_catalog`), and a thin HTML adapter route,
+`GET /asset/<kind>/<id>`, in `routes.py`. `tests/test_spec_026.py` adds 18
+tests (catalog validation, descriptor/payload round-trip, the no-file-read
+guarantee on `resolve_descriptor`, layer-purity, the HTML adapter) — full
+suite now 626 (was 608), zero regressions. Manual browser UAT (8 cases,
+`docs/user_testing.md`) passed 2026-06-24: all seven real catalog entries
+(four splash-image variants, one audio loop, one JSON asset, one video)
+serve correctly with the right `Content-Type`, both 404 paths (unknown id,
+unknown kind) behave identically, and no nav entry was added (consistent
+with `/health`/`/ephemeris/download` precedent).
+
+**A real design refinement surfaced during implementation, not anticipated
+by the original draft of DD-0016/SPEC-026: "kind" is no longer an authored
+catalog field.** It's derived from each asset's top-level subdirectory
+under `ASSETS_DIR` (`image/`, `audio/`, `json/`, `video/`) — Dave's call,
+made directly: "kind" serves little purpose as a fourth authored field
+when the directory structure already partitions assets the same way, and
+authoring it separately only created a way for an entry to disagree with
+where it actually lives. `content_type` independence from file extension —
+the property that actually matters for serving correct bytes — is
+unaffected; only kind/directory independence was given up, and that's
+recorded as a deliberate, revisitable tradeoff in DD-0016's
+`kind_is_config`/`negative_or_deferred` sections, not a quiet drop.
+
+**`load_config()` gained an optional `assets_dir` rather than a required
+one** — the key implementation decision that kept this from being a
+breaking change. `assets_dir` defaults to `config_dir.parent / "assets" /
+"v0"` when omitted, so all ~20 existing `load_config(REAL_CONFIG)` call
+sites (every other spec's test file, both perf tools, `wsgi.py`) needed
+zero changes. `AssetCatalogEntry.path` stores the resolved *absolute* path
+(computed once at load time), not the raw TOML string, which is what lets
+`fetch_payload(descriptor, config)` keep its two-argument signature
+without re-threading `assets_dir` through the engine layer.
+
+**REQ-OPS-017/SPEC-027 (deployed asset sync + rate limiting) drafted and
+implemented, but deliberately left "proposed" — not yet redeployed or
+accepted.** A concrete gap analysis (reading the actual Ansible roles, not
+assuming) found that `ansible/roles/app/tasks/main.yml` synced only
+`src/sask/` and `config/`; since SPEC-026's catalog loader stats every
+payload file at `create_app()` time, shipping the catalog config without
+its files would raise `ConfigError` and crash every gunicorn worker, not
+just asset routes — an availability risk, not a cosmetic gap. Added: a
+versioned-assets sync task (mirroring the existing `config/` task, with
+its own "ensure the parent directory exists" step — `assets/<version>/`
+is two levels below `app_root`, the same rsync limitation `src/` hit
+originally), a third Caddy `rate_limit` zone (`zone asset`, `/asset/*`,
+20 events/1m — higher than the ephemeris-download zone's 4/1m since an
+asset GET is one file read, not a computed scan, but still bounded for a
+presently single-user service), and a live sha256 byte-identity
+acceptance test mirroring sask-proto's own `test_image_bytes_match_local`.
+`ansible-lint --profile production` is clean (fixed one real finding: a
+task name with a mid-string Jinja template). Acceptance evidence
+(`tests/results/SPEC-027.md`) is scaffolded with every check marked
+PENDING — filling it in requires an actual redeploy, a deliberate,
+human-triggered action not run as part of this pass.
+
+**Side effects of this work, same session:** `shellcheck` added to
+`flake.nix`'s devShell and `tools/pre-commit-check.sh` (`-S warning`,
+excluding two deliberate info-level notes in `tools/perf-remote.sh`'s
+client-side ssh-command variable expansion); fixed two real `cd`
+robustness findings along the way. Separately, a full read-and-rewrite
+pass over `tools/candidates/` (8 files inherited from the sibling `sask`
+project, not wired into this app): deleted `assets_snip.py` (a broken,
+superseded duplicate of `build_assets.py`), renamed `platform.py` ->
+`host_info.py` (it shadowed the stdlib `platform` module, risky since
+`tools/` is on `pythonpath`), and cleaned up env-var naming, docstrings,
+and dead code across the rest. None of this is wired into the app; it was
+explicitly a "make it clean before it's ever used" pass, not a feature.
+
+**Next:** the manual redeploy + SPEC-027 evidence pass, whenever Dave
+triggers it — not assumed or scheduled here.
+
 ## 2026-06-23 — SPEC-025: remote perf re-validation, ephemeris breach found
 
 **DD-0015/REQ-OPS-016/SPEC-025 implemented and run for real against the

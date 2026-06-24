@@ -28,6 +28,14 @@
 			events {{ rate_limit_download_events }}
 			window {{ rate_limit_download_window }}
 		}
+		zone asset {
+			match {
+				path /asset/*
+			}
+			key {remote_host}
+			events {{ rate_limit_asset_events }}
+			window {{ rate_limit_asset_window }}
+		}
 	}
 
 	reverse_proxy {{ gunicorn_bind }}

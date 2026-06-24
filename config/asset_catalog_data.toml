@@ -1,0 +1,39 @@
+# /config/asset_catalog_data.toml - the asset catalog. Authored data (DD-0016).
+# "kind" is not authored here — it's derived by the loader from each path's
+# top-level subdirectory under ASSETS_DIR (image/, audio/, json/, video/).
+# path is resolved relative to ASSETS_DIR (assets/<version>/, e.g. assets/v0/).
+
+[[asset]]
+id = "splash.bg"
+content_type = "image/webp"
+path = "image/splash.default.1920x1080.6389524a.webp"
+
+[[asset]]
+id = "splash.bg.960"
+content_type = "image/webp"
+path = "image/splash.default.960x540.385a45a2.webp"
+
+[[asset]]
+id = "splash.bg.480"
+content_type = "image/webp"
+path = "image/splash.default.480x270.eb6c6dab.webp"
+
+[[asset]]
+id = "splash.bg.thumb"
+content_type = "image/webp"
+path = "image/splash.default.thumb.320x180.762c6016.webp"
+
+[[asset]]
+id = "ambient"
+content_type = "audio/mpeg"
+path = "audio/ambient-loop.mp3"
+
+[[asset]]
+id = "varkaar-questions"
+content_type = "application/json"
+path = "json/varkaar_questions.json"
+
+[[asset]]
+id = "ambient-video"
+content_type = "video/mp4"
+path = "video/ambient-video.mp4"

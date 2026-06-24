@@ -273,6 +273,24 @@ class ApparitionContext:
     spark: SparkInfo
 
 
+@dataclass(frozen=True)
+class AssetDescriptor:
+    """Lightweight, consumer-facing asset metadata (DD-0016, SPEC-026)."""
+
+    kind: str
+    id: str
+    content_type: str
+    size: int
+
+
+@dataclass(frozen=True)
+class AssetPayload:
+    """Resolved asset bytes, fetched on demand against a descriptor (SPEC-026)."""
+
+    descriptor: AssetDescriptor
+    data: bytes
+
+
 def validate(unit: object) -> list[str]:
     """Return a list of field-level errors for a message-unit dataclass.
 

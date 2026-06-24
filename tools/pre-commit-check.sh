@@ -4,7 +4,7 @@
 
 set -uo pipefail
 
-cd "$(dirname "$0")/.."
+cd "$(dirname "$0")/.." || exit 1
 
 run_check() {
     local label="$1"
@@ -22,6 +22,14 @@ run_check "ruff lint" \
 
 run_check "ruff format" \
     ruff format --check tools/ tests/ src/
+
+# -S warning: tools/perf-remote.sh deliberately expands a few $REMOTE_*
+# variables client-side inside double-quoted ssh command strings (SC2029,
+# info-level) — that's the intended behavior, not a bug, so info-level
+# notes are excluded rather than disabled line-by-line.
+run_check "shellcheck" \
+    nix develop --command \
+        shellcheck -S warning tools/*.sh
 
 run_check "pymarkdown" \
     nix develop --command \

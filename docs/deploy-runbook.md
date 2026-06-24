@@ -29,10 +29,11 @@ bash tools/acceptance-test.sh                  # external: TLS, /health, rendere
 bash tools/deploy.sh
 ```
 
-Re-syncs `src/sask/`, `config/`, `wsgi.py`, and dependencies; restarts the
-service only if something actually changed. Safe to run repeatedly — a
-second consecutive run against an already-converged droplet reports
-`changed=0`.
+Re-syncs `src/sask/`, `config/`, `assets/<assets_version>/` (deploy-ready
+assets only — `assets/local/` never leaves the controller, per DD-0016),
+`wsgi.py`, and dependencies; restarts the service only if something
+actually changed. Safe to run repeatedly — a second consecutive run
+against an already-converged droplet reports `changed=0`.
 
 ## Full rebuild (destroy and recreate the droplet)
 

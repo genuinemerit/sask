@@ -1,0 +1,101 @@
+id="SPEC-027"
+title="Deployed asset sync and rate-limited delivery"
+status="proposed"
+
+[implements]
+requirements=["REQ-OPS-017"]
+dds=["DD-0016"]
+
+[scope]
+in_scope=[
+  "ansible/roles/app/tasks/main.yml: a new synchronize task shipping assets/{{ assets_version }}/ (the directory ASSETS_DIR resolves to; currently assets/v0/) to a path mirroring config/'s sibling placement under app_root. The source path names the versioned subtree directly, so assets/local/ is structurally excluded - it is never read by this task.",
+  "ansible/group_vars/all.yml: assets_version (default \"v0\") and whatever destination-path variable the sync task needs, parametrized the same way app_config_dir already is.",
+  "The new sync task notifies the existing 'Restart sask service' handler - no new handler.",
+  "ansible/roles/caddy/templates/Caddyfile.j2 and group_vars/all.yml: a third rate-limit zone for the asset route(s) (/asset/*), with its own events/window variables - proposed values below, for review.",
+  "tests/acceptance/test_remote.py: a live byte-identity check for a known (kind, id) - sha256 of the deployed response body against the committed local source file, the deployed-pipeline analogue of sask-proto's own prior-art pattern (already cited in analysis/functionality/source-inventory.md).",
+  "tools/acceptance-test.sh: extend Layer 2 with a curl check that a known asset URL returns 200 with the expected Content-Type.",
+  "tests/results/SPEC-027.md evidence, in the established convention (cf. SPEC-024).",
+]
+out_of_scope=[
+  "Any change to SPEC-026's engine/route code itself - this SPEC only ships its payload data and adds the rate-limit zone.",
+  "A build/publish pipeline that generates assets/<version>/ from assets/local/ (tools/candidates/build_assets.py-shaped tooling remains out of scope).",
+  "Auto-discovery or coexistence of multiple asset versions; ASSETS_DIR and the synced source path both still name one literal version directory, updated by hand together, per DD-0016.",
+  "Object storage or CDN backends for assets - filesystem rsync only.",
+  "Any new firewall, DNS, or TLS change - the existing domain/Caddy instance already proxies every path.",
+  "Authentication of any kind - the asset route is public, consistent with DD-0014/SPEC-026.",
+]
+
+[deliverables]
+app_role_sync="""
+ansible/roles/app/tasks/main.yml gains a new task, alongside the existing
+config/ sync task: an ansible.posix.synchronize task with delete: true and
+--no-owner --no-group, src {{ repo_root }}/assets/{{ assets_version }}/
+(controller-side), dest mirroring config/'s sibling-of-src placement under
+app_root (e.g. {{ app_root }}/assets/{{ assets_version }}/, matching the
+relative path the application's ASSETS_DIR walk-up resolves to). Notifies
+the existing 'Restart sask service' handler, exactly like the
+src/config/wsgi/pip tasks already do - this is what guarantees the service
+never restarts until both the catalog config and its referenced payload
+files are present together (SPEC-026's catalog loader stats every entry at
+create_app() time; a config-without-files state raises ConfigError and would
+crash every gunicorn worker, not just asset routes).
+"""
+group_vars="""
+ansible/group_vars/all.yml gains assets_version (default "v0", bumped by
+hand alongside the application code's own ASSETS_DIR default per DD-0016 -
+documented as a single two-place coordination, not new machinery) and the
+destination-path variable the sync task references, parametrized the same
+way app_config_dir already is.
+"""
+caddy_rate_limit="""
+A third rate_limit zone in Caddyfile.j2:
+  zone asset {
+      match { path /asset/* }
+      key {remote_host}
+      events {{ rate_limit_asset_events }}
+      window {{ rate_limit_asset_window }}
+  }
+New group_vars: rate_limit_asset_events (proposed: 20) and
+rate_limit_asset_window (proposed: "1m") - higher than the
+ephemeris-download zone's 4/1m (an asset GET is a single file read, not a
+computed scan) but well below the default interactive zone's 60/1m, per
+Dave's framing: sized for a presently single-user service while leaving
+headroom short of fully open, anticipating future multi-user support without
+building it now. Exact numbers are proposed for review here, not finalized
+by this draft.
+"""
+acceptance_tests="""
+tests/acceptance/test_remote.py gains test_asset_bytes_match_local: GET a
+known (kind, id) over the live domain, assert 200, the catalog's
+content_type, and a sha256 match against the committed local source file -
+the deployed-pipeline analogue of sask-proto's own test_image_bytes_match_local
+(already cited in analysis/functionality/source-inventory.md).
+tools/acceptance-test.sh's Layer 2 gains a curl check that the same URL
+returns 200 with the expected Content-Type, exiting non-zero on failure like
+every other Layer 2 check.
+"""
+evidence="""
+tests/results/SPEC-027.md in the established convention (cf. SPEC-024):
+acceptance checklist, the live byte-identity result, the changed=0
+idempotency run for the new sync task, and confirmation that a
+removed/renamed local asset is removed/renamed on the droplet after a
+redeploy.
+"""
+
+[acceptance]
+checks=[
+  "A redeploy syncs assets/{{ assets_version }}/ to its mirrored path under app_root; assets/local/ never appears on the droplet.",
+  "A second consecutive deploy reports changed=0 for the new sync task.",
+  "The new sync task notifies the same restart handler as the existing src/config tasks; no separate restart path exists.",
+  "A live GET for a known (kind, id) returns 200, the catalog's content_type, and bytes identical (sha256) to the committed local source.",
+  "A live GET for an unknown (kind, id) returns the adapter's not-found response, unchanged from SPEC-026's behavior.",
+  "The asset Caddy rate-limit zone is active and distinct from both the default and ephemeris-download zones, with events/window values reviewed and confirmed (not left at the placeholder proposal) before acceptance.",
+  "Removing or renaming a local asset and redeploying removes/renames it on the droplet (delete semantics, matching config/'s sync).",
+  "tests/results/SPEC-027.md records all of the above per the established evidence convention.",
+]
+uat="""
+[manual] After a real redeploy: open a known asset URL in a browser, confirm
+it loads with the right Content-Type; hit the same URL rapidly enough to
+trip the new rate-limit zone and confirm a 429 response, then confirm normal
+access resumes after the window elapses.
+"""

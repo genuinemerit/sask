@@ -30,7 +30,7 @@ config/       TOML engine configuration (time constants, calendars, seasons, tim
 design/       TOML design docs (decisions/, reqs/, specs/)
 docs/         living documents and guides
 infra/        infra/configuration.nix (dev VM) and infra/tofu/ (production droplet IaC)
-resources/    reference data and assets
+assets/       local (dev/artist staging) + versioned (v0, deploy-ready) binary assets — see DD-0016
 secrets/      local credentials — git-ignored except README.md and *.example
 src/          Python source (package: sask)
 tests/        pytest suites and test results

@@ -24,6 +24,7 @@
           pkgs.gh
           pkgs.xcaddy
           pkgs.go
+          pkgs.shellcheck
         ];
 
         shellHook = ''

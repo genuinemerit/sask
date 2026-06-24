@@ -1,0 +1,10 @@
+# /config/asset_catalog_template.toml - meta-schema for asset catalog entries (DD-0016).
+# "kind" is deliberately not a field here: it is derived from the asset's
+# top-level subdirectory under ASSETS_DIR (e.g. image/, audio/, json/,
+# video/), not authored. See DD-0016's kind_is_config.
+title = "asset"
+
+[fields]
+id           = { required = true, type = "string" }
+content_type = { required = true, type = "string" }
+path         = { required = true, type = "string" }

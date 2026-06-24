@@ -5,9 +5,9 @@
 - Claude Code runs on the **Ubuntu host laptop**; the NixOS VM (`sask-dev`) is
   the canonical dev environment, accessed via SSH.
 - A local `.venv` at the project root contains `pymarkdownlnt`, `pytest`,
-  `pytest-benchmark`, `flask`, and `gunicorn`. `ruff` is provided by the NixOS
-  system packages and nix devShell — do not use a pip-installed ruff
-  (pre-compiled binaries fail on NixOS).
+  `pytest-benchmark`, `flask`, and `gunicorn`. `ruff` and `shellcheck` are
+  provided by the NixOS system packages and nix devShell — do not use a
+  pip-installed ruff (pre-compiled binaries fail on NixOS).
 
 ## Before every commit
 
@@ -22,6 +22,7 @@ The script runs, in order:
 ```bash
 ruff check tools/ tests/ src/
 ruff format --check tools/ tests/ src/
+nix develop --command shellcheck -S warning tools/*.sh
 nix develop --command .venv/bin/pymarkdown --config .pymarkdown scan README.md CLAUDE.md docs/ tests/results/ secrets/README.md
 python3 tools/validate_specs.py
 .venv/bin/pytest tests/test_validate_specs.py -q

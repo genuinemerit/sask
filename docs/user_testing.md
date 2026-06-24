@@ -1686,3 +1686,193 @@ four templates; retested and passed.
 
 Stop the Flask server with `Ctrl+C` in the VM terminal. Close the SSH tunnel
 terminal.
+
+---
+
+## SPEC-026 — Asset retrieval: HTML adapter
+
+SPEC-026 adds a raw, non-HTML endpoint, **`GET /asset/<kind>/<id>`**, that
+serves asset bytes (images, audio, JSON, video) straight from the asset
+catalog (`config/asset_catalog_data.toml`) with the catalog's `content_type`.
+Unlike every other page in this app, it renders no template — there is no
+form, no nav entry, and no page source to inspect; pass/fail is judged by
+the raw HTTP response (status, `Content-Type` header, and the bytes the
+browser renders). Per SPEC-026's own acceptance criteria, this is the only
+required UAT for the spec — the engine layer (`resolve_descriptor`,
+`fetch_payload`, catalog loading/validation) is covered entirely by
+automated tests (`tests/test_spec_026.py`) and needs no manual check.
+
+### SPEC-026 Setup
+
+**1. Open an SSH tunnel from the Ubuntu host:**
+
+```bash
+ssh -L 5000:localhost:5000 sask-dev
+```
+
+Keep this terminal open.
+
+**2. In the VM session, start the Flask development server:**
+
+```bash
+cd ~/Code/sask-calendar
+bash tools/start_web.sh
+```
+
+Expected output: `Running on http://127.0.0.1:5000`
+
+**3. Open a browser on the Ubuntu host.** For each test case, navigate
+directly to the asset URL given (there is no form to fill in), then open
+DevTools → Network tab, click the request, and check the **Response
+Headers** → `content-type` value.
+
+**Reference catalog entries used in the test cases below (from
+`config/asset_catalog_data.toml`):**
+
+| kind | id | content_type | Source file under `assets/v0/` |
+|---|---|---|---|
+| image | `splash.bg` | `image/webp` | `image/splash.default.1920x1080.6389524a.webp` |
+| image | `splash.bg.960` | `image/webp` | `image/splash.default.960x540.385a45a2.webp` |
+| image | `splash.bg.480` | `image/webp` | `image/splash.default.480x270.eb6c6dab.webp` |
+| image | `splash.bg.thumb` | `image/webp` | `image/splash.default.thumb.320x180.762c6016.webp` |
+| audio | `ambient` | `audio/mpeg` | `audio/ambient-loop.mp3` |
+| json | `varkaar-questions` | `application/json` | `json/varkaar_questions.json` |
+| video | `ambient-video` | `video/mp4` | `video/ambient-video.mp4` |
+
+---
+
+### SPEC-026 Test cases
+
+#### TC-026-01 — Image asset loads with correct Content-Type
+
+**Action:** Navigate to `http://localhost:5000/asset/image/splash.bg`.
+
+**Pass criteria:**
+
+- HTTP 200.
+- The browser renders the image directly (a 1920×1080 splash image) — no
+  download prompt, no broken-image icon.
+- Response header `content-type` is exactly `image/webp`.
+
+---
+
+#### TC-026-02 — Image variants: multiple ids share one kind
+
+**Action:** Navigate in turn to `/asset/image/splash.bg.960`,
+`/asset/image/splash.bg.480`, and `/asset/image/splash.bg.thumb`.
+
+**Pass criteria:**
+
+- Each returns HTTP 200 with `content-type: image/webp`.
+- Each renders a visibly smaller variant of the same splash image
+  (960×540, 480×270, and a 320×180 thumbnail respectively).
+- Confirms the catalog's "two or more ids share a kind" case (`image`)
+  resolves correctly — this is config-driven, not a hardcoded list.
+
+---
+
+#### TC-026-03 — Audio asset loads with correct Content-Type
+
+**Action:** Navigate to `http://localhost:5000/asset/audio/ambient`.
+
+**Pass criteria:**
+
+- HTTP 200.
+- The browser either plays the audio inline or offers to open/download it
+  (behavior varies by browser; either is a pass — there is no `<audio>`
+  player wrapper, this is the raw file).
+- Response header `content-type` is exactly `audio/mpeg`.
+
+---
+
+#### TC-026-04 — JSON asset loads with correct Content-Type
+
+**Action:** Navigate to `http://localhost:5000/asset/json/varkaar-questions`.
+
+**Pass criteria:**
+
+- HTTP 200.
+- The browser displays the raw JSON (either as plain text or via the
+  browser's built-in JSON viewer).
+- The content is a JSON array of question objects (each with
+  `question_id`, `question_text`, `expected_answer`, `scope`).
+- Response header `content-type` is exactly `application/json`.
+
+---
+
+#### TC-026-05 — Video asset loads with correct Content-Type
+
+**Action:** Navigate to `http://localhost:5000/asset/video/ambient-video`.
+
+**Pass criteria:**
+
+- HTTP 200.
+- The browser plays the video inline or offers to open/download it.
+- Response header `content-type` is exactly `video/mp4`.
+- Note: this entry's `kind` (`video`) is derived from its directory
+  (`assets/v0/video/`); `content_type` is still an independently authored
+  field on the catalog entry, not derived from the `.mp4` extension.
+
+---
+
+#### TC-026-06 — Unknown id within a known kind returns 404
+
+**Action:** Navigate to `http://localhost:5000/asset/image/does-not-exist`.
+
+**Pass criteria:**
+
+- HTTP 404 (not a 500 error page).
+- Plain-text response body naming the missing asset, e.g.
+  `Unknown asset: image/does-not-exist`.
+
+---
+
+#### TC-026-07 — Unknown kind entirely also returns 404
+
+**Action:** Navigate to `http://localhost:5000/asset/nonsense-kind/whatever`.
+
+**Pass criteria:**
+
+- HTTP 404 — the same response shape as TC-026-06, not a different error.
+- Confirms `kind` is purely a catalog lookup miss, not a separately
+  validated code path (DD-0016's `kind_is_config` decision): an unknown
+  kind is handled identically to an unknown id, with no special-cased
+  "invalid kind" branch anywhere in the route.
+
+---
+
+#### TC-026-08 — No navigation entry added
+
+**Action:** Load `http://localhost:5000/` and inspect the navigation bar.
+
+**Pass criteria:**
+
+- The nav bar still shows exactly five links: **Pulse**, **Moons**,
+  **Planets**, **Sky**, **Ephemeris**. No "Asset" link was added.
+- This is intentional, not an oversight: `/health` and
+  `/ephemeris/download` (both raw, non-HTML endpoints) aren't in the nav
+  either — a raw asset endpoint is not a browsable page.
+
+---
+
+### SPEC-026 Results — 2026-06-24
+
+Tested on `sask-dev` via SSH tunnel. All cases pass.
+
+| TC | Result | Notes |
+|---|---|---|
+| TC-026-01 | PASS | |
+| TC-026-02 | PASS | |
+| TC-026-03 | PASS | |
+| TC-026-04 | PASS | |
+| TC-026-05 | PASS | |
+| TC-026-06 | PASS | |
+| TC-026-07 | PASS | |
+| TC-026-08 | PASS | |
+
+---
+
+### SPEC-026 Teardown
+
+Stop the Flask server with `Ctrl+C` in the VM terminal. Close the SSH tunnel
+terminal.

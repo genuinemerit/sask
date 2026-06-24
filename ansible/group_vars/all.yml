@@ -26,6 +26,13 @@ venv_dir: "{{ app_root }}/.venv"
 # file-relative walk-up, independent of WorkingDirectory (DD-0014 followups).
 app_config_dir: "{{ app_root }}/config"
 
+# assets/<assets_version>/ lands as a sibling of config/ under app_root
+# (DD-0016/SPEC-027). assets_version must be bumped here in lockstep with
+# src/sask/config_loader.py's _DEFAULT_ASSETS_VERSION constant whenever a
+# new asset version is promoted — there is deliberately no auto-discovery.
+assets_version: v0
+app_assets_dir: "{{ app_root }}/assets/{{ assets_version }}"
+
 # --- network / domain -------------------------------------------------------
 domain: "sask.davidstitt.net"
 
@@ -49,6 +56,8 @@ rate_limit_default_events: 60
 rate_limit_default_window: "1m"
 rate_limit_download_events: 4
 rate_limit_download_window: "1m"
+rate_limit_asset_events: 20
+rate_limit_asset_window: "1m"
 
 # --- platform maintenance -------------------------------------------------------
 apt_upgrade: false

@@ -3,7 +3,8 @@
 The config directory must contain:
   time_constants.toml, calendars.toml, seasons.toml, timeline.toml,
   body_data.toml, observation_data.toml,
-  star_data.toml, house_data.toml, ephemeris_data.toml
+  star_data.toml, house_data.toml, ephemeris_data.toml,
+  asset_catalog_data.toml
 
 All validation is done at load time; callers receive a typed AppConfig or
 a ConfigError is raised.
@@ -18,6 +19,13 @@ from pathlib import Path
 
 class ConfigError(ValueError):
     """Raised when a config file is missing, malformed, or invalid."""
+
+
+# Default deploy-ready assets version, used when load_config() isn't given
+# an explicit assets_dir. Bump by hand alongside
+# ansible/group_vars/all.yml's assets_version when a new version is
+# promoted (DD-0016: no auto-discovery of "latest" by design).
+_DEFAULT_ASSETS_VERSION = "v0"
 
 
 # ── Config dataclasses (typed representations of the TOML files) ──────────────
@@ -332,6 +340,29 @@ class CalendarLoreConfig:
 
 
 @dataclass(frozen=True)
+class AssetCatalogEntry:
+    """One [[asset]] entry from asset_catalog_data.toml (DD-0016, SPEC-026).
+
+    path is the resolved absolute Path (assets_dir + the authored relative
+    string), computed once at load time — never the raw TOML string. size
+    is stat-ed at load time, never authored.
+    """
+
+    kind: str
+    id: str
+    content_type: str
+    path: Path
+    size: int
+
+
+@dataclass(frozen=True)
+class AssetCatalogConfig:
+    """The full asset catalog, indexed by (kind, id) (SPEC-026)."""
+
+    entries: dict[tuple[str, str], AssetCatalogEntry]
+
+
+@dataclass(frozen=True)
 class AppConfig:
     time_constants: TimeConstants
     astro: CalendarConfig
@@ -356,6 +387,7 @@ class AppConfig:
     lore_calendars: tuple[
         CalendarLoreConfig, ...
     ]  # 6 calendar lore overlays (SPEC-017)
+    asset_catalog: AssetCatalogConfig  # asset retrieval catalog (DD-0016, SPEC-026)
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
@@ -695,6 +727,43 @@ def _load_comets(raw: dict, src: str) -> tuple[CometConfig, ...]:
     return tuple(_load_comet(e, f"{src} comet[{i}]") for i, e in enumerate(entries))
 
 
+def _load_asset_catalog_entry(
+    raw: dict, ns: str, assets_dir: Path
+) -> AssetCatalogEntry:
+    id_ = str(_require(raw, "id", ns))
+    content_type = str(_require(raw, "content_type", ns))
+    rel_path = str(_require(raw, "path", ns))
+    # kind is derived from path's top-level subdirectory, not authored
+    # (DD-0016 kind_is_config): assets/v0/image/foo.webp -> kind "image".
+    rel_parts = Path(rel_path).parts
+    if len(rel_parts) < 2:
+        raise ConfigError(
+            f"{ns}: path {rel_path!r} has no top-level subdirectory to derive kind from"
+        )
+    kind = rel_parts[0]
+    abs_path = assets_dir / rel_path
+    if not abs_path.is_file():
+        raise ConfigError(f"{ns}: path {rel_path!r} not found under {assets_dir}")
+    return AssetCatalogEntry(
+        kind=kind,
+        id=id_,
+        content_type=content_type,
+        path=abs_path,
+        size=abs_path.stat().st_size,
+    )
+
+
+def _load_asset_catalog(raw: dict, src: str, assets_dir: Path) -> AssetCatalogConfig:
+    entries: dict[tuple[str, str], AssetCatalogEntry] = {}
+    for i, e in enumerate(raw.get("asset", [])):
+        entry = _load_asset_catalog_entry(e, f"{src} asset[{i}]", assets_dir)
+        key = (entry.kind, entry.id)
+        if key in entries:
+            raise ConfigError(f"{src} asset[{i}]: duplicate (kind, id) = {key}")
+        entries[key] = entry
+    return AssetCatalogConfig(entries=entries)
+
+
 def _load_spark(raw: dict, src: str) -> SparkConfig:
     s = _require(raw, "spark", src)
     if not isinstance(s, dict):
@@ -947,11 +1016,20 @@ def _load_calendar_lore(raw: dict, src: str) -> CalendarLoreConfig:
 # ── Public entry point ────────────────────────────────────────────────────────
 
 
-def load_config(config_dir: Path) -> AppConfig:
+def load_config(config_dir: Path, assets_dir: Path | None = None) -> AppConfig:
     """Load and validate all engine config from config_dir.
+
+    assets_dir names the deploy-ready assets root that asset_catalog_data.toml's
+    path entries resolve against (DD-0016, SPEC-026). When omitted, it
+    defaults to config_dir.parent / "assets" / _DEFAULT_ASSETS_VERSION —
+    correct in both dev (config/ and assets/v0/ are siblings under the repo
+    root) and prod (SPEC-027 mirrors assets/v0/ as a sibling of config/
+    under app_root).
 
     Raises ConfigError on any missing file, missing key, or bad value.
     """
+    if assets_dir is None:
+        assets_dir = config_dir.parent / "assets" / _DEFAULT_ASSETS_VERSION
     tc = _load_time_constants(
         _load_toml(config_dir / "time_constants.toml"), "time_constants.toml"
     )
@@ -999,6 +1077,11 @@ def load_config(config_dir: Path) -> AppConfig:
         _load_calendar_lore(_load_toml(config_dir / f"{cid}.toml"), f"{cid}.toml")
         for cid in _lore_cal_ids
     )
+    asset_catalog = _load_asset_catalog(
+        _load_toml(config_dir / "asset_catalog_data.toml"),
+        "asset_catalog_data.toml",
+        assets_dir,
+    )
     return AppConfig(
         time_constants=tc,
         astro=astro,
@@ -1021,4 +1104,5 @@ def load_config(config_dir: Path) -> AppConfig:
         ephemeris=ephemeris,
         lore_time=lore_time,
         lore_calendars=lore_calendars,
+        asset_catalog=asset_catalog,
     )

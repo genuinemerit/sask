@@ -33,6 +33,29 @@
       - "--no-group"
   notify: Restart sask service
 
+# assets/{{ assets_version }}/ is two levels below app_root (assets/, then
+# the version dir) — same rsync one-level limitation as src/ above.
+- name: Ensure the assets/ parent directory exists
+  ansible.builtin.file:
+    path: "{{ app_root }}/assets"
+    state: directory
+    mode: "0755"
+
+# Notifies the same handler as every other sync task: the service never
+# restarts until both the catalog config and its referenced payload files
+# are in place together (REQ-OPS-017) — SPEC-026's catalog loader stats
+# every entry at create_app() time, so a config-without-files state would
+# crash every gunicorn worker, not just asset routes.
+- name: Sync the versioned assets/ data tree
+  ansible.posix.synchronize:
+    src: "{{ repo_root }}/assets/{{ assets_version }}/"
+    dest: "{{ app_assets_dir }}/"
+    delete: true
+    rsync_opts:
+      - "--no-owner"
+      - "--no-group"
+  notify: Restart sask service
+
 # wsgi.py lives at the repo root, not inside src/sask/, so it needs its own
 # explicit task — the rsync above doesn't carry it.
 - name: Copy wsgi.py to the app root

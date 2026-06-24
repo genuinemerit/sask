@@ -9,11 +9,13 @@ from flask import Flask
 from ..config_loader import load_config
 
 
-def create_app(config_dir: Path | None = None) -> Flask:
+def create_app(config_dir: Path | None = None, assets_dir: Path | None = None) -> Flask:
     """Create and configure the Flask application.
 
     config_dir defaults to <project_root>/config/, detected by walking up
-    from this file's location.
+    from this file's location. assets_dir is forwarded as-is to
+    load_config(), which derives its own default (a sibling of config_dir)
+    when omitted — see config_loader.load_config's docstring.
     """
     if config_dir is None:
         # src/sask/web/__init__.py → src/sask/web/ → src/sask/ → src/ → root
@@ -22,7 +24,7 @@ def create_app(config_dir: Path | None = None) -> Flask:
     template_dir = Path(__file__).resolve().parent.parent / "templates"
     app = Flask(__name__, template_folder=str(template_dir))
 
-    cfg = load_config(config_dir)
+    cfg = load_config(config_dir, assets_dir)
     app.config["SASK_CONFIG"] = cfg
 
     from .routes import bp

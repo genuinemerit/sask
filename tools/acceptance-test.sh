@@ -37,4 +37,26 @@ else
     fail "root page did not contain the expected computed value ($EXPECTED_PULSE)"
 fi
 
+# SPEC-027: a known asset_catalog_data.toml entry resolves end to end
+# (DNS -> TLS -> Caddy -> gunicorn -> Flask -> asset engine -> bytes).
+ASSET_URL="$BASE_URL/asset/image/splash.bg"
+EXPECTED_ASSET_CONTENT_TYPE="image/webp"
+
+if ! response="$(curl -sS -w '\n%{http_code}' "$ASSET_URL")"; then
+    fail "Request failed for $ASSET_URL"
+fi
+code="$(tail -n1 <<<"$response")"
+if [[ "$code" == "200" ]]; then
+    pass "$ASSET_URL returns 200"
+else
+    fail "$ASSET_URL returned $code"
+fi
+
+content_type="$(curl -sS -D - -o /dev/null "$ASSET_URL" | grep -i '^content-type:' | tr -d '\r' | awk '{print $2}')"
+if [[ "$content_type" == "$EXPECTED_ASSET_CONTENT_TYPE" ]]; then
+    pass "$ASSET_URL Content-Type is $EXPECTED_ASSET_CONTENT_TYPE"
+else
+    fail "$ASSET_URL Content-Type was '$content_type', expected $EXPECTED_ASSET_CONTENT_TYPE"
+fi
+
 printf '\n[ALL PASS] Acceptance suite complete.\n'

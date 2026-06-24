@@ -1,0 +1,17 @@
+id="REQ-OPS-017"
+title="Deployed asset parity and rate-limited delivery"
+category="operational"
+priority="must"
+statement="The deploy pipeline ships the versioned, deploy-ready assets tree (assets/<version>/, today assets/v0/) to the droplet at a path mirroring config/'s sibling placement under app_root, so the application's ASSETS_DIR resolves it identically to how config_dir already resolves config/; assets/local/ (the dev/artist staging tree) is never synced. The sync is idempotent (changed=0 on a second consecutive run) and removes assets no longer present locally, consistent with the existing config/ sync. The new sync task notifies the same service-restart handler as the existing src/config tasks, so a restart never occurs until both the asset catalog config and its referenced payload files are present together. Asset-delivery traffic is rate-limited by its own Caddy zone, distinct from the default interactive zone and the existing ephemeris-download zone, sized higher than the ephemeris zone (a single file read, not a computed scan) but still bounded for a presently single-user service with multi-user use anticipated later."
+rationale="SPEC-026 introduces the first capability whose payload data must exist on the droplet's filesystem beyond config/, but the deploy pipeline (ansible/roles/app/tasks/main.yml) currently syncs only src/sask/ and config/ - confirmed by inspection, not assumed. Because SPEC-026's catalog loader validates every entry by stat-ing its payload file at create_app() time, deploying the catalog config without its referenced files does not degrade gracefully into per-asset 404s: it raises ConfigError and prevents the whole app from starting, an availability risk for the entire site, not just new asset routes. group_vars/all.yml's own comment names the intended extension point (the platform/application seam DD-0014 built); this REQ uses it as designed rather than inventing a new one. The existing /ephemeris/download zone already establishes the precedent that some routes warrant a tighter-than-default rate limit; a third zone for assets recognizes that asset GETs are cheap (DD-0016: a single file read, no computation) yet still deserve a bound ahead of any future multi-user need."
+acceptance=[
+  "A redeploy after SPEC-026/SPEC-027 land syncs assets/<version>/ to a path mirroring config/'s sibling placement under app_root; assets/local/ never appears on the droplet.",
+  "A second consecutive deploy reports changed=0 for the new asset-sync task, consistent with REQ-OPS-013.",
+  "The asset-sync task notifies the same restart handler as the existing src/config sync tasks; no separate restart path exists.",
+  "A dedicated Caddy rate-limit zone for the asset route(s) is active, with an event budget higher than the ephemeris-download zone and lower than the default interactive zone.",
+  "A live request for a known (kind, id) returns 200 with the catalog's content_type and bytes identical (sha256) to the committed local source; a live request for an unknown (kind, id) returns the adapter's not-found response.",
+  "Removing or renaming a local asset and redeploying removes/renames it on the droplet, matching config/'s delete semantics.",
+]
+[links]
+dds=["DD-0014","DD-0016"]
+specs=["SPEC-027"]
