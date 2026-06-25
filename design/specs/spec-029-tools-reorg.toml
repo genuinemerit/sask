@@ -1,6 +1,6 @@
 id     = "SPEC-029"
 title  = "Reorg of tools/ into ops, dev, studio, and helpers"
-status = "proposed"
+status = "accepted"
 
 [implements]
 requirements = []
@@ -131,4 +131,44 @@ criteria = """
 uat = """
 None beyond the live redeploy's automated verify step, which exercises the end-
 to-end deploy path that the tool moves put at risk.
+"""
+
+[addendum]
+notes = """
+Implemented and verified live 2026-06-25; gaps found beyond this spec's
+literal text, resolved during implementation:
+
+- Every moved file sits one directory level deeper, and several
+  scripts/tools compute repo-root via depth-relative math that assumed the
+  OLD depth: 11 shell scripts' `cd "$(dirname "$0")/.."` and 3 Python
+  tools' `Path(__file__).parent.parent` (validate_specs.py,
+  generate_orbital_conditions.py, perf_http.py). None of this is mentioned
+  in path_references; found by reading the scripts, not by the spec's
+  suggested grep patterns. The two tools already one level deep in
+  tools/candidates/ (build_assets.py, make_tree.sh) needed no change.
+- pre-commit-check.sh's `shellcheck tools/*.sh` glob would have silently
+  matched zero files post-move; fixed to `tools/*/*.sh` and verified
+  empirically (15/15 .sh files caught).
+- pyproject.toml's pythonpath needed updating from ["src", "tools"] to
+  ["src", "tools/ops", "tools/dev"] to keep two bare tool imports
+  resolving (perf_config, generate_orbital_conditions); confirmed by
+  repo-wide grep that nothing else bare-imports any tool.
+- Doc-accuracy scope expanded beyond the named docs/deploy-runbook.md to
+  every tool's own self-referencing usage comment, infra/tofu/*.tf,
+  secrets/infra.env.example, ansible/bootstrap.yml, CLAUDE.md, README.md,
+  docs/user_testing.md, docs/references.md, and .gitignore.
+- The live redeploy's first automated pass failed at the Ansible bootstrap
+  step ("connection refused" on port 22) because the freshly created
+  droplet's SSH daemon wasn't ready yet when Ansible connected - a
+  transient timing race in tools/ops/redeploy.sh's recreate -> deploy
+  handoff, NOT caused by the tools/ reorg (the harness has no
+  wait-for-ssh retry between droplet creation and the first Ansible
+  connection). Recovered manually by re-running tools/ops/deploy.sh once
+  SSH became reachable; full deploy then succeeded (ok=37, changed=30),
+  acceptance suite all PASS, reserved IP preserved (104.248.101.239
+  throughout), and a second consecutive deploy reported changed=0. Adding
+  a wait-for-ssh retry to redeploy.sh would be a behavior change and is
+  explicitly out of this spec's scope (path-reference fixes only) -
+  flagged here as a real, pre-existing harness gap for a future spec to
+  pick up.
 """

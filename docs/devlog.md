@@ -1,5 +1,33 @@
 # Dev log
 
+## 2026-06-25 — SPEC-029 accepted: live redeploy verified
+
+**`tools/ops/redeploy.sh -y` run live against the production droplet** to
+verify the tool-path moves didn't break the deploy harness. The
+infrastructure layer (OpenTofu) worked cleanly: old droplet destroyed,
+new one created, reserved IP (`104.248.101.239`) and firewall reattached
+without incident.
+
+**The first automated pass failed at the Ansible bootstrap step**
+("connection refused" on port 22) — the freshly created droplet's SSH
+daemon wasn't ready yet when Ansible tried to connect, a transient timing
+race in the recreate -> deploy handoff that pre-dates this spec (no
+wait-for-ssh retry exists between droplet creation and the first Ansible
+connection). Not caused by the tools/ reorg. Recovered manually: confirmed
+SSH became reachable within seconds, re-ran `tools/ops/deploy.sh`, which
+bootstrapped `dave` and completed the full site play (`ok=37, changed=30`).
+`tools/ops/acceptance-test.sh` then passed all 5 checks against
+`sask.davidstitt.net`, and a second consecutive `tools/ops/deploy.sh`
+reported `changed=0`, confirming idempotency from the new tool location.
+
+Reserved IP, DNS, and firewall survived unchanged throughout, per
+REQ-OPS-013's guarantee. The SSH-readiness race is flagged in SPEC-029's
+`[addendum]` as a real, pre-existing harness gap — adding a retry would be
+a behavior change, out of this spec's path-reference-only scope, left for
+a future spec.
+
+**SPEC-029 flipped from `proposed` to `accepted`.**
+
 ## 2026-06-25 — SPEC-029: tools/ reorg into ops/dev/studio/helpers
 
 **All 25 tools/ files moved** (`git mv`, history preserved) into four
