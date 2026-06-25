@@ -24,17 +24,27 @@ for that pulse:
 
 The **Sky** page composes a full sky scene for a given date: which moons
 and planets are above the horizon, the current season, visible fixed
-stars, and any near-term celestial events. For example, fetching the sky
-scene for the story's "now" pulse looks like this in a Python REPL:
+stars, and any near-term celestial events. Querying it for the story's
+current pulse (`104548096103`, the default pre-filled value) produces a
+night summary like this:
 
-```python
-from sask.config_loader import load_config
-from sask.calendar.scene import get_sky_scene
-from pathlib import Path
-
-cfg = load_config(Path("config"))
-scene = get_sky_scene(cfg.timeline.story_now_pulse, cfg)
+```text
+A night of stillness: deep winter, the sky long and cold. Moons above the
+horizon: Endor (Pale gray-blue, first quarter) W mid; Sella (Ashy bronze,
+waxing gibbous) S high; Lelako (Bright ivory, first quarter) W mid; Jembor
+(Rust-brown, full) SE high; Calumbra (Silvery-gray, waxing gibbous) S high;
+Zehembra (Gold-hued white, full) SE mid; Shunna (Ice-blue shimmer, first
+quarter) W mid; Kanka (Deep violet-brown, full) SE mid. Wanderers visible:
+Dramond (Warm amber, hazy rim) S high. The active House of the Equinox is
+The Winged Pollinator. 7 fixed stars are visible, including Ilyrun, Kresh,
+Marnok and 4 others. This day, 3 moons are near-full together: Jembor,
+Zehembra, Kanka. Next night of co-fullness: 1 day away.
 ```
+
+Every sentence in that summary comes from a real field on the page: the
+season, the per-moon phase/color/direction table, the active House, the
+fixed-star count, and the co-fullness tracker are all visible above this
+summary when you load the page yourself.
 
 See the **Ephemeris** page to generate a time-series of sky scenes over a
 date range instead of a single moment.
