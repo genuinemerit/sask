@@ -1,6 +1,6 @@
 id     = "DD-0017"
 title  = "Semantic reorganization: functional-area subpackages and adapter homes"
-status = "proposed"
+status = "accepted"
 date   = "2026-06-25"
 
 [context]

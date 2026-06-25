@@ -1,5 +1,35 @@
 # Dev log
 
+## 2026-06-25 — DD-0017/SPEC-028 B3: adapter homes; accepted
+
+**`src/sask/api/` and `src/sask/cli/`** created, each with only an empty
+`__init__.py` — placeholder homes for the next phase's adapters, no
+adapter code. **`src/sask/templates/` moved into `src/sask/web/templates/`**
+(`git mv`), with `web/__init__.py`'s one-line `template_dir` lookup updated
+to match (`.parent` instead of `.parent.parent`, since templates is now a
+direct child of `web/` rather than a sibling). This wasn't in any phase's
+original scope — DD-0017/SPEC-028's own target_structure diagram already
+showed `templates/` nested under `web/`, but no phase had actually moved
+it; caught during the design-doc review and folded into B3.
+
+Verified empirically that packaging discovery needs no pyproject.toml
+change (`packages = [{include = "sask", from = "src"}]` already
+auto-discovers subpackages) by importing every new package path
+directly, and confirmed the app boots and serves locally with the moved
+templates: `/`, `/moons`, `/ephemeris` all returned 200 with real content.
+
+Full unit suite still 626 passed; full perf benchmark suite (20
+benchmarks) still green at every phase (B1, B2, B3) — not just the
+default suite, which would have missed the `tools/perf_engine.py`
+regression risk found in B2. Pre-commit suite clean throughout.
+
+**DD-0017 and SPEC-028 flipped from `proposed` to `accepted`.** SPEC-028
+got an `[addendum]` documenting every gap found beyond its literal text
+during implementation (own-module spine imports, absolute import-style
+normalization, the perf-tooling and docs fixes, the ephemeris/lore
+purity-test gap, the templates move) so the accepted record matches what
+was actually built, not just what was originally proposed.
+
 ## 2026-06-25 — DD-0017/SPEC-028 B2: calendar bulk move
 
 **The ten calendar modules** (`pulse`, `season`, `bodies`, `sky`, `scene`,

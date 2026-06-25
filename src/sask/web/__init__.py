@@ -21,7 +21,7 @@ def create_app(config_dir: Path | None = None, assets_dir: Path | None = None) -
         # src/sask/web/__init__.py → src/sask/web/ → src/sask/ → src/ → root
         config_dir = Path(__file__).resolve().parent.parent.parent.parent / "config"
 
-    template_dir = Path(__file__).resolve().parent.parent / "templates"
+    template_dir = Path(__file__).resolve().parent / "templates"
     app = Flask(__name__, template_folder=str(template_dir))
 
     cfg = load_config(config_dir, assets_dir)

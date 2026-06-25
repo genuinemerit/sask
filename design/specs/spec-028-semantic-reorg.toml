@@ -1,6 +1,6 @@
 id     = "SPEC-028"
 title  = "Semantic reorg of src/sask into functional-area and adapter packages"
-status = "proposed"
+status = "accepted"
 
 [implements]
 requirements = []
@@ -172,4 +172,40 @@ uat = """
 None required (structure-only, no behavior change). The acceptance criteria's
 "app boots and serves locally" check after B1 and B2 is the functional
 confirmation that adapters still reach the relocated engines.
+"""
+
+[addendum]
+notes = """
+All three phases implemented and verified 2026-06-25; gaps found beyond this
+spec's literal text, resolved during implementation rather than left as
+surprises:
+
+- retrieval.py's (B1) and every calendar module's (B2) OWN imports of
+  message.py/config_loader.py needed fixing too, not just consumer import
+  sites: a single-dot relative import that resolves correctly at the package
+  root breaks one level deeper after the move. Intra-calendar sibling
+  imports were normalized to fully absolute (sask.calendar.<mod>) rather
+  than left as relative dots, matching bodies.py/sky.py's pre-existing style.
+- tools/perf_engine.py and tests/perf/test_engine_benchmarks.py import
+  calendar modules directly but live outside this spec's literal "src/ and
+  tests/" grep scope, and tests/perf/ is excluded from the default pytest
+  run (pyproject.toml norecursedirs) - "full suite passes" would not have
+  caught a regression there. Fixed in B2; the full benchmark suite
+  (tools/run_perf.sh, not just collect-only) was run and verified green at
+  every phase, not only the default unit suite.
+- docs/user_testing.md's REPL walkthrough imports calendar modules directly
+  and was fixed in B2 alongside the code move.
+- ephemeris.py and lore.py have no layer-purity or content-inspection test
+  anywhere in the suite - a pre-existing gap predating this spec, not
+  introduced by it. Not fixed here (would change the test count, out of
+  this spec's no-behavior-change scope); noted for awareness.
+- The "layer-purity" framing undersold the relocation work in B2: several
+  non-purity content checks (calendar-independence on apparitions.py and
+  stars.py, no-civil-arithmetic on lunar.py) hardcode the same literal
+  module-path strings and needed the identical path fix.
+- templates/ also moved into web/ (src/sask/web/templates/) in B3, with
+  web/__init__.py's one-line template_dir lookup updated to match - this
+  target_structure diagram already showed templates/ nested under web/, but
+  no phase had actually scoped the move until this addendum's review caught
+  the mismatch between the diagram and the pre-B3 code.
 """
