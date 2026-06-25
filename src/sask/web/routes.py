@@ -17,7 +17,7 @@ from flask import (
     request,
 )
 
-from ..asset import AssetNotFoundError, fetch_payload, resolve_descriptor
+from sask.asset.retrieval import AssetNotFoundError, fetch_payload, resolve_descriptor
 from ..bodies import all_body_states
 from ..config_loader import AppConfig
 from ..lunar import get_lunar_date

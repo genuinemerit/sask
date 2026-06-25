@@ -1,5 +1,16 @@
 # Dev log
 
+## 2026-06-25 — DD-0017/SPEC-028 B1: asset canary move
+
+**`src/sask/asset.py` -> `src/sask/asset/retrieval.py`** (`git mv`, history
+preserved), with an empty `asset/__init__.py` and no re-exports — the first
+of the three reorg phases, smallest blast radius by design. Two real import
+sites fixed: `src/sask/web/routes.py` and `tests/test_spec_026.py`, both now
+`from sask.asset.retrieval import ...`. The one layer-purity check
+(`test_asset_module_has_no_flask_import`) relocated to target
+`src/sask/asset/retrieval.py`; still genuinely fails if the module imported
+flask. No behavior change, no test-count change: full suite still 626.
+
 ## 2026-06-25 — Housekeeping: doc sweep, DD-0017/SPEC-028 added
 
 **Post-rename reference sweep.** Repo renamed `sask-calendar` -> `sask`

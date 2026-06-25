@@ -10,7 +10,7 @@ Covers:
   - fetch_payload returns correct bytes/content_type, round-trips with the
     descriptor, raises AssetNotFoundError on a miss
   - AssetDescriptor/AssetPayload pass message.validate()
-  - layer-purity: asset.py imports no flask
+  - layer-purity: asset/retrieval.py imports no flask
   - HTML adapter: 200 + content_type for a real (kind, id); 404 for unknown
 """
 
@@ -22,7 +22,7 @@ from pathlib import Path
 
 import pytest
 
-from sask.asset import AssetNotFoundError, fetch_payload, resolve_descriptor
+from sask.asset.retrieval import AssetNotFoundError, fetch_payload, resolve_descriptor
 from sask.config_loader import ConfigError, load_config
 from sask.message import AssetDescriptor, AssetPayload, validate
 from sask.web import create_app
@@ -235,7 +235,7 @@ def test_asset_payload_passes_validate():
     assert validate(p) == []
 
 
-# ── Layer-purity: asset.py must not import flask ───────────────────────────────
+# ── Layer-purity: asset/retrieval.py must not import flask ─────────────────────
 
 
 def _flask_imports_in(path: Path) -> list[str]:
@@ -255,8 +255,8 @@ def _flask_imports_in(path: Path) -> list[str]:
 
 
 def test_asset_module_has_no_flask_import():
-    hits = _flask_imports_in(PROJECT_ROOT / "src" / "sask" / "asset.py")
-    assert hits == [], f"src/sask/asset.py contains flask imports: {hits}"
+    hits = _flask_imports_in(PROJECT_ROOT / "src" / "sask" / "asset" / "retrieval.py")
+    assert hits == [], f"src/sask/asset/retrieval.py contains flask imports: {hits}"
 
 
 # ── HTML adapter ────────────────────────────────────────────────────────────────

@@ -6,8 +6,8 @@ payload file; fetch_payload() is the single explicit I/O boundary.
 
 from __future__ import annotations
 
-from .config_loader import AppConfig
-from .message import AssetDescriptor, AssetPayload
+from sask.config_loader import AppConfig
+from sask.message import AssetDescriptor, AssetPayload
 
 
 class AssetNotFoundError(Exception):
