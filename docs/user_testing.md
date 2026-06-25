@@ -1994,17 +1994,17 @@ on GitHub (or any Markdown previewer).
 
 ---
 
-### SPEC-030 Results
+### SPEC-030 Results — 2026-06-25
 
-Not yet run.
+Tested on `sask-dev` via SSH tunnel. All cases pass.
 
 | TC | Result | Notes |
 |---|---|---|
-| TC-030-01 | | |
-| TC-030-02 | | |
-| TC-030-03 | | |
-| TC-030-04 | | |
-| TC-030-05 | | |
+| TC-030-01 | PASS | |
+| TC-030-02 | PASS | |
+| TC-030-03 | PASS | |
+| TC-030-04 | PASS | |
+| TC-030-05 | PASS | |
 
 ---
 
