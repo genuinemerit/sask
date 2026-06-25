@@ -30,5 +30,5 @@ target-version = "py312"
 
 [tool.pytest.ini_options]
 testpaths      = ["tests"]
-pythonpath     = ["src", "tools"]
+pythonpath     = ["src", "tools/ops", "tools/dev"]
 norecursedirs  = ["tests/perf", "tests/acceptance"]

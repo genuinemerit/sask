@@ -2,8 +2,8 @@
 # Layer 2 (SPEC-024): curl-based smoke test against the live HTTPS
 # endpoint. Fast, human-readable, exits non-zero on first failure.
 #
-#   bash tools/acceptance-test.sh
-#   SASK_BASE_URL=https://other.example bash tools/acceptance-test.sh
+#   bash tools/ops/acceptance-test.sh
+#   SASK_BASE_URL=https://other.example bash tools/ops/acceptance-test.sh
 
 set -euo pipefail
 

@@ -6,11 +6,11 @@
 # transitive deps), so it alone is sufficient — pyproject.toml's own
 # dependency list only has the direct ones.
 #
-#   bash tools/export-requirements.sh
+#   bash tools/ops/export-requirements.sh
 
 set -euo pipefail
 
-cd "$(dirname "$0")/.."
+cd "$(dirname "$0")/../.."
 
 python3 - <<'PYEOF'
 import tomllib

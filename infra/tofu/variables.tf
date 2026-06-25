@@ -17,7 +17,7 @@ variable "droplet_image" {
 }
 
 variable "droplet_name" {
-  description = "DigitalOcean-visible droplet name; also the SSH alias provision.sh writes."
+  description = "DigitalOcean-visible droplet name; also the SSH alias tools/ops/provision.sh writes."
   type        = string
   default     = "sask-droplet"
 }

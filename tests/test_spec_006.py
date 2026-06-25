@@ -28,7 +28,7 @@ BODY_DATA = CONFIG_DIR / "body_data.toml"
 BODY_TEMPLATE = CONFIG_DIR / "body_template.toml"
 OBS_DATA = CONFIG_DIR / "observation_data.toml"
 GENERATOR_SRC = (
-    Path(__file__).parent.parent / "tools" / "generate_orbital_conditions.py"
+    Path(__file__).parent.parent / "tools" / "dev" / "generate_orbital_conditions.py"
 )
 
 EXPECTED_BODY_COUNT = 15

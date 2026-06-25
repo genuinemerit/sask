@@ -1,7 +1,7 @@
 """Validate a JSON data file against a JSON Schema (Draft 2020-12).
 
 Usage:
-    python tools/candidates/validate_json.py SCHEMA.json DATA.json
+    python tools/helpers/validate_json.py SCHEMA.json DATA.json
 
 Prints one line per validation error (JSON path: message) and exits
 non-zero if any are found; exits 0 with no output on success.

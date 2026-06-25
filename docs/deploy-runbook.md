@@ -7,8 +7,8 @@ noted otherwise.
 ## Connect
 
 ```bash
-bash tools/connect.sh                          # interactive shell, as dave
-bash tools/connect.sh 'systemctl status sask'  # one-off command
+bash tools/ops/connect.sh                          # interactive shell, as dave
+bash tools/ops/connect.sh 'systemctl status sask'  # one-off command
 ```
 
 Root login is disabled by design (REQ-SEC-003) — `dave` is the only login
@@ -17,16 +17,16 @@ account, with passwordless `sudo`.
 ## Check status
 
 ```bash
-bash tools/connect.sh 'sudo systemctl status sask caddy --no-pager'
-bash tools/connect.sh 'sudo journalctl -u sask -n 50 --no-pager'
-bash tools/connect.sh 'sudo journalctl -u caddy -n 50 --no-pager'
-bash tools/acceptance-test.sh                  # external: TLS, /health, rendered content
+bash tools/ops/connect.sh 'sudo systemctl status sask caddy --no-pager'
+bash tools/ops/connect.sh 'sudo journalctl -u sask -n 50 --no-pager'
+bash tools/ops/connect.sh 'sudo journalctl -u caddy -n 50 --no-pager'
+bash tools/ops/acceptance-test.sh                  # external: TLS, /health, rendered content
 ```
 
 ## Deploy a code change
 
 ```bash
-bash tools/deploy.sh
+bash tools/ops/deploy.sh
 ```
 
 Re-syncs `src/sask/`, `config/`, `assets/<assets_version>/` (deploy-ready
@@ -38,7 +38,7 @@ against an already-converged droplet reports `changed=0`.
 ## Full rebuild (destroy and recreate the droplet)
 
 ```bash
-bash tools/redeploy.sh -y
+bash tools/ops/redeploy.sh -y
 ```
 
 Runs `recreate-droplet.sh` (destroys/recreates *only* the droplet) ->
@@ -49,12 +49,12 @@ record, firewall, and SSH key registration all survive unchanged — only
 ## Full teardown (stop paying for everything)
 
 ```bash
-bash tools/destroy.sh -y
+bash tools/ops/destroy.sh -y
 ```
 
 Tears down *every* resource, including the reserved IP itself — this is
 the one operation where the IP does NOT survive. To come back later, the
-next `bash tools/provision.sh -y` gets a brand-new reserved IP and DNS
+next `bash tools/ops/provision.sh -y` gets a brand-new reserved IP and DNS
 gets repointed at it automatically; nothing manual to fix up.
 
 ## OS maintenance (occasional, manual — not part of any automated pipeline)
@@ -64,7 +64,7 @@ the background. Every few months, or whenever convenient, catch up on
 everything else:
 
 ```bash
-bash tools/connect.sh
+bash tools/ops/connect.sh
 sudo apt update && apt list --upgradable   # see what's pending first
 sudo apt upgrade -y
 [ -f /var/run/reboot-required ] && sudo reboot   # only if a kernel update needs it
@@ -73,7 +73,7 @@ sudo apt upgrade -y
 Then, back on sask-dev, confirm recovery:
 
 ```bash
-bash tools/acceptance-test.sh
+bash tools/ops/acceptance-test.sh
 ```
 
 Deliberately not automated or scheduled — see `docs/devlog.md`
@@ -85,10 +85,10 @@ nobody watching is the wrong default at this scale.
 
 - The SSH alias (`sask-droplet`, in `~/.ssh/config.d/sask`) connects as
   `dave`, never root, and is the *only* place an IP is ever referenced
-  (REQ-OPS-014). If your own source IP changes, `bash tools/provision.sh
+  (REQ-OPS-014). If your own source IP changes, `bash tools/ops/provision.sh
   -y` (or any `redeploy.sh`/`recreate-droplet.sh` run) refreshes the
   firewall's allowed-SSH-IP rule automatically.
-- `tools/destroy.sh` (full teardown) and `tools/recreate-droplet.sh`
+- `tools/ops/destroy.sh` (full teardown) and `tools/ops/recreate-droplet.sh`
   (droplet only) are deliberately different scripts — don't conflate
   them. `redeploy.sh` always uses the latter.
 - The DigitalOcean Personal Access Token in `~/.config/sask/infra.env`
@@ -98,8 +98,8 @@ nobody watching is the wrong default at this scale.
   no manual TLS renewal step exists or is needed.
 - If SSH is ever refused entirely (e.g. a botched manual change), the DO
   web console is the out-of-band fallback (REQ-OPS-014) — from there you
-  can inspect the droplet directly or fall back to `redeploy.sh -y` for a
-  clean rebuild.
+  can inspect the droplet directly or fall back to `tools/ops/redeploy.sh
+  -y` for a clean rebuild.
 
 ## Where to find more detail
 

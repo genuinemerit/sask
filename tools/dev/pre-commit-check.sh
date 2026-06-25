@@ -4,7 +4,7 @@
 
 set -uo pipefail
 
-cd "$(dirname "$0")/.." || exit 1
+cd "$(dirname "$0")/../.." || exit 1
 
 run_check() {
     local label="$1"
@@ -23,13 +23,13 @@ run_check "ruff lint" \
 run_check "ruff format" \
     ruff format --check tools/ tests/ src/
 
-# -S warning: tools/perf-remote.sh deliberately expands a few $REMOTE_*
+# -S warning: tools/ops/perf-remote.sh deliberately expands a few $REMOTE_*
 # variables client-side inside double-quoted ssh command strings (SC2029,
 # info-level) — that's the intended behavior, not a bug, so info-level
 # notes are excluded rather than disabled line-by-line.
 run_check "shellcheck" \
     nix develop --command \
-        shellcheck -S warning tools/*.sh
+        shellcheck -S warning tools/*/*.sh
 
 run_check "pymarkdown" \
     nix develop --command \
@@ -37,7 +37,7 @@ run_check "pymarkdown" \
         README.md CLAUDE.md docs/ tests/results/ secrets/README.md
 
 run_check "validate_specs" \
-    python3 tools/validate_specs.py
+    python3 tools/dev/validate_specs.py
 
 run_check "pytest (validate_specs suite)" \
     .venv/bin/pytest tests/test_validate_specs.py -q

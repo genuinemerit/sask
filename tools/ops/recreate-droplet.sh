@@ -3,22 +3,22 @@
 # definition, and SSH key registration untouched in Tofu state. This is
 # what actually delivers DD-0014/REQ-OPS-013's guarantee that DNS and the
 # SSH alias survive a redeploy with the *same* reserved IP — plain
-# tools/destroy.sh + provision.sh tears down everything, including the
+# tools/ops/destroy.sh + provision.sh tears down everything, including the
 # reserved IP resource itself, which is the right tool for a genuine full
 # teardown (e.g. to stop paying for anything) but the wrong one for
 # "rebuild the droplet, keep the network identity."
 #
 # Run from the sask-dev VM, inside `nix develop`:
 #
-#   bash tools/recreate-droplet.sh        # interactive
-#   bash tools/recreate-droplet.sh -y     # non-interactive: tofu -auto-approve
+#   bash tools/ops/recreate-droplet.sh        # interactive
+#   bash tools/ops/recreate-droplet.sh -y     # non-interactive: tofu -auto-approve
 #
 # Requires ~/.config/sask/infra.env (outside the repo) exporting
 # DIGITALOCEAN_TOKEN — see secrets/infra.env.example for the template.
 
 set -euo pipefail
 
-cd "$(dirname "$0")/.."
+cd "$(dirname "$0")/../.."
 
 INFRA_ENV="$HOME/.config/sask/infra.env"
 if [[ ! -f "$INFRA_ENV" ]]; then

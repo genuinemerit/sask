@@ -33,7 +33,7 @@ output "next_steps" {
   value       = <<-EOT
     Droplet created. Next:
       1. ssh -o User=root ${var.droplet_name}   # only account that exists so far
-      2. Run the SPEC-023 Ansible bootstrap + site.yml play (tools/deploy.sh) to
+      2. Run the SPEC-023 Ansible bootstrap + site.yml play (tools/ops/deploy.sh) to
          create ${var.ssh_admin_user}, configure the host, and disable root login.
          After that, the plain alias (`ssh ${var.droplet_name}`) connects as
          ${var.ssh_admin_user}.

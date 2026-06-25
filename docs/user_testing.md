@@ -360,7 +360,7 @@ Keep this terminal open.
 
 ```bash
 cd ~/Code/sask
-bash tools/start_web.sh
+bash tools/dev/start_web.sh
 ```
 
 Expected output: `Running on http://127.0.0.1:5000`
@@ -701,7 +701,7 @@ Keep this terminal open.
 
 ```bash
 cd ~/Code/sask
-bash tools/start_web.sh
+bash tools/dev/start_web.sh
 ```
 
 Expected output: `Running on http://127.0.0.1:5000`
@@ -1071,7 +1071,7 @@ Keep this terminal open.
 
 ```bash
 cd ~/Code/sask
-bash tools/start_web.sh
+bash tools/dev/start_web.sh
 ```
 
 Expected output: `Running on http://127.0.0.1:5000`
@@ -1583,7 +1583,7 @@ Keep this terminal open.
 
 ```bash
 cd ~/Code/sask
-bash tools/start_web.sh
+bash tools/dev/start_web.sh
 ```
 
 Expected output: `Running on http://127.0.0.1:5000`
@@ -1716,7 +1716,7 @@ Keep this terminal open.
 
 ```bash
 cd ~/Code/sask
-bash tools/start_web.sh
+bash tools/dev/start_web.sh
 ```
 
 Expected output: `Running on http://127.0.0.1:5000`

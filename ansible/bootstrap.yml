@@ -2,7 +2,7 @@
 # Run once against a fresh droplet, before site.yml. Connects as root — the
 # only account that exists on a fresh, no-cloud-init image — to create the
 # non-root admin account every other play (including site.yml's base role,
-# which disables root login) connects as from then on. tools/deploy.sh only
+# which disables root login) connects as from then on. tools/ops/deploy.sh only
 # invokes this when a direct connection as admin_user isn't already working,
 # so it never runs against an already-bootstrapped, root-login-disabled
 # droplet.

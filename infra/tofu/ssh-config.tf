@@ -7,7 +7,7 @@
 #
 # StrictHostKeyChecking accept-new: a destroy/recreate cycle keeps the same
 # reserved IP but gets a fresh droplet with a different host key every
-# time. tools/destroy.sh purges the stale known_hosts entry on teardown, so
+# time. tools/ops/destroy.sh purges the stale known_hosts entry on teardown, so
 # the next provision's first connection is always genuinely "new" rather
 # than "changed" (which plain accept-new would still refuse).
 resource "local_file" "ssh_config" {

@@ -2,7 +2,7 @@
 # Deploy (or re-converge) sask onto an already-provisioned droplet via
 # Ansible.
 #
-#   bash tools/deploy.sh
+#   bash tools/ops/deploy.sh
 #
 # Requires ~/.config/sask/infra.env (outside the repo, see
 # secrets/infra.env.example) as a general setup-sanity precondition, even
@@ -12,7 +12,7 @@
 
 set -euo pipefail
 
-cd "$(dirname "$0")/.."
+cd "$(dirname "$0")/../.."
 
 INFRA_ENV="$HOME/.config/sask/infra.env"
 if [[ ! -f "$INFRA_ENV" ]]; then
@@ -21,7 +21,7 @@ if [[ ! -f "$INFRA_ENV" ]]; then
     exit 1
 fi
 
-bash tools/export-requirements.sh
+bash tools/ops/export-requirements.sh
 
 # cd into ansible/ rather than passing -i/--ANSIBLE_CONFIG explicitly:
 # Ansible only auto-loads ansible.cfg (and its relative inventory= path)

@@ -3,15 +3,15 @@
 #
 # Run from the sask-dev VM, inside `nix develop`:
 #
-#   bash tools/provision.sh        # interactive: tofu prompts before applying
-#   bash tools/provision.sh -y     # non-interactive: tofu -auto-approve
+#   bash tools/ops/provision.sh        # interactive: tofu prompts before applying
+#   bash tools/ops/provision.sh -y     # non-interactive: tofu -auto-approve
 #
 # Requires ~/.config/sask/infra.env (outside the repo) exporting
 # DIGITALOCEAN_TOKEN — see secrets/infra.env.example for the template.
 
 set -euo pipefail
 
-cd "$(dirname "$0")/.."
+cd "$(dirname "$0")/../.."
 
 INFRA_ENV="$HOME/.config/sask/infra.env"
 if [[ ! -f "$INFRA_ENV" ]]; then

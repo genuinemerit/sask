@@ -11,7 +11,7 @@ DD-0016 for how the live app actually serves assets (it reads the catalog
 under config/, not this manifest).
 
 Example, from the repo root:
-    python tools/candidates/build_assets.py --name SmokingHouse.splash.webp
+    python tools/studio/build_assets.py --name SmokingHouse.splash.webp
 """
 
 from __future__ import annotations

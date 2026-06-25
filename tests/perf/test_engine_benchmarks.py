@@ -1,10 +1,10 @@
 """SPEC-018 Layer 1 — pytest-benchmark microbenchmarks over engine hot paths.
 
 Excluded from default collection (pyproject.toml norecursedirs); run
-explicitly via `pytest tests/perf/` or `tools/run_perf.sh`. No assertions
-about absolute timing live here — REQ-OPS-010's budgets are checked by
-Layer 2 (tools/perf_http.py) against medians read back from the saved
-results, not by failing this suite.
+explicitly via `pytest tests/perf/` or `tools/ops/run_perf.sh`. No
+assertions about absolute timing live here — REQ-OPS-010's budgets are
+checked by Layer 2 (tools/ops/perf_http.py) against medians read back
+from the saved results, not by failing this suite.
 """
 
 from __future__ import annotations

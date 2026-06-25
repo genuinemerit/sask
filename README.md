@@ -64,7 +64,7 @@ accepts a Duration (Days) field for date-mode ranges.
 **Start the server:**
 
 ```bash
-bash tools/start_web.sh
+bash tools/dev/start_web.sh
 ```
 
 Or manually:
@@ -90,16 +90,16 @@ PYTHONPATH=src .venv/bin/gunicorn wsgi:app
 Run before every commit; all checks must exit 0:
 
 ```bash
-bash tools/pre-commit-check.sh
+bash tools/dev/pre-commit-check.sh
 ```
 
 ## Testing
 
 ```bash
-bash tools/run-tests.sh                           # all tests, quiet
-bash tools/run-tests.sh -v                        # all tests, verbose
-bash tools/run-tests.sh --spec SPEC-002           # one spec, quiet
-bash tools/run-tests.sh --spec SPEC-002 -v --save # one spec, verbose, save results
+bash tools/dev/run-tests.sh                           # all tests, quiet
+bash tools/dev/run-tests.sh -v                        # all tests, verbose
+bash tools/dev/run-tests.sh --spec SPEC-002           # one spec, quiet
+bash tools/dev/run-tests.sh --spec SPEC-002 -v --save # one spec, verbose, save results
 ```
 
 ## Design docs
@@ -108,7 +108,7 @@ Design decisions, requirements, and specs live under `/design` as TOML.
 Validate them with:
 
 ```bash
-python3 tools/validate_specs.py
+python3 tools/dev/validate_specs.py
 ```
 
 ## Development environment

@@ -2,7 +2,7 @@
 
 Single source of truth for the ephemeris sweep grid and the provisional
 performance budgets, read by both the Layer 1 pytest-benchmark suite
-(tests/perf/) and the Layer 2 HTTP harness (tools/perf_http.py).
+(tests/perf/) and the Layer 2 HTTP harness (tools/ops/perf_http.py).
 """
 
 from __future__ import annotations

@@ -2,13 +2,13 @@
 """SPEC-018 Layer 2 — HTTP timing harness against a live, single-worker gunicorn.
 
 Standard library only. Targets an already-running gunicorn instance (see
-tools/run_perf.sh for the launch line) and times the four interactive pages
-plus the full ephemeris grid (preview and, for the worst case, download).
-Writes a dated JSON result file under tests/results/perf/ and prints a
-pass/fail summary against the REQ-OPS-010 budgets.
+tools/ops/run_perf.sh for the launch line) and times the four interactive
+pages plus the full ephemeris grid (preview and, for the worst case,
+download). Writes a dated JSON result file under tests/results/perf/ and
+prints a pass/fail summary against the REQ-OPS-010 budgets.
 
 Usage:
-    PYTHONPATH=src .venv/bin/python3 tools/perf_http.py [--base-url URL]
+    PYTHONPATH=src .venv/bin/python3 tools/ops/perf_http.py [--base-url URL]
 """
 
 from __future__ import annotations
@@ -25,7 +25,7 @@ from perf_config import BUDGETS, EPHEMERIS_GRID, PROFILES, WORST_CASE
 
 from sask.config_loader import load_config
 
-PROJECT_ROOT = Path(__file__).parent.parent
+PROJECT_ROOT = Path(__file__).parent.parent.parent
 REAL_CONFIG = PROJECT_ROOT / "config"
 RESULTS_DIR = PROJECT_ROOT / "tests" / "results" / "perf"
 
@@ -109,7 +109,7 @@ def _run_sweep(
 
     # The download path carries its own (much stricter) rate limit, so it
     # gets its own warmup/repeats/delay rather than reusing the interactive
-    # values — see tools/perf-remote.sh for the spaced-sampling invocation.
+    # values — see tools/ops/perf-remote.sh for the spaced-sampling invocation.
     ephemeris_download_worst_case = [
         _measure(
             f"ephemeris_download_worst_case_{profile}",

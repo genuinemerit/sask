@@ -14,7 +14,7 @@
 Run the pre-commit script; every check must exit 0 before staging:
 
 ```bash
-bash tools/pre-commit-check.sh
+bash tools/dev/pre-commit-check.sh
 ```
 
 The script runs, in order:
@@ -22,16 +22,16 @@ The script runs, in order:
 ```bash
 ruff check tools/ tests/ src/
 ruff format --check tools/ tests/ src/
-nix develop --command shellcheck -S warning tools/*.sh
+nix develop --command shellcheck -S warning tools/*/*.sh
 nix develop --command .venv/bin/pymarkdown --config .pymarkdown scan README.md CLAUDE.md docs/ tests/results/ secrets/README.md
-python3 tools/validate_specs.py
+python3 tools/dev/validate_specs.py
 .venv/bin/pytest tests/test_validate_specs.py -q
 ```
 
 ## Design docs
 
 Design documents live under `design/` as TOML. After any change to a design
-doc or its schema, run `python3 tools/validate_specs.py` and confirm exit 0.
+doc or its schema, run `python3 tools/dev/validate_specs.py` and confirm exit 0.
 
 ## Machine / project split
 

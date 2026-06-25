@@ -3,7 +3,7 @@
 #
 # Run this script on the sask-dev VM from the project root:
 #
-#   bash tools/start_web.sh
+#   bash tools/dev/start_web.sh
 #
 # Before running, open an SSH tunnel from the Ubuntu host so the browser
 # can reach the server:
@@ -14,5 +14,5 @@
 
 set -euo pipefail
 
-cd "$(dirname "$0")/.."
+cd "$(dirname "$0")/../.."
 PYTHONPATH=src .venv/bin/flask --app sask.web run

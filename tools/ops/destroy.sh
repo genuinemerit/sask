@@ -3,8 +3,8 @@
 #
 # Run from the sask-dev VM, inside `nix develop`:
 #
-#   bash tools/destroy.sh        # interactive: tofu prompts before each destroy
-#   bash tools/destroy.sh -y     # non-interactive: tofu -auto-approve
+#   bash tools/ops/destroy.sh        # interactive: tofu prompts before each destroy
+#   bash tools/ops/destroy.sh -y     # non-interactive: tofu -auto-approve
 #
 # A droplet can't be destroyed while a reserved IP is still assigned to it,
 # so the reserved-IP assignment is detached first, then everything else
@@ -18,7 +18,7 @@
 
 set -euo pipefail
 
-cd "$(dirname "$0")/.."
+cd "$(dirname "$0")/../.."
 
 INFRA_ENV="$HOME/.config/sask/infra.env"
 if [[ ! -f "$INFRA_ENV" ]]; then

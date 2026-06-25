@@ -6,7 +6,7 @@
 - [Nix flakes](https://nixos.wiki/wiki/Flakes) — reproducible dev shell
 - [Poetry](https://python-poetry.org/docs/) — Python dependency management
 - [Ruff](https://docs.astral.sh/ruff/) — Python linter and formatter
-- [ShellCheck](https://www.shellcheck.net/) — shell-script linter (`tools/*.sh`)
+- [ShellCheck](https://www.shellcheck.net/) — shell-script linter (`tools/*/*.sh`)
 - [pytest](https://docs.pytest.org/) — Python test framework
 - [pytest-benchmark](https://pytest-benchmark.readthedocs.io/) — microbenchmark harness (SPEC-018)
 - [tomllib](https://docs.python.org/3/library/tomllib.html) — TOML parsing (Python 3.11+ stdlib)

@@ -2,12 +2,14 @@
 # SPEC-025 — remote performance re-validation, one repeatable act (REQ-OPS-016).
 #
 # Two measurements, merged into one dated, host-stamped result:
-#   1. On-droplet engine timing over SSH (tools/perf_engine.py) — no Caddy,
-#      network, or rate limit in the path; the authoritative per-core number.
-#      The same script also runs locally for an apples-to-apples comparison.
-#   2. End-to-end HTTP against the live domain (tools/perf_http.py) — the
-#      four interactive pages plus a couple of spaced ephemeris-download
-#      samples, staying well inside the 4-events/minute download budget.
+#   1. On-droplet engine timing over SSH (tools/ops/perf_engine.py) — no
+#      Caddy, network, or rate limit in the path; the authoritative
+#      per-core number. The same script also runs locally for an
+#      apples-to-apples comparison.
+#   2. End-to-end HTTP against the live domain (tools/ops/perf_http.py) —
+#      the four interactive pages plus a couple of spaced
+#      ephemeris-download samples, staying well inside the 4-events/minute
+#      download budget.
 #
 # Non-destructive: no rate-limit change, no dependency added to the
 # production venv, and the droplet-side timing script is removed (via a
@@ -15,11 +17,11 @@
 #
 # Run from the sask-dev VM, inside `nix develop`:
 #
-#   bash tools/perf-remote.sh
+#   bash tools/ops/perf-remote.sh
 
 set -euo pipefail
 
-cd "$(dirname "$0")/.."
+cd "$(dirname "$0")/../.."
 
 BASE_URL="${SASK_BASE_URL:-https://sask.davidstitt.net}"
 REMOTE_VENV_PY="/opt/sask/.venv/bin/python3"
@@ -27,7 +29,7 @@ REMOTE_SRC="/opt/sask/src"
 REMOTE_CONFIG="/opt/sask/config"
 
 echo "[1/6] Acceptance precondition..."
-bash tools/acceptance-test.sh
+bash tools/ops/acceptance-test.sh
 echo
 
 echo "[2/6] Host identity (tofu output)..."
@@ -50,7 +52,7 @@ cleanup() {
 }
 trap cleanup EXIT
 
-scp -q tools/perf_engine.py tools/perf_config.py "sask-droplet:$REMOTE_TMP/"
+scp -q tools/ops/perf_engine.py tools/ops/perf_config.py "sask-droplet:$REMOTE_TMP/"
 ENGINE_REMOTE_JSON="$(mktemp)"
 # /opt/sask is sask:sask, mode 0750 — dave can't read the venv or config
 # directly (REQ-OPS-015 hardening); dave has passwordless sudo, and root
@@ -63,7 +65,7 @@ echo
 
 echo "[4/6] Local engine timing (comparison baseline)..."
 ENGINE_LOCAL_JSON="$(mktemp)"
-PYTHONPATH=src .venv/bin/python3 tools/perf_engine.py --config-dir config \
+PYTHONPATH=src .venv/bin/python3 tools/ops/perf_engine.py --config-dir config \
     >"$ENGINE_LOCAL_JSON"
 echo
 
@@ -73,7 +75,7 @@ HTTP_REMOTE_JSON="$(mktemp)"
 # perf_http.py still writes --out before returning, so don't let `set -e`
 # skip the merge step below; the merged results are the point of this run
 # regardless of pass/fail.
-PYTHONPATH=src .venv/bin/python3 tools/perf_http.py \
+PYTHONPATH=src .venv/bin/python3 tools/ops/perf_http.py \
     --base-url "$BASE_URL" \
     --skip-preview --warmup 0 --repeats 3 \
     --download-warmup 0 --download-repeats 1 --download-delay-s 20 \

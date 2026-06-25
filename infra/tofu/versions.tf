@@ -17,6 +17,6 @@ terraform {
   }
 }
 
-# DIGITALOCEAN_TOKEN is read from the environment (see tools/provision.sh /
+# DIGITALOCEAN_TOKEN is read from the environment (see tools/ops/provision.sh /
 # destroy.sh, which source ~/.config/sask/infra.env) — never set a token here.
 provider "digitalocean" {}

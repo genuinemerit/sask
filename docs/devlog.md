@@ -1,5 +1,53 @@
 # Dev log
 
+## 2026-06-25 — SPEC-029: tools/ reorg into ops/dev/studio/helpers
+
+**All 25 tools/ files moved** (`git mv`, history preserved) into four
+buckets by kind: `tools/ops/` (13 — deploy/destroy/provision/
+recreate-droplet/redeploy, connect, acceptance-test,
+export-requirements, the three perf_* + perf-remote + run_perf),
+`tools/dev/` (5 — pre-commit-check, run-tests, start_web,
+validate_specs, generate_orbital_conditions), `tools/studio/` (2 —
+build_assets, graphic_tweaks), `tools/helpers/` (5 — match_semver,
+host_info, make_tree, validate_json, stamps). `tools/candidates/`
+dissolved entirely.
+
+**Found a class of bug the spec text never mentioned**, by reading the
+actual scripts rather than trusting the spec's own suggested grep
+patterns: every moved file sits one directory level deeper, and 11 shell
+scripts (`cd "$(dirname "$0")/.."`) plus 3 Python tools
+(`Path(__file__).parent.parent`) compute repo-root via depth-relative
+math that assumed the *old* depth. Fixed all 14. The two tools already
+one level deep in `tools/candidates/` (build_assets.py's `parents[2]`,
+make_tree.sh's `../..`) needed no change — their new homes are the same
+depth.
+
+**Other real breaks fixed**: `pre-commit-check.sh`'s
+`shellcheck tools/*.sh` glob would have matched zero files post-move
+(verified empirically: 15/15 .sh files now caught by `tools/*/*.sh`);
+`pyproject.toml`'s `pythonpath` updated from `["src", "tools"]` to
+`["src", "tools/ops", "tools/dev"]` to keep the two bare tool imports
+resolving (`perf_config` in tests/perf/, `generate_orbital_conditions` in
+the default-collected test_spec_006.py); `test_validate_specs.py`'s
+manual `sys.path.insert` updated to match. Every inter-tool call
+(redeploy.sh -> recreate-droplet/deploy/acceptance-test; deploy.sh ->
+export-requirements; perf-remote.sh -> acceptance-test + perf_engine/
+perf_config/perf_http) and every tool's own self-referencing usage
+comment fixed, plus the prose comments in infra/tofu/*.tf,
+secrets/infra.env.example, ansible/bootstrap.yml, CLAUDE.md, README.md,
+docs/deploy-runbook.md, docs/user_testing.md, docs/references.md, and
+.gitignore that named a tool's old path.
+
+No behavior change. Full unit suite still 626 passed; full perf benchmark
+suite (20 benchmarks, now running from tools/ops/) still green — the real
+regression check for the perf-tooling depth/pythonpath fixes. Pre-commit
+suite clean from its new tools/dev/ home. App boots locally via
+tools/dev/start_web.sh and serves real content.
+
+**Next:** the live redeploy (`tools/ops/redeploy.sh -y`) is this spec's
+remaining acceptance criterion — held back pending explicit confirmation
+before touching the production droplet.
+
 ## 2026-06-25 — DD-0017/SPEC-028 B3: adapter homes; accepted
 
 **`src/sask/api/` and `src/sask/cli/`** created, each with only an empty

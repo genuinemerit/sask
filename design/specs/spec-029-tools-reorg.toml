@@ -1,0 +1,134 @@
+id     = "SPEC-029"
+title  = "Reorg of tools/ into ops, dev, studio, and helpers"
+status = "proposed"
+
+[implements]
+requirements = []
+decisions    = []
+notes = """
+Phase C of the cleanup sequence (Phase A repo rename complete; Phase B src
+reorg is SPEC-028). This is an operational-tooling reorganization with no
+governing functional requirement and no separate DD: it is small, mechanical,
+and self-evident in rationale (group tools/ by kind of tooling). Precondition:
+SPEC-028 complete and green, so import paths are settled before tool paths
+move. Unlike SPEC-028, this phase ends in a LIVE REDEPLOY, because moving the
+deploy scripts changes the paths the deploy harness calls.
+"""
+
+[scope]
+in = """
+A placement reorganization of tools/ into four buckets by kind of tooling
+(ops, dev, studio, helpers), dissolving the inherited tools/candidates/
+directory entirely. Includes fixing every inter-tool path reference exposed by
+the move (one tool invoking another by path), any reference to a moved tool
+from outside tools/ (CI, docs, pyproject, flake.nix, deploy harness), and a
+final live redeploy as verification.
+"""
+
+out = """
+- Any change to what a tool does: this is relocation plus path-reference
+  fixes only, no behavior or logic changes to any script.
+- Renaming individual tools (names are preserved; only locations change).
+- Wrapping the "handy commands" into a CLI or any new tool (the helpers stay
+  as-is; CLI work is a future, separate effort).
+- The /src reorg (SPEC-028) and the help guide (Phase D, future spec).
+- Adding new tooling: studio/ and helpers/ receive existing files only;
+  future studio tools land later.
+"""
+
+target_structure = """
+tools/
+   ops/        # acts on the running app or its infrastructure
+      deploy.sh  destroy.sh  provision.sh  recreate-droplet.sh  redeploy.sh
+      connect.sh  acceptance-test.sh  export-requirements.sh
+      perf_config.py  perf_engine.py  perf_http.py  perf-remote.sh  run_perf.sh
+   dev/        # local development helpers
+      pre-commit-check.sh  run-tests.sh  start_web.sh  validate_specs.py
+      generate_orbital_conditions.py
+   studio/     # asset-prep / content-crafting (grows with future studio tools)
+      build_assets.py  graphic_tweaks.sh
+   helpers/    # generic "handy commands"
+      match_semver.py  host_info.py  make_tree.sh  validate_json.py  stamps.py
+
+(tools/candidates/ is dissolved: build_assets.py and graphic_tweaks.sh -> studio/;
+ match_semver.py, host_info.py, make_tree.sh, validate_json.py, stamps.py -> helpers/.)
+"""
+
+[deliverables]
+moves = """
+Use git mv for every file so history follows. Create the four bucket
+directories (ops, dev, studio, helpers) and relocate exactly as in
+target_structure. Perf tooling stays under ops/ (not its own bucket, per
+design discussion). After moving, remove the now-empty tools/candidates/
+directory.
+"""
+
+path_references = """
+Fix every path reference exposed by the moves. These are the high-risk spots
+because a stale path silently breaks the deploy harness:
+
+1. Inter-tool calls — a tool invoking another tool by path. Known case:
+   redeploy.sh calls recreate-droplet.sh (both -> ops/, so a relative call may
+   still resolve, but verify and make the path explicit/correct). Grep the
+   shell tools for sibling invocations:
+      git grep -n -E "tools/|\\./[a-z_-]+\\.(sh|py)" tools/
+   and fix each to the new location.
+2. References from outside tools/ — search the whole repo for any path naming
+   a moved tool:
+      git grep -n -E "tools/(acceptance-test|connect|deploy|destroy|export-requirements|provision|recreate-droplet|redeploy|run_perf|perf-remote|perf_config|perf_engine|perf_http|pre-commit-check|run-tests|start_web|validate_specs|generate_orbital_conditions|build_assets|graphic_tweaks|match_semver|host_info|make_tree|validate_json|stamps)"
+   Likely hits: the Ansible deploy role(s) that invoke or copy deploy scripts,
+   flake.nix devShell, pyproject.toml, CI/pre-commit config, docs/deploy-runbook.md
+   and other docs, README. Update each to the new path.
+3. validate_specs.py moved to dev/ — confirm anything that invokes it
+   (pre-commit, CI, docs) points at tools/dev/validate_specs.py.
+4. If any tool is on PYTHONPATH or imported (e.g. perf_config imported by the
+   perf scripts), confirm the import still resolves from the new layout, or fix
+   the invocation's working directory / sys.path accordingly.
+"""
+
+docs = """
+Update docs that name tool paths to the new locations — notably
+docs/deploy-runbook.md (the quick-reference commands) and any other doc with a
+tools/ path. docs/devlog.md is history: do not rewrite past entries; record
+this reorg as a NEW devlog entry instead.
+"""
+
+verification = """
+This phase's verification is a LIVE REDEPLOY, since the deploy-script paths
+moved and a real deploy cycle is the only true test:
+1. Local first: full test suite green at the same count, pre-commit checks
+   clean, tools/dev/validate_specs.py clean, app boots locally.
+2. Then the live redeploy: tools/ops/redeploy.sh -y (recreate -> deploy ->
+   verify), confirming the reserved IP is preserved, the acceptance step
+   passes against sask.davidstitt.net, and a follow-up no-op deploy reports
+   changed=0. This also serves as the downstream confirmation that the Phase A
+   rename and the SPEC-028 src reorg left the deploy path intact.
+"""
+
+design_doc_status = """
+On a green live redeploy, set SPEC-029 status to "accepted" and add a devlog
+entry recording the reorg, the candidates/ dissolution, the path-reference
+fixes, and the redeploy result.
+"""
+
+[acceptance]
+criteria = """
+1. tools/ matches target_structure: four buckets (ops, dev, studio, helpers),
+   each containing exactly the listed files; tools/candidates/ no longer exists.
+2. All moves done via git mv (history preserved).
+3. No stale tool path anywhere: the two grep sweeps (inter-tool and
+   whole-repo) come back clean after fixes; the deploy harness, flake.nix,
+   pyproject, CI/pre-commit, and docs all reference the new locations.
+4. Full test suite passes at the same count as before; pre-commit and
+   validate_specs (from its new dev/ path) clean; app boots locally.
+5. Live redeploy via tools/ops/redeploy.sh -y succeeds: recreate -> deploy ->
+   verify green against the live domain, reserved IP preserved, follow-up
+   deploy reports changed=0.
+6. devlog.md gains a new entry for this reorg; no past devlog entry is
+   rewritten.
+"""
+
+uat = """
+None beyond the live redeploy's automated verify step, which exercises the end-
+to-end deploy path that the tool moves put at risk.
+"""

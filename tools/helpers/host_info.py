@@ -1,9 +1,11 @@
 """Collect basic host/platform diagnostics as a JSON string.
 
 Renamed from platform.py: that name shadowed the stdlib ``platform`` module
-this file imports, which is risky in a project where ``tools/`` is on
-``pythonpath`` (see pyproject.toml's pytest config) — any other module could
-end up importing this file instead of the real stdlib module.
+this file imports. Originally risky because ``tools/`` was on ``pythonpath``
+(see pyproject.toml's pytest config); since the SPEC-029 tools/ reorg,
+pythonpath only lists tools/ops and tools/dev, and this file lives in
+tools/helpers/, so it's no longer pythonpath-exposed at all — the rename
+stands as the correct name regardless.
 """
 
 from __future__ import annotations

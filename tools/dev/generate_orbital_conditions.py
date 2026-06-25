@@ -7,7 +7,7 @@ This script is run ONCE on the VM; the engine reads the frozen config and never
 invokes this generator. Re-running with the same SEED produces identical output.
 
 Usage:
-    python3 tools/generate_orbital_conditions.py
+    python3 tools/dev/generate_orbital_conditions.py
 """
 
 from __future__ import annotations
@@ -27,7 +27,7 @@ INCLINATION_MIN = 1.0  # degrees; lower bound for random draw
 INCLINATION_MAX = 8.0  # degrees; upper bound for random draw
 ZEHEMBRA_INCLINATION = 1.0  # hand-set low; eclipses more often (lore requirement)
 
-CONFIG_DIR = Path(__file__).resolve().parent.parent / "config"
+CONFIG_DIR = Path(__file__).resolve().parent.parent.parent / "config"
 BODY_DATA = CONFIG_DIR / "body_data.toml"
 
 

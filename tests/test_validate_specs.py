@@ -1,4 +1,4 @@
-"""Pytest suite for tools/validate_specs.py.
+"""Pytest suite for tools/dev/validate_specs.py.
 
 Each test builds a self-contained temp design tree (schema + one or more docs),
 calls validate_specs.run(), and asserts on the returned error list.
@@ -9,7 +9,7 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "tools"))
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "tools" / "dev"))
 import validate_specs  # noqa: E402
 
 
