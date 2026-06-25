@@ -1,0 +1,152 @@
+id     = "SPEC-030"
+title  = "Help guide: Markdown loader, web routes, and starter skeleton"
+status = "accepted"
+
+[implements]
+requirements = []
+decisions    = ["DD-0018"]
+notes = """
+Phase D of the cleanup/elevation sequence. No separate functional REQ; DD-0018
+is the governing decision. Best done after SPEC-028 (the web adapter's final
+location is settled by the src reorg), but does not depend on SPEC-029.
+"""
+
+[scope]
+in = """
+A help capability: Markdown content under docs/help/, a startup discovery of
+the topic set into a {stem: absolute_path} map on the app, two thin web routes
+(index + topic page) that render a topic's Markdown to HTML wrapped in
+base.html, a "Help" nav link, the Markdown runtime dependency, a minimal
+starter skeleton (index + one example topic), and tests.
+"""
+
+out = """
+- Authoring real help content beyond the starter skeleton (ongoing, with
+  Claude Code, against this mechanism).
+- The CLI help surface (future; the .md files are left CLI-consumable but no
+  CLI is built here).
+- Search, doc versioning, static export, dev hot-reload of the topic set,
+  per-topic metadata/catalog.
+- Caching or startup-rendering of help HTML (DD-0018 chose fresh per-request
+  render of known topics).
+- Any change to engine, message units, or config schema.
+"""
+
+[deliverables]
+dependency = """
+Add a pure-Python Markdown renderer to runtime dependencies in pyproject.toml -
+Python-Markdown ("markdown") recommended, with extensions fenced_code, tables,
+toc enabled at render time. Re-export requirements.txt via the existing tools
+export step (tools/ops/export-requirements.sh after SPEC-029, or its current
+path) so the droplet venv carries it. Confirm it installs in the nix devShell /
+poetry env.
+"""
+
+content = """
+docs/help/ directory with a minimal STARTER skeleton only (real content is
+authored later):
+- docs/help/index.md (or an index generated from the topic list - see routes;
+  if a landing file is used, name it so it does not collide with a topic) - a
+  short welcome / orientation.
+- docs/help/getting-started.md - one example topic demonstrating headings,
+  a fenced code block, and a table, so the renderer extensions are exercised.
+Author both in GitHub-Flavored-Markdown-compatible syntax (renders in-app and
+on GitHub).
+"""
+
+loader = """
+A small help module (location consistent with the post-reorg layout - a thin
+helper the web routes call; it performs no Flask work itself). At create_app()
+time it scans docs/help/ for *.md files and builds a {topic_stem:
+resolved_absolute_path} map stored on the app (e.g. app.config). It exposes:
+- list_topics() -> ordered topic stems (for the index),
+- resolve_topic(stem) -> absolute path or a not-found signal (membership lookup
+  only; never path-joins the input),
+- render_topic(stem) -> rendered HTML string (reads the resolved path fresh and
+  runs the Markdown renderer with the configured extensions).
+The directory scan is the only startup I/O; rendering is per request.
+"""
+
+routes = """
+Two thin routes in the web adapter (src/sask/web/routes.py):
+- GET /help - renders an index listing the topics (link each to its page);
+  may render docs/help/index.md as intro content above the list if present.
+- GET /help/<topic> - looks up <topic> in the map; on hit, renders that topic's
+  HTML and wraps it in base.html; on miss, returns the app's not-found response
+  (consistent with existing route conventions). The route contains no file-path
+  construction of its own beyond calling the loader.
+Add a single "Help" nav entry to base.html pointing at /help.
+"""
+
+tests = """
+tests/test_spec_030.py covering:
+- Topic discovery: the starter files are found; the map keys match the file
+  stems.
+- /help renders 200 and lists the starter topic(s).
+- /help/getting-started renders 200, wrapped in base.html (assert a base-layout
+  marker is present), with the Markdown converted (assert an expected HTML
+  element from the sample, e.g. a <table> or <code> block).
+- /help/<unknown> returns the not-found response; assert that a traversal-style
+  value (e.g. "../devlog") does NOT read anything outside the map (membership
+  lookup miss -> not-found), confirming path safety.
+- The loader's resolve_topic never opens a path not in the map.
+Full suite must pass at the new higher count; pre-commit and validate_specs
+clean.
+"""
+
+design_doc_status = """
+On acceptance, set DD-0018 and SPEC-030 status to "accepted" and add a devlog
+entry. The starter skeleton's presence (not its content completeness) plus the
+working mechanism is the acceptance bar; real content continues afterward.
+"""
+
+[acceptance]
+criteria = """
+1. A Markdown runtime dependency is added and present in both pyproject.toml
+   and the re-exported requirements.txt; it installs cleanly in the dev env.
+2. docs/help/ exists with the starter skeleton (index intro + one example
+   topic exercising code block and table).
+3. At startup the app builds the {stem: absolute_path} topic map from
+   docs/help/; this directory scan is the only help-related startup I/O.
+4. GET /help renders an index listing the discovered topics, in base.html.
+5. GET /help/<known-topic> renders that topic's Markdown as HTML wrapped in
+   base.html, with the configured extensions applied (code/table render).
+6. GET /help/<unknown> and any traversal-style value return the not-found
+   response and read nothing outside the map (path-safe by membership lookup).
+7. No HTML help artifact is committed; Markdown is the only authored source.
+8. A "Help" nav link is present and points at /help.
+9. Full test suite passes (prior count + SPEC-030 tests); pre-commit and
+   validate_specs clean; app boots and serves /help locally.
+"""
+
+uat = """
+[manual] Load /help in a browser: confirm the index lists topics and is styled
+as part of the app (nav present). Open the example topic: confirm headings,
+code block, and table render correctly inside base.html. Request a nonsense
+topic: confirm a clean not-found, not an error or a file leak. Optionally view
+the same .md files on GitHub to confirm they render there too.
+"""
+
+[addendum]
+notes = """
+Implemented and verified locally 2026-06-25. Loader lives at
+src/sask/help/loader.py, a third functional-area subpackage alongside
+calendar/ and asset/ (DD-0017's package=noun/module=verb convention),
+chosen over nesting inside web/ to keep it adapter-neutral for a future
+CLI. docs/help/index.md is excluded from the topic map entirely (not
+just unlisted) and rendered separately as intro content, resolving the
+spec's own hedge about a landing-file/topic-stem collision.
+
+One simplification from the literal text: routes.py does a plain dict
+.get() against the startup-built topic map rather than calling a
+separate named resolve_topic(stem) loader function - the membership
+lookup IS the safety mechanism DD-0018 describes, and a one-line dict
+lookup didn't warrant its own function. The 404 case stays wrapped in
+base.html (not the asset route's plain-text 404 precedent), since help
+pages are always HTML and DD-0018's point is that they feel native to
+the app.
+
+No live redeploy in this spec - out of scope for its own acceptance
+criteria (local verification is the bar). Deploying the help guide live
+is a separate, later action.
+"""

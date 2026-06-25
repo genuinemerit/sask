@@ -1,0 +1,140 @@
+id     = "DD-0018"
+title  = "User/help guide: Markdown source rendered through a web adapter"
+status = "accepted"
+date   = "2026-06-25"
+
+[context]
+summary = """
+The app has no user/help guide yet. One is wanted: integrated into the
+existing web UX (not a separate site), authored in a single source format,
+reusable by a future CLI help surface, and browsable on GitHub. The
+constraint, stated directly, is to keep it simple and avoid building a
+documentation platform. This DD records how help content is stored, rendered,
+and served. It is Phase D of the cleanup/elevation sequence (Phase A repo
+rename done; B = src reorg, SPEC-028; C = tools reorg, SPEC-029).
+"""
+
+problem = """
+The naive options each carry a cost. Authoring HTML directly, or pre-rendering
+Markdown to committed HTML with pandoc, both create a SECOND artifact that must
+be kept in sync with the source - exactly the drift this project is
+disciplined against (cf. the lore-overlay single-source-of-truth principle,
+and the config-as-source-of-truth rule). A full docs platform (search,
+versioning, static-site generator) is more than the need warrants. The design
+should make Markdown the single authored source, render it natively into the
+app's own look, and not introduce a sync burden or a heavyweight toolchain.
+"""
+
+[decision]
+summary = """
+Author help content once, as Markdown files in the repo (docs/help/). Serve it
+through a thin Flask route under the existing web adapter, rendering Markdown
+to HTML and wrapping it in base.html so help pages are native to the app. No
+HTML is ever committed; Markdown is the only authored artifact. The same files
+render on GitHub and can feed a future CLI help surface unchanged.
+"""
+
+content_location = """
+Help content lives in docs/help/ as Markdown files, one file per topic
+(topic id = filename stem). Authoring keeps to GitHub-Flavored-Markdown-
+compatible syntax so the same files render correctly both in-app and when
+browsed on GitHub, and read cleanly as plain text for a future CLI. Actual
+help CONTENT authoring is out of scope for this decision (it is ongoing work
+with Claude Code); this DD fixes the mechanism and a starter skeleton only.
+"""
+
+render_timing = """
+The topic SET is discovered once at create_app() time - a cheap directory
+listing building a {topic_stem: resolved_absolute_path} map, held on the app.
+Each topic's HTML is rendered FRESH per request from its known path, not
+cached and not pre-rendered at startup. Rationale: the zero-per-request-I/O
+discipline (DD-0015) is scoped to the engine hot paths and the ephemeris
+budget; help is explicitly non-critical and non-hot, so that discipline does
+not bind here. Rendering per request means a malformed or missing help file
+degrades a SINGLE page rather than crashing app startup (which a startup-render
+would do, the same way the asset catalog's startup stat does - appropriate for
+assets the app must serve, wrong for non-critical help). It also lets edits to
+existing topics appear without a restart. Adding a NEW topic file is picked up
+at the next restart (the set is fixed at startup); this is an accepted, minor
+limitation.
+"""
+
+path_safety = """
+The requested topic is resolved by membership lookup in the startup-built
+{stem: path} map, never by path-joining the URL value into a filesystem read.
+An unknown topic is a map miss -> not-found; path traversal (../) is
+structurally impossible because the URL value is only ever used as a dict key,
+and the value read is the pre-resolved absolute path. This mirrors the asset
+catalog's resolved-absolute-path approach (DD-0016) at a lighter weight (a
+directory listing rather than an authored, validated catalog), which is
+proportionate because help files are uniform Markdown with no per-entry
+metadata.
+"""
+
+dependency = """
+A pure-Python Markdown renderer is added as a runtime dependency. Recommended:
+Python-Markdown ("markdown") with the fenced_code, tables, and toc extensions
+(covers code blocks, tables, and in-page anchors - the features help docs
+actually use). mistune is a faster alternative if render cost ever mattered,
+but it does not here. The dependency is added to pyproject.toml and
+requirements.txt is re-exported (tools' export-requirements step) so the
+droplet's runtime venv carries it. This is the first non-Flask runtime
+rendering dependency; it is small, pure-Python, and widely used.
+"""
+
+routes_and_nav = """
+Two routes under the web adapter: an index (/help) listing the available
+topics from the startup map, and a topic page (/help/<topic>) rendering that
+topic. A single "Help" nav link in base.html points at the index; individual
+topics are reached from the index, not the nav, to avoid cluttering it. The
+routes are thin adapters - discover/lookup in the engine-ish helper, render and
+wrap in the route - consistent with the consumer-neutral adapter pattern.
+"""
+
+[consequences]
+positive = """
+- Single source: Markdown is the only authored/committed help artifact; no
+  HTML to keep in sync, no build step. Same drift-free principle as lore
+  overlays and config-as-source.
+- Native to the app: help pages render inside base.html with the app's nav and
+  styling, not as a bolted-on separate site.
+- Triple reuse from one source: in-app HTML, GitHub browsing, and a future CLI
+  help surface all consume the same .md files.
+- Appropriate failure mode: a bad help file breaks one help page, never app
+  startup or any non-help route.
+- Path-traversal-safe by construction (membership lookup, pre-resolved paths).
+"""
+
+negative_or_deferred = """
+- A new runtime dependency (the Markdown renderer). Small and pure-Python, but
+  it is the first of its kind and must ship to the droplet.
+- Per-request render cost on help pages. Negligible (help is not a hot path),
+  accepted in exchange for the no-startup-crash and edit-without-restart
+  properties.
+- New topic FILES are discovered only at restart (existing-topic edits are
+  live). Accepted; revisit only if help authoring cadence makes it annoying.
+- No search, no versioned docs, no static-site export, no dev hot-reload of the
+  topic set. All deliberately out of scope.
+"""
+
+out_of_scope = """
+- Authoring the actual help content beyond a minimal starter skeleton (ongoing
+  with Claude Code).
+- The CLI help surface itself (future; this DD only keeps the source reusable
+  by it).
+- Search, doc versioning, PDF/static export, a docs-site generator.
+- Any per-topic metadata/catalog (the directory listing is sufficient; if
+  topics later need ordering, grouping, or titles distinct from filenames,
+  that is a future, separate decision).
+"""
+
+[links]
+depends_on  = ["DD-0003"]
+relates_to  = ["DD-0015", "DD-0016", "SPEC-017"]
+notes = """
+DD-0003 (presentation architecture, thin web adapter) is the home for the
+routes. DD-0015 is cited for the scope of the zero-per-request-I/O discipline.
+DD-0016's resolved-absolute-path / known-set lookup is the safety pattern
+echoed here at lighter weight. SPEC-017's lore overlays are the precedent for
+single-source-of-truth output rendering. Implemented by SPEC-030.
+"""

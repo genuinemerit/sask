@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+
+{% block title %}Saskan Calendar — Help{% endblock %}
+
+{% block content %}
+<h1>Help</h1>
+
+{% if intro_html %}
+{{ intro_html | safe }}
+{% endif %}
+
+<ul>
+  {% for topic in topics %}
+  <li><a href="/help/{{ topic }}">{{ topic }}</a></li>
+  {% endfor %}
+</ul>
+{% endblock %}

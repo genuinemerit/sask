@@ -1,5 +1,55 @@
 # Dev log
 
+## 2026-06-25 — DD-0018/SPEC-030: help guide implemented; accepted
+
+**Phase D of the cleanup/elevation sequence.** Added a minimal help
+guide: Markdown source under `docs/help/`, a thin Flask-free loader
+(`src/sask/help/loader.py` — a third functional-area subpackage alongside
+`calendar/` and `asset/`, matching DD-0017's package=noun/module=verb
+convention and kept adapter-neutral for a future CLI), and two routes
+under the existing web adapter.
+
+**`discover_topics(help_dir)`** scans `docs/help/*.md` once at
+`create_app()` time into a `{stem: resolved_path}` map, deliberately
+excluding the `index` stem so `index.md` is never reachable at
+`/help/index` and never listed as a topic — it's rendered as intro prose
+above the topic list instead, via a separate `index_path()` lookup.
+**`render_markdown(path)`** reads fresh and renders per request (no
+caching), reused identically for both topics and the index intro — one
+render code path, not two. Topic resolution in `routes.py` is a plain
+dict `.get()` against the startup-built map; structurally impossible to
+path-traverse since the URL value is only ever used as a dict key.
+
+**`GET /help`** lists the discovered topics with the rendered intro above
+them; **`GET /help/<topic>`** renders that topic wrapped in `base.html`,
+or a "Topic not found" message wrapped in `base.html` with HTTP 404 (kept
+in `base.html`, unlike the asset route's plain-text 404, since help pages
+are always HTML and the whole point is feeling native to the app). One
+"Help" nav link added. Starter skeleton: `index.md` (welcome) +
+`getting-started.md` (one topic exercising headings, a fenced code
+block, and a table — all three configured Markdown extensions:
+`fenced_code`, `tables`, `toc`).
+
+Added `markdown` (Python-Markdown) as a new runtime dependency —
+pyproject.toml, regenerated `poetry.lock`, re-exported `requirements.txt`,
+and `.venv/bin/pip install`'d to match how flask/gunicorn are both
+poetry-declared and directly pip-installed in this project's
+non-poetry-managed `.venv`.
+
+`tests/test_spec_030.py` adds 12 tests (topic discovery and index
+exclusion, render-extension checks, layer-purity, the two routes' HTML
+behavior including the 404 case, and a direct check that
+traversal-style values are never resolvable keys) — full suite now 638
+(was 626), zero regressions. Manually verified locally via
+`tools/dev/start_web.sh`: `/help` and `/help/getting-started` both render
+correctly with nav, intro, table, and code block present.
+
+No live redeploy — out of scope for this spec's acceptance criteria
+(local verification is the bar); deploying the help guide live is a
+separate, later action.
+
+**DD-0018 and SPEC-030 flipped from `proposed` to `accepted`.**
+
 ## 2026-06-25 — Ephemeris export-time-estimate feature withdrawn
 
 **Dropping the deferred ephemeris export-time/payload-size estimate UX

@@ -36,6 +36,7 @@ from sask.calendar.pulse import (
 from sask.calendar.scene import get_sky_scene, render_image_prompt, render_night_summary
 from sask.calendar.season import season_info
 from sask.calendar.sky import all_sky_positions, fatune_sky_position
+from sask.help.loader import render_markdown
 
 from ..config_loader import AppConfig
 from ..message import CalendarDate, PulseInfo
@@ -568,3 +569,30 @@ def get_asset(kind: str, id: str) -> Response:
     resp = make_response(payload.data)
     resp.content_type = payload.descriptor.content_type
     return resp
+
+
+# ── Help (DD-0018, SPEC-030) ────────────────────────────────────────────────────
+
+
+@bp.route("/help")
+def get_help_index() -> str:
+    topics = sorted(current_app.config["SASK_HELP_TOPICS"])
+    index_path = current_app.config["SASK_HELP_INDEX_PATH"]
+    intro_html = render_markdown(index_path) if index_path else None
+    return render_template("help_index.html", topics=topics, intro_html=intro_html)
+
+
+@bp.route("/help/<topic>")
+def get_help_topic(topic: str) -> Response:
+    topic_map = current_app.config["SASK_HELP_TOPICS"]
+    path = topic_map.get(topic)
+    if path is None:
+        resp = make_response(
+            render_template("help_topic.html", topic=topic, content_html=None), 404
+        )
+        return resp
+
+    content_html = render_markdown(path)
+    return make_response(
+        render_template("help_topic.html", topic=topic, content_html=content_html)
+    )

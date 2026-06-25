@@ -11,6 +11,7 @@ packages = [{ include = "sask", from = "src" }]
 python    = "^3.12"
 flask     = ">=3.0"
 gunicorn  = ">=22.0"
+markdown  = ">=3.6"
 
 [tool.poetry.group.dev.dependencies]
 ruff = "*"
