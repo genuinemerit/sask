@@ -1876,3 +1876,139 @@ Tested on `sask-dev` via SSH tunnel. All cases pass.
 
 Stop the Flask server with `Ctrl+C` in the VM terminal. Close the SSH tunnel
 terminal.
+
+---
+
+## SPEC-030 — Help guide
+
+SPEC-030 adds a help guide under **`/help`**: an index page listing topics
+and a per-topic page (**`/help/<topic>`**) rendering Markdown source from
+`docs/help/` to HTML, wrapped in the app's normal `base.html` layout (nav,
+styling). The starter skeleton ships exactly one real topic
+(`getting-started`) plus an intro (`index.md`, not itself a selectable
+topic). Engine-level behavior (topic discovery, the `index` exclusion,
+Markdown rendering, path safety) is covered entirely by automated tests
+(`tests/test_spec_030.py`); this UAT checks the in-browser experience the
+automated tests can't see directly — does it look and feel native to the
+app, do the rendered table/code block/headings actually render, does an
+unknown topic fail cleanly.
+
+### SPEC-030 Setup
+
+**1. Open an SSH tunnel from the Ubuntu host:**
+
+```bash
+ssh -L 5000:localhost:5000 sask-dev
+```
+
+Keep this terminal open.
+
+**2. In the VM session, start the Flask development server:**
+
+```bash
+cd ~/Code/sask
+bash tools/dev/start_web.sh
+```
+
+Expected output: `Running on http://127.0.0.1:5000`
+
+**3. Open a browser on the Ubuntu host** and navigate to
+`http://localhost:5000/`.
+
+---
+
+### SPEC-030 Test cases
+
+#### TC-030-01 — "Help" nav link present and reachable from every page
+
+**Action:** From the home page (`/`), look at the nav bar; click **Help**.
+
+**Pass criteria:**
+
+- The nav bar shows **Help** as the last entry, after **Ephemeris**.
+- Clicking it loads `http://localhost:5000/help` with the same nav bar
+  present (the page looks like a normal part of the app, not a separate
+  site).
+
+---
+
+#### TC-030-02 — Help index lists the starter topic with intro text
+
+**Action:** Load `http://localhost:5000/help` directly.
+
+**Pass criteria:**
+
+- HTTP 200.
+- A short welcome/orientation paragraph (from `docs/help/index.md`)
+  renders above the topic list.
+- The topic list contains exactly one link, **getting-started**, pointing
+  at `/help/getting-started`.
+- `index` itself is never listed as a clickable topic (it's intro
+  content only, not a topic).
+
+---
+
+#### TC-030-03 — Getting Started topic renders headings, a code block, and a table
+
+**Action:** Click **getting-started** (or navigate directly to
+`http://localhost:5000/help/getting-started`).
+
+**Pass criteria:**
+
+- HTTP 200, page still wrapped in the normal nav/layout.
+- At least one sub-heading is visible (e.g. "Looking up a date").
+- A syntax-highlighted or monospaced **code block** is visible (the
+  Python REPL snippet under "Looking up the sky").
+- A **table** is visible (the Field/Meaning table under "Looking up a
+  date"), with visible cell borders/shading from the app's existing
+  table styling.
+- A "Back to Help" link is present and returns to `/help`.
+
+---
+
+#### TC-030-04 — Unknown topic fails cleanly, not with an error or a file leak
+
+**Action:** Navigate to `http://localhost:5000/help/does-not-exist`.
+
+**Pass criteria:**
+
+- HTTP 404 (check via DevTools → Network tab, not a 500 error page).
+- The page still renders inside the normal nav/layout (not Flask's bare
+  default 404 page) with a short "not found" message naming the
+  requested topic.
+- No file contents, paths, or stack trace are exposed anywhere in the
+  response.
+
+---
+
+#### TC-030-05 — [optional] Same Markdown source renders on GitHub
+
+**Action:** View `docs/help/index.md` and `docs/help/getting-started.md`
+on GitHub (or any Markdown previewer).
+
+**Pass criteria:**
+
+- Both files render with working headings, code block, and table —
+  confirming the GitHub-Flavored-Markdown-compatible authoring requirement
+  (DD-0018), not just the in-app renderer.
+
+---
+
+### SPEC-030 Results
+
+Not yet run.
+
+| TC | Result | Notes |
+|---|---|---|
+| TC-030-01 | | |
+| TC-030-02 | | |
+| TC-030-03 | | |
+| TC-030-04 | | |
+| TC-030-05 | | |
+
+---
+
+### SPEC-030 Teardown
+
+Stop the Flask server with `Ctrl+C` in the VM terminal. Close the SSH tunnel
+terminal.
