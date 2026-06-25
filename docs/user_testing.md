@@ -16,7 +16,7 @@ host to `localhost:5000` on the VM.
 **2. In the VM session, start the Flask development server:**
 
 ```bash
-cd ~/Code/sask-calendar
+cd ~/Code/sask
 PYTHONPATH=src .venv/bin/flask --app sask.web run
 ```
 
@@ -148,7 +148,7 @@ conducted interactively in a Python REPL on the VM.
 **1. SSH into the VM and start a Python session:**
 
 ```bash
-cd ~/Code/sask-calendar
+cd ~/Code/sask
 PYTHONPATH=src .venv/bin/python3
 ```
 
@@ -359,7 +359,7 @@ Keep this terminal open.
 **2. In the VM session, start the Flask development server:**
 
 ```bash
-cd ~/Code/sask-calendar
+cd ~/Code/sask
 bash tools/start_web.sh
 ```
 
@@ -700,7 +700,7 @@ Keep this terminal open.
 **2. In the VM session, start the Flask development server:**
 
 ```bash
-cd ~/Code/sask-calendar
+cd ~/Code/sask
 bash tools/start_web.sh
 ```
 
@@ -1070,7 +1070,7 @@ Keep this terminal open.
 **2. In the VM session, start the Flask development server:**
 
 ```bash
-cd ~/Code/sask-calendar
+cd ~/Code/sask
 bash tools/start_web.sh
 ```
 
@@ -1582,7 +1582,7 @@ Keep this terminal open.
 **2. In the VM session, start the Flask development server:**
 
 ```bash
-cd ~/Code/sask-calendar
+cd ~/Code/sask
 bash tools/start_web.sh
 ```
 
@@ -1715,7 +1715,7 @@ Keep this terminal open.
 **2. In the VM session, start the Flask development server:**
 
 ```bash
-cd ~/Code/sask-calendar
+cd ~/Code/sask
 bash tools/start_web.sh
 ```
 

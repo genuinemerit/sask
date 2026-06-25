@@ -5,13 +5,13 @@ date   = "2026-06-21"
 
 [context]
 problem = """
-sask-calendar has no remote deployment yet. It needs a reproducible, low-ceremony
+sask has no remote deployment yet. It needs a reproducible, low-ceremony
 way to stand the app up on a DigitalOcean droplet, tear it down, and rebuild it
 from zero on demand - the destroy/redeploy lifecycle deferred since DD-0001 and
 DD-0003 and pointed at by SPEC-005 ("reusing the sask deploy pattern"). A sibling
 project (the now-retired sask resource server) already solved this with a bespoke
 OpenTofu + Ansible + bash harness; this DD adopts and adapts that pattern into
-sask-calendar's current idiom, fixing the architecture, the deployment unit's
+sask's current idiom, fixing the architecture, the deployment unit's
 identity, the platform/application separation, and the security posture.
 """
 constraints = [
@@ -19,7 +19,7 @@ constraints = [
   "Single act: one mainline `redeploy` command runs the full chain; the discrete tools/ scripts remain available as its building blocks.",
   "No GitHub Actions or remote CI - everything runs locally via `nix develop`, matching the sibling project's deliberate choice.",
   "Server-rendered, no-JavaScript app (DD-0003): a single gunicorn-served Flask app behind Caddy.",
-  "Native to sask-calendar's current DD/REQ/SPEC schema and tooling (validate_specs.py), not a translation of the sibling project's older schema.",
+  "Native to sask's current DD/REQ/SPEC schema and tooling (validate_specs.py), not a translation of the sibling project's older schema.",
   "Forward-compatible with the umbrella `sask` app: the harness must not assume a single functional area.",
 ]
 alternatives = [
@@ -60,9 +60,10 @@ summary = """
 6. Identity: the deployed app, droplet-side identifiers (system user, `/opt/sask`,
    `/etc/sask`, `/var/log/sask`, `sask.service`, `sask-*` DO resources, SSH alias),
    and local secrets path (`~/.config/sask/`) all use `sask` - matching the Python
-   package and reserving the umbrella identity. sask-calendar is the umbrella's
-   first functional area. The repository stays `sask-calendar` for now; the
-   package/deploy name `sask` is the intentional, documented exception.
+   package and reserving the umbrella identity. sask was the umbrella's first
+   functional area; the repository, originally named `sask-calendar`, was
+   renamed to `sask` on 2026-06-25 (DD-0017), resolving the earlier
+   package/repo name mismatch.
 7. Access: public, no authentication. The application-secrets mechanism (Ansible
    `copy` + `no_log` + mode 0600, with a `.example` template) is stubbed and
    documented but unused, so auth, multi-user, and messaging can be added later
@@ -76,7 +77,7 @@ summary = """
    escalation levers, not built now. Enumerated in REQ-SEC-003.
 9. Layout and conventions: production IaC under `infra/tofu/` (kept distinct from
    the dev VM's `infra/configuration.nix`); Ansible under `ansible/`; orchestration
-   under `tools/` (sask-calendar's existing convention for scripts, not a new
+   under `tools/` (sask's existing convention for scripts, not a new
    `scripts/` directory); remote acceptance tests under `tests/acceptance/`.
    Operational evidence is recorded under `tests/results/` in the current
    convention; a deploy runbook and operational UAT cases follow the current docs
@@ -84,7 +85,7 @@ summary = """
 """
 rationale = """
 Reusing the sibling project's proven harness loses far less than re-deriving it,
-and adapting rather than transplanting keeps the result native to sask-calendar's
+and adapting rather than transplanting keeps the result native to sask's
 schema and tooling. The reserved-IP-carries-DNS-and-SSH choice is what makes the
 destroy/redeploy loop require zero manual steps. The platform/application seam is
 the concrete mechanism that lets the umbrella `sask` app gain functional areas
@@ -106,7 +107,7 @@ negative = [
   "Local Tofu state means state loss orphans cloud resources (manual DO-console cleanup); accepted, with the remote-backend migration path documented.",
   "The SSH-allowed-IP firewall rule is pinned at apply time; a changed developer IP needs a ~10s re-provision.",
   "A custom Caddy build is required for the rate-limit plugin (a modest added build step in the caddy role).",
-  "The `sask` deploy name vs `sask-calendar` repo name is a deliberate mismatch that must be documented to avoid confusion.",
+  "The `sask` deploy name vs `sask-calendar` repo name was a deliberate mismatch that had to be documented to avoid confusion. RESOLVED 2026-06-25: repository renamed sask-calendar -> sask (DD-0017); mismatch no longer exists.",
 ]
 followups = [
   "DONE 2026-06-22: REQ-OPS-013..015, REQ-SEC-003, SPEC-022 (provisioning), SPEC-023 (Ansible deploy), and SPEC-024 (acceptance/operational test suite) are all implemented and verified live against sask.davidstitt.net, not just designed. See tests/results/SPEC-022.md through SPEC-024.md and docs/devlog.md for the real bugs found and fixed running each piece for the first time.",

@@ -8,7 +8,7 @@ summary = """
 The sask-proto sibling project built a small authenticated Flask resource
 server (resource retrieval by kind/id, returning bytes). The next phase of
 sask work ports an improved asset-retrieval capability into the active
-sask-calendar codebase, rebuilt against sask-calendar's own conventions
+sask codebase, rebuilt against sask's own conventions
 rather than copied. This DD covers retrieval ONLY: the read path. The
 management/write half (asset setup, uploads, versioning, inventory
 mutation), application authentication/authorization, and the eventual
@@ -19,7 +19,7 @@ this decision rests on.
 """
 
 prior_art = """
-sask-proto's retrieval is functionally adequate but weak by sask-calendar
+sask-proto's retrieval is functionally adequate but weak by sask
 conventions in two ways: the lookup logic lives inline inside the Flask
 route (not in a Flask-free engine module), and it returns raw bytes rather
 than a typed message unit. sask-proto also reloads its manifest from disk on
@@ -173,10 +173,10 @@ in-grain with the existing flat topic-module layout (pulse.py, scene.py,
 lunar.py, ...). It is NOT promoted to a src/sask/asset/ subpackage now: a
 single subpackage amid flat modules would imply the others are not functional
 areas. Genuine physical functional-area separation is a whole-tree
-reorganization and is deliberately slotted to the future repo-rename round
-(sask-calendar -> sask), where calendar, asset, and any other areas are
-promoted to subpackages together under one coherent restructuring. See
-consequences.
+reorganization and is deliberately slotted to the repo-rename round
+(completed 2026-06-25) and the subsequent semantic reorg (DD-0017/SPEC-028),
+where calendar, asset, and any other areas are promoted to subpackages
+together under one coherent restructuring. See consequences.
 """
 
 message_units = """
@@ -231,8 +231,8 @@ any role/token model; the asset management/write path (uploads, new
 versions, inventory mutation, config editing); messaging-protocol
 strengthening beyond typed in-process message units; server / client-server
 architecture options; asset-preparation/validation maintenance tooling;
-the umbrella "sask app" merger and the sask-calendar -> sask rename. Each is
-tracked as its own future effort.
+the umbrella "sask app" merger (the sask-calendar -> sask rename is
+complete; see DD-0017). Each is tracked as its own future effort.
 """
 
 [links]

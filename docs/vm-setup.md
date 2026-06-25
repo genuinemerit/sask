@@ -86,8 +86,8 @@ ssh -o PreferredAuthentications=password dave@<VM-IP>
 On the VM:
 
 ```bash
-git clone git@github.com:genuinemerit/sask-calendar.git
-cd sask-calendar
+git clone git@github.com:genuinemerit/sask.git
+cd sask
 ```
 
 (The VM's `~/.ssh/config` already routes this through `sask_ed25519`.)

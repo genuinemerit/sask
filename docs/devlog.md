@@ -1,5 +1,43 @@
 # Dev log
 
+## 2026-06-25 — Housekeeping: doc sweep, DD-0017/SPEC-028 added
+
+**Post-rename reference sweep.** Repo renamed `sask-calendar` -> `sask`
+(Phase A; GitHub remote renamed too). Swept every non-code doc and design
+TOML for the stale name: `README.md`, `docs/glossary.md`,
+`docs/user_testing.md`, `docs/vm-setup.md`, and 5 design TOMLs (DD-0002,
+DD-0014, DD-0016, REQ-FUN-013, SPEC-023). The passages in DD-0014 and
+DD-0016 that documented the *deliberate* sask/sask-calendar name mismatch
+(and the "future repo-rename round") were reworded to state the rename is
+complete (2026-06-25) rather than blind-swapped into nonsensical prose.
+`docs/devlog.md`, `tests/results/*.md`, and the perf-benchmark JSON were
+left untouched — literal historical captures, out of scope.
+
+**DD-0017 + SPEC-028 added (status: proposed).** The functional-area/
+adapter subpackage reorg that DD-0016 deferred to "the repo-rename round" —
+`calendar/` and `asset/` subpackages, `web/`/`api/`/`cli/` adapter homes —
+now has its decision and spec on file, ready to implement.
+
+**`analysis/deployment/` and `analysis/functionality/` removed** —
+superseded by the accepted DD-0014/DD-0016 design docs; archived on
+Dropbox alongside the old `sask-proto` code, not deleted outright.
+
+**Found and fixed a real bug along the way:** the local `.venv` predated
+the rename — every shim in `.venv/bin/` (pytest, pymarkdown, ...) had a
+hardcoded shebang pointing at the now-nonexistent
+`/home/dave/Code/sask-calendar/.venv/bin/python3`. Regenerated per
+`docs/vm-setup.md`'s documented procedure.
+
+**Clean baseline verified before starting the reorg:** full pre-commit
+suite (ruff, shellcheck, pymarkdown, validate_specs) green; full unit
+suite 626 passed; a full `tools/redeploy.sh -y` destroy/recreate/deploy/
+verify cycle run end-to-end against the live droplet — Ansible `37 ok, 31
+changed, 0 failed`, acceptance suite all PASS against
+`sask.davidstitt.net`.
+
+**Next:** implement DD-0017/SPEC-028 in three phases (B1 canary asset
+move, B2 bulk calendar move, B3 adapter homes).
+
 ## 2026-06-24 — SPEC-027 accepted: redeployed and verified live
 
 **REQ-OPS-017/SPEC-027 redeployed against the real droplet and accepted.**

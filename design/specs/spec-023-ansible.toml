@@ -63,7 +63,7 @@ guards (reserved-IP detach; known_hosts purge on the new host key). Uses
 tools/recreate-droplet.sh (SPEC-022), not plain destroy.sh + provision.sh - that
 pair tears down the reserved IP itself, breaking REQ-OPS-013's IP-survives
 guarantee, a gap a real destroy/recreate test caught (see spec-022-tofu.toml). All
-under tools/, sask-calendar's existing orchestration-script convention - not a new
+under tools/, sask's existing orchestration-script convention - not a new
 scripts/ directory.
 """
 [acceptance]

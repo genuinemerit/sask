@@ -1,4 +1,4 @@
-# sask-calendar — Glossary
+# sask — Glossary
 
 Living document. Two conventions:
 

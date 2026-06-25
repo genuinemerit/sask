@@ -5,7 +5,7 @@ date   = "2026-06-01"
 
 [context]
 problem = """
-sask-calendar must compute astronomical and calendrical results for Saskantinon —
+sask must compute astronomical and calendrical results for Saskantinon —
 calendars, moon phases, seasons, wanderers, star context, and noteworthy events —
 as reference for writing and worldbuilding and a future RPG. The prototype
 embedded data, lore, and computation together and conflated civil and astronomical

@@ -20,7 +20,7 @@ rationale = """
 Asset retrieval must serve more than one consumer over the project's life
 (HTML page, calling API, developer/admin CLI). Making the operation
 consumer-neutral and message-shaped — rather than inline in a Flask route
-returning raw bytes, as in the sask-proto prototype — extends sask-calendar's
+returning raw bytes, as in the sask-proto prototype — extends sask's
 established message-unit seam (DD-0003, REQ-OPS-008) and Flask-free engine
 discipline (DD-0002) to this new functional area. Separating a lightweight
 descriptor from the on-demand payload lets inventory/examination consumers

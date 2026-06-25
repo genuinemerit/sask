@@ -1,0 +1,175 @@
+id     = "SPEC-028"
+title  = "Semantic reorg of src/sask into functional-area and adapter packages"
+status = "proposed"
+
+[implements]
+requirements = []
+decisions    = ["DD-0017"]
+notes = """
+DD-0017 is a structure decision with no new functional requirement; this spec
+implements it directly. Precondition: Phase A (repo rename sask-calendar ->
+sask) complete and redeployed, 2026-06-25.
+"""
+
+[scope]
+in = """
+A placement-and-import reorganization of src/sask/ plus a documentation
+string sweep. NO behavior changes: the full test suite passes at the same
+count before and after each phase, message-unit shapes and config schemas are
+untouched, and the app boots and serves identically. Executed as three
+internal phases (B1 canary, B2 bulk, B3 adapter homes), each a separate clean
+commit with its own green-suite verification, run one at a time. The doc sweep
+(sask-calendar -> sask in non-code documents, devlog excepted) is performed in
+B1.
+"""
+
+out = """
+- Any change to engine behavior, message-unit shape, or config schema.
+- /tools reorganization (that is Phase C, a separate spec).
+- The user/help guide (that is Phase D, a separate spec).
+- Building the api/ or cli/ adapters themselves (B3 creates empty homes only;
+  the adapters are future, separate work).
+- Re-exporting engine code from any subpackage __init__.py (consumers use
+  explicit module paths).
+- Rewriting functional code/test references to sask-calendar as part of the
+  doc sweep: those are fixed as ordinary correctness if the suite surfaces
+  them, not by the documentation pass.
+- A redeploy: this is a local-structure change. The live redeploy belongs to
+  Phase C, when /tools deploy-script paths move.
+"""
+
+target_structure = """
+src/sask/
+   __init__.py
+   message.py            # shared message units (both areas) - stays at root
+   config_loader.py      # shared config spine (both areas) - stays at root
+   calendar/             # functional area: astronomy / calendar
+      __init__.py
+      pulse.py  season.py  bodies.py  sky.py  scene.py
+      lunar.py  stars.py  apparitions.py  ephemeris.py  lore.py
+   asset/                # functional area: asset retrieval
+      __init__.py
+      retrieval.py       # the resolve_descriptor / fetch_payload engine
+   web/                  # consumer adapter: server-rendered HTML (existing)
+      __init__.py  routes.py  translator.py  templates/
+   api/                  # consumer adapter: HTTP API (future; empty home, B3)
+      __init__.py
+   cli/                  # consumer adapter: dev/admin CLI (future; empty home, B3)
+      __init__.py
+"""
+
+[deliverables]
+phase_b1 = """
+CANARY — the asset move plus the doc sweep. Smallest blast radius; proves the
+subpackage pattern before the bulk move.
+
+1. Create src/sask/asset/ with an empty __init__.py (no re-exports).
+2. git mv src/sask/asset.py -> src/sask/asset/retrieval.py (contents
+   unchanged; history follows the file).
+3. retrieval.py's own imports from sask.message and sask.config_loader are
+   unchanged (the spine does not move). Confirm retrieval.py imports no flask
+   and no web-layer module.
+4. Update every import site found by:
+      git grep -n "sask.asset import\\|from sask import asset\\|sask\\.asset\\b"
+   Rewrite to `from sask.asset.retrieval import ...`. Known callers to verify
+   (trust the grep for completeness): src/sask/web/routes.py,
+   tests/test_spec_026.py.
+5. Relocate the layer-purity / engine-purity AST check's asset entry from
+   src/sask/asset.py to src/sask/asset/retrieval.py. VERIFY the assertion
+   still targets the moved file (a purity test pointing at a nonexistent path
+   passes vacuously and protects nothing): confirm it would fail if
+   retrieval.py imported flask, and passes as written.
+6. Doc sweep: rename all instances of sask-calendar -> sask in non-code
+   documents, EXCEPT docs/devlog.md (append-only history; left intact). In
+   scope: README.md, CLAUDE.md, docs/* except devlog.md (glossary, references,
+   user_testing, deploy-runbook, vm-setup), and design/* TOMLs where they name
+   the repo. Two judgment notes:
+     - Where a doc explains the deliberate historical sask-calendar / sask
+       name mismatch, that mismatch is RESOLVED by the rename; update the prose
+       to the new reality rather than string-swapping into a nonsensical
+       sentence.
+     - A date-stamped historical note quoting sask-calendar inside a non-devlog
+       doc (rare) is history; leave it. When in doubt, flag rather than guess.
+"""
+
+phase_b2 = """
+BULK — move the ten calendar modules into calendar/, done only after B1 is
+green and committed.
+
+1. Create src/sask/calendar/ with an empty __init__.py (no re-exports).
+2. git mv these ten modules into calendar/: pulse.py, season.py, bodies.py,
+   sky.py, scene.py, lunar.py, stars.py, apparitions.py, ephemeris.py,
+   lore.py. Contents unchanged.
+3. Rewrite all import sites across src/ and tests/. These modules import each
+   other and the spine; intra-calendar imports become sask.calendar.<mod>,
+   imports of message/config_loader stay as sask.message / sask.config_loader.
+   Find every site:
+      git grep -n "sask\\.\\(pulse\\|season\\|bodies\\|sky\\|scene\\|lunar\\|stars\\|apparitions\\|ephemeris\\|lore\\)\\b"
+   plus any `from sask import <mod>` forms. The web adapter (routes.py,
+   translator.py) and every tests/test_spec_0NN.py are callers.
+4. Relocate each calendar module's entry in the layer-purity AST check to its
+   new calendar/ path, with the same verify-it-still-targets-the-file
+   discipline as B1 step 5.
+5. Confirm config_loader.py (staying at root) has no calendar-specific import
+   that now needs a sask.calendar. prefix; it should import only message and
+   read config TOMLs by path. Fix if the move surfaces one.
+"""
+
+phase_b3 = """
+DECORATION — create the empty adapter homes for the next phase's work.
+
+1. Create src/sask/api/ and src/sask/cli/, each with only an empty
+   __init__.py. No adapter code; these are placeholders so future API and CLI
+   adapters land without another reorg.
+2. Confirm package discovery (pyproject / packaging config) still finds all
+   subpackages (calendar, asset, web, api, cli) — adjust any explicit package
+   list if the build config enumerates packages rather than auto-discovering.
+"""
+
+design_doc_status = """
+On completion of all three phases and a green suite, set DD-0017 and SPEC-028
+status to "accepted" and add a devlog entry per phase (one entry each for B1,
+B2, B3, or a combined entry noting all three commits — implementer's choice,
+consistent with the established devlog style).
+"""
+
+[acceptance]
+criteria = """
+Per phase, before moving to the next:
+
+B1:
+- src/sask/asset/retrieval.py exists (via git mv, history preserved);
+  src/sask/asset.py is gone; asset/__init__.py is empty.
+- All asset import sites resolve through sask.asset.retrieval; the HTML adapter
+  still serves a known /asset/<kind>/<id>.
+- The layer-purity check targets retrieval.py and genuinely tests it.
+- Doc sweep done; docs/devlog.md untouched; no code/test functional reference
+  silently rewritten.
+- Full suite passes at the same count as pre-B1; validate_specs.py and
+  pre-commit checks clean. App boots and serves locally.
+
+B2:
+- All ten calendar modules live under src/sask/calendar/ (git mv); the flat
+  copies are gone.
+- Every calendar import site across src/ and tests/ resolves; message and
+  config_loader imports unchanged.
+- Layer-purity check entries relocated and genuinely testing the moved files.
+- Full suite passes at the same count as post-B1; checks clean; app boots and
+  serves locally.
+
+B3:
+- src/sask/api/ and src/sask/cli/ exist with empty __init__.py and no other
+  content.
+- Packaging discovers all subpackages; full suite passes at the same count;
+  checks clean.
+
+Overall: no behavior change across the three phases (same test count
+throughout), the tree matches target_structure, and the live app is unaffected
+(verified at the next redeploy in Phase C, not in this spec).
+"""
+
+uat = """
+None required (structure-only, no behavior change). The acceptance criteria's
+"app boots and serves locally" check after B1 and B2 is the functional
+confirmation that adapters still reach the relocated engines.
+"""

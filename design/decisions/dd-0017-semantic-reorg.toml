@@ -1,0 +1,130 @@
+id     = "DD-0017"
+title  = "Semantic reorganization: functional-area subpackages and adapter homes"
+status = "proposed"
+date   = "2026-06-25"
+
+[context]
+summary = """
+DD-0016 deliberately deferred physical functional-area separation: it placed
+the asset-retrieval engine in a flat src/sask/asset.py rather than a
+subpackage, on the grounds that a single subpackage amid flat topic modules
+would imply the other modules are not functional areas, and that genuine
+separation should be a whole-tree reorganization done once, with one
+rationale, at the project-rename juncture. That juncture has arrived:
+sask-proto is retired, the repo is renamed sask-calendar -> sask (Phase A,
+2026-06-25), and the asset area is now a real, bounded second functional area
+alongside calendar. This DD records the target structure and the rationale
+DD-0016 pointed forward to. It is the "future reorg DD" DD-0016's
+negative_or_deferred section anticipated.
+"""
+
+problem = """
+The src/sask/ tree is currently flat: ten calendar/astronomy engine modules,
+one asset engine module, the shared message/config spine, and the web adapter
+all sit at the package root. The flat layout no longer states the
+architecture the code actually has — two distinct functional areas (calendar,
+asset) served through consumer-neutral adapters (web now; api and cli
+anticipated). The next phase of work adds adapters (a CLI for dev/admin, an
+API for a prototype game app), and they have no structural home. The
+reorganization should make the functional-area / adapter distinction physical
+without changing behavior.
+"""
+
+[decision]
+summary = """
+Reorganize src/sask/ so that engine modules group by functional area
+(what-they-are), consumer adapters group by audience (who-consumes), and the
+shared spine stays at the package root. No behavior changes; this is a
+placement-and-import-path reorganization only.
+"""
+
+target_structure = """
+src/sask/
+   __init__.py
+   message.py            # shared message units (both areas) - stays at root
+   config_loader.py      # shared config spine (both areas) - stays at root
+   calendar/             # functional area: astronomy / calendar
+      __init__.py
+      pulse.py  season.py  bodies.py  sky.py  scene.py
+      lunar.py  stars.py  apparitions.py  ephemeris.py  lore.py
+   asset/                # functional area: asset retrieval (and future siblings)
+      __init__.py
+      retrieval.py       # the resolve_descriptor / fetch_payload engine
+   web/                  # consumer adapter: server-rendered HTML (existing)
+      __init__.py  routes.py  translator.py  templates/
+   api/                  # consumer adapter: HTTP API (future; empty home now)
+      __init__.py
+   cli/                  # consumer adapter: dev/admin CLI (future; empty home now)
+      __init__.py
+"""
+
+placement_principle = """
+- Engine modules group by what they are: calendar/ and asset/ are functional
+  areas, Flask-free, returning message units.
+- Adapters group by who consumes: web/, api/, cli/ are thin wrappers over the
+  identical engine operations. Declaring api/ and cli/ as empty package homes
+  now (just __init__.py) gives the next phase's adapters a place to land
+  without a second reorg.
+- The shared spine stays at the package root: message.py (message units used
+  by both areas and all adapters) and config_loader.py (the single load-once
+  config spine that loads both areas' config). These are deliberately NOT
+  pushed into either functional area, because both areas depend on them.
+"""
+
+asset_module_naming = """
+The asset engine module is named asset/retrieval.py, not asset/asset.py and
+not folded into asset/__init__.py. The module names the VERB (retrieval)
+while the package carries the NOUN (asset); this avoids a redundant
+sask.asset.asset import and avoids crowding __init__.py with implementation.
+It also leaves room for named siblings as the area grows without
+restructuring: e.g. asset/catalog.py (if the catalog loader is later split
+out of config_loader.py), asset/management.py (the future write side),
+asset/studio.py (if studio tooling gains an in-app surface).
+"""
+
+sequencing = """
+Executed in three sub-steps for risk management (canary-first), each its own
+commit and its own green-suite verification:
+- B1 (canary): asset.py -> asset/retrieval.py alone. Smallest blast radius
+  (asset is the newest, least-referenced area); shakes out subpackage
+  mechanics, layer-purity test relocation, and adapter import resolution
+  cheaply before the bulk move.
+- B2 (bulk): the ten calendar modules -> calendar/. The large import-path
+  rewrite, done only after B1 proves the pattern.
+- B3 (decoration): create empty api/ and cli/ adapter homes.
+message.py and config_loader.py imports are unchanged throughout (they do not
+move).
+"""
+
+[consequences]
+positive = """
+- The tree states the architecture: two functional areas, consumer-neutral
+  adapters, shared spine. New contributors (human or Claude Code) can read the
+  structure and infer the design.
+- The next phase's CLI and API adapters have homes waiting; adding them is not
+  blocked on a reorg.
+- The asset area gets structural recognition and room to grow (retrieval today,
+  management/catalog/studio later) without further restructuring.
+- Canary-first sequencing makes the highest-churn phase bisectable: if the
+  reorg pattern bites, it bites at B1, cheaply.
+"""
+
+negative_or_deferred = """
+- B2 rewrites every calendar import across src/ and tests/ (~10 modules,
+  ~600 tests' worth of import sites). One-time mechanical churn, paid
+  deliberately between phases with nothing else in flight.
+- The layer-purity AST tests (which assert engine modules import no flask)
+  reference module paths and must be updated to the new locations in lockstep,
+  or they will pass vacuously or error. Called out explicitly in each
+  sub-step's runbook.
+- This DD does not reorganize /tools/ (that is Phase C, a parallel but
+  separate effort) and does not address the help-guide (Phase D).
+"""
+
+[links]
+implements      = []
+depends_on      = ["DD-0002", "DD-0003", "DD-0016"]
+relates_to      = ["DD-0014"]
+back_reference  = "DD-0016 negative_or_deferred deferred functional-area subpackage separation to this DD"
+sequenced_as    = ["B1 canary", "B2 bulk calendar move", "B3 adapter homes"]
+notes           = "Phase A (repo rename) completed 2026-06-25 and is the precondition for this reorg."

@@ -9,8 +9,8 @@ functional areas added incrementally under `/src`.
 **Prerequisites:** [Nix](https://nixos.org/download) with flakes enabled.
 
 ```bash
-git clone https://github.com/genuinemerit/sask-calendar.git
-cd sask-calendar
+git clone https://github.com/genuinemerit/sask.git
+cd sask
 nix develop
 ```
 
