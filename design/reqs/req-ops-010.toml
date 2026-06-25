@@ -11,6 +11,13 @@ acceptance=[
   "A measured breach of the ephemeris budget is the documented trigger for reconsidering the deferred range-query cache; no cache is added without it.",
   "Budgets and the sweep grid are defined in one place the harness reads, not scattered as thresholds across code.",
 ]
+notes="""
+Followup note (2026-06-25): a revision to this budget text was once anticipated
+in connection with the ephemeris export-time-estimate feature (DD-0015). That
+feature was withdrawn 2026-06-25 and will not be pursued, so the anticipated
+revision is moot. The existing budget text above is unaffected and stands as
+accurate.
+"""
 [links]
 dds=["DD-0002","DD-0003"]
 specs=["SPEC-018"]

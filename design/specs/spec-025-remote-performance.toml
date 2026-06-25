@@ -53,7 +53,8 @@ evaluation="""
 A docs/devlog.md entry comparing remote medians to the budgets and recording the
 DD-0015 rubric outcome: confirm-and-close, cache-trigger (open a follow-up spec), or
 resize-or-accept (record the decision). On confirm, note that the export-time-estimate
-feature is unblocked.
+feature is unblocked. Withdrawn 2026-06-25: export-time-estimate feature dropped;
+not pursued.
 """
 [acceptance]
 checks=[

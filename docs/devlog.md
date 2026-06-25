@@ -1,5 +1,29 @@
 # Dev log
 
+## 2026-06-25 — Ephemeris export-time-estimate feature withdrawn
+
+**Dropping the deferred ephemeris export-time/payload-size estimate UX
+feature entirely — it will not be built.** This was the "accept-and-
+document" outcome's proposed UX mitigation from DD-0015's rubric (see the
+2026-06-22 entry below: "DD-0015 rubric outcome: raw per-core compute"),
+parked as a still-unscoped, not-yet-requested followup pending a decision
+that has now been made: don't pursue it.
+
+Marked as withdrawn (one-line notes added, surrounding context left
+intact — no history rewritten) in every design doc that named it:
+`design/decisions/dd-0015-remote-performance.toml` (the rubric's
+within-budget bullet, the accept-and-document bullet, and the
+`followups` entry), and `design/specs/spec-025-remote-performance.toml`
+(the `evaluation` deliverable's "on confirm" note). `design/reqs/
+req-ops-010.toml` had no literal export-time-estimate text to mark, but
+carried an anticipated "budget-text revision" tied to this feature
+(per the 2026-06-22 devlog entry); added a `notes` field recording that
+the revision is now moot and the existing budget text is unaffected and
+accurate as written.
+
+No code touched (none existed to remove — the feature was never built).
+No other design decision changed. Past devlog entries left untouched.
+
 ## 2026-06-25 — SPEC-029 accepted: live redeploy verified
 
 **`tools/ops/redeploy.sh -y` run live against the production droplet** to
