@@ -1,5 +1,25 @@
 # Dev log
 
+## 2026-06-30 — fix(ops): SSH readiness race in deploy pipeline
+
+Diagnosed and fixed a deployment failure caused by a known gap (flagged in
+the SPEC-029 addendum but deferred). `deploy.sh` was invoking Ansible
+immediately after `tofu apply` without waiting for the new droplet's SSH
+daemon to be ready, causing a transient connection-refused failure.
+
+Added a 120 s retry loop (5 s intervals, polling root SSH) to `deploy.sh`
+before the Ansible bootstrap check. Succeeds immediately on already-running
+droplets — no overhead on normal re-convergence runs.
+
+The incident also destroyed the production droplet and reserved IP (the
+full `destroy.sh` path was used in recovery, which tears down all resources
+including the `local_file` that writes `~/.ssh/config.d/sask`). Site was
+restored via `provision.sh` from scratch (new reserved IP `68.183.242.7`,
+DNS auto-updated) followed by `deploy.sh`. All five acceptance checks pass.
+
+Lesson noted: redeploy pipeline should be included in acceptance testing
+for any change, not treated as out-of-scope unless code touches deploy files.
+
 ## 2026-06-25 — DD-0018/SPEC-030: help guide implemented; accepted
 
 **Phase D of the cleanup/elevation sequence.** Added a minimal help
