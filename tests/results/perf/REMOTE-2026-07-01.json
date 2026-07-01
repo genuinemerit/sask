@@ -1,0 +1,429 @@
+{
+  "date": "2026-07-01",
+  "base_url": "https://sask.davidstitt.net",
+  "host": {
+    "droplet_id": "581645959",
+    "size": "s-1vcpu-1gb",
+    "region": "fra1",
+    "vcpus": 1
+  },
+  "engine_remote": {
+    "config_dir": "/opt/sask/config",
+    "story_now_pulse": 104548096103,
+    "fast_repeats": 11,
+    "slow_repeats": 3,
+    "fast": [
+      {
+        "label": "get_sky_scene",
+        "repeats": 11,
+        "median_s": 0.0005910350000704057,
+        "min_s": 0.0003989809999893623,
+        "max_s": 0.0007741480000049705
+      },
+      {
+        "label": "get_apparitions",
+        "repeats": 11,
+        "median_s": 1.7761999970389297e-05,
+        "min_s": 1.4374999977917469e-05,
+        "max_s": 2.7943000077357283e-05
+      },
+      {
+        "label": "get_star_context",
+        "repeats": 11,
+        "median_s": 5.770400002802489e-05,
+        "min_s": 5.209999994804093e-05,
+        "max_s": 8.846699995501695e-05
+      },
+      {
+        "label": "get_lunar_date_untamed",
+        "repeats": 11,
+        "median_s": 7.22699996913434e-06,
+        "min_s": 5.808999958389904e-06,
+        "max_s": 1.8005000015364203e-05
+      },
+      {
+        "label": "get_lunar_date_warren",
+        "repeats": 11,
+        "median_s": 7.712999945397314e-06,
+        "min_s": 6.416000019271451e-06,
+        "max_s": 1.214999997500854e-05
+      },
+      {
+        "label": "get_lunar_date_hearth",
+        "repeats": 11,
+        "median_s": 5.556000019169005e-06,
+        "min_s": 5.388999966271513e-06,
+        "max_s": 6.323999969026772e-06
+      },
+      {
+        "label": "get_lunar_date_terpin_lunar",
+        "repeats": 11,
+        "median_s": 1.3173999946047843e-05,
+        "min_s": 1.2513999990915181e-05,
+        "max_s": 3.923500003111258e-05
+      },
+      {
+        "label": "get_cofullness_one_year",
+        "repeats": 11,
+        "median_s": 0.008596735999958582,
+        "min_s": 0.007229662999975517,
+        "max_s": 0.010627744999965216
+      },
+      {
+        "label": "render_lore_time_fatunik",
+        "repeats": 11,
+        "median_s": 2.3819999341867515e-06,
+        "min_s": 1.508999957877677e-06,
+        "max_s": 6.515000109175162e-06
+      },
+      {
+        "label": "render_lore_time_terpin",
+        "repeats": 11,
+        "median_s": 2.5990000267483993e-06,
+        "min_s": 2.066999968519667e-06,
+        "max_s": 3.2479999845236307e-06
+      },
+      {
+        "label": "render_lore_date_solar",
+        "repeats": 11,
+        "median_s": 4.3720000348912436e-06,
+        "min_s": 3.5589999924923177e-06,
+        "max_s": 1.1986999993496283e-05
+      },
+      {
+        "label": "render_lore_date_lunar",
+        "repeats": 11,
+        "median_s": 4.868000019087049e-06,
+        "min_s": 4.700000090451795e-06,
+        "max_s": 1.0927000062110892e-05
+      }
+    ],
+    "grid": [
+      {
+        "label": "get_sky_series_1day_5min",
+        "repeats": 3,
+        "median_s": 0.2007983209999793,
+        "min_s": 0.1703991929999802,
+        "max_s": 0.21660634299996673
+      },
+      {
+        "label": "get_sky_series_1day_1hour",
+        "repeats": 3,
+        "median_s": 0.01642021600002863,
+        "min_s": 0.01590312099995117,
+        "max_s": 0.01751393500001086
+      },
+      {
+        "label": "get_sky_series_7day_5min",
+        "repeats": 3,
+        "median_s": 1.4287073960000498,
+        "min_s": 1.2780048839999836,
+        "max_s": 1.4782645029999912
+      },
+      {
+        "label": "get_sky_series_7day_1hour",
+        "repeats": 3,
+        "median_s": 0.1009150720000207,
+        "min_s": 0.10027275099992039,
+        "max_s": 0.10761796100007359
+      },
+      {
+        "label": "get_sky_series_30day_5min",
+        "repeats": 3,
+        "median_s": 6.924157860999912,
+        "min_s": 6.375962060999996,
+        "max_s": 7.10245432399995
+      },
+      {
+        "label": "get_sky_series_30day_1hour",
+        "repeats": 3,
+        "median_s": 0.6062740129999611,
+        "min_s": 0.5750467799999797,
+        "max_s": 0.6183018109999239
+      }
+    ],
+    "worst_case_render": [
+      {
+        "label": "render_scribal_json_worst_case",
+        "repeats": 3,
+        "median_s": 1.5905308149999655,
+        "min_s": 1.4715236470000264,
+        "max_s": 1.8440830100000767
+      },
+      {
+        "label": "render_kinematic_json_worst_case",
+        "repeats": 3,
+        "median_s": 2.369411222999929,
+        "min_s": 1.8477544180000223,
+        "max_s": 2.4337586519999377
+      }
+    ]
+  },
+  "engine_local": {
+    "config_dir": "config",
+    "story_now_pulse": 104548096103,
+    "fast_repeats": 11,
+    "slow_repeats": 3,
+    "fast": [
+      {
+        "label": "get_sky_scene",
+        "repeats": 11,
+        "median_s": 0.0002598040000520996,
+        "min_s": 0.0002550839999457821,
+        "max_s": 0.00029133999942132505
+      },
+      {
+        "label": "get_apparitions",
+        "repeats": 11,
+        "median_s": 6.605000635317992e-06,
+        "min_s": 6.40399957774207e-06,
+        "max_s": 7.759000254736748e-06
+      },
+      {
+        "label": "get_star_context",
+        "repeats": 11,
+        "median_s": 2.412000048934715e-05,
+        "min_s": 2.3800999770173803e-05,
+        "max_s": 2.495599983376451e-05
+      },
+      {
+        "label": "get_lunar_date_untamed",
+        "repeats": 11,
+        "median_s": 5.310000233293977e-06,
+        "min_s": 5.134999810252339e-06,
+        "max_s": 1.0300999747414608e-05
+      },
+      {
+        "label": "get_lunar_date_warren",
+        "repeats": 11,
+        "median_s": 5.5070004236768e-06,
+        "min_s": 5.4299998737405986e-06,
+        "max_s": 6.210000719875097e-06
+      },
+      {
+        "label": "get_lunar_date_hearth",
+        "repeats": 11,
+        "median_s": 4.842000635107979e-06,
+        "min_s": 4.7670000640209764e-06,
+        "max_s": 5.470999894896522e-06
+      },
+      {
+        "label": "get_lunar_date_terpin_lunar",
+        "repeats": 11,
+        "median_s": 5.461999535327777e-06,
+        "min_s": 5.390999831433874e-06,
+        "max_s": 7.0549995143665e-06
+      },
+      {
+        "label": "get_cofullness_one_year",
+        "repeats": 11,
+        "median_s": 0.004935771999953431,
+        "min_s": 0.004742258999613114,
+        "max_s": 0.005561848000070313
+      },
+      {
+        "label": "render_lore_time_fatunik",
+        "repeats": 11,
+        "median_s": 1.3790004231850617e-06,
+        "min_s": 1.338000402029138e-06,
+        "max_s": 4.546000127447769e-06
+      },
+      {
+        "label": "render_lore_time_terpin",
+        "repeats": 11,
+        "median_s": 1.3839999155607074e-06,
+        "min_s": 1.3629996828967705e-06,
+        "max_s": 1.4839997675153427e-06
+      },
+      {
+        "label": "render_lore_date_solar",
+        "repeats": 11,
+        "median_s": 2.219999259978067e-06,
+        "min_s": 2.159999894502107e-06,
+        "max_s": 6.4149999161600135e-06
+      },
+      {
+        "label": "render_lore_date_lunar",
+        "repeats": 11,
+        "median_s": 4.497999725572299e-06,
+        "min_s": 4.440000338945538e-06,
+        "max_s": 8.379000064451247e-06
+      }
+    ],
+    "grid": [
+      {
+        "label": "get_sky_series_1day_5min",
+        "repeats": 3,
+        "median_s": 0.08134189100019285,
+        "min_s": 0.07881088800058933,
+        "max_s": 0.0818289429998913
+      },
+      {
+        "label": "get_sky_series_1day_1hour",
+        "repeats": 3,
+        "median_s": 0.006838886999503302,
+        "min_s": 0.006765449000340595,
+        "max_s": 0.0068735989998458535
+      },
+      {
+        "label": "get_sky_series_7day_5min",
+        "repeats": 3,
+        "median_s": 0.5847020979999797,
+        "min_s": 0.5757404819996736,
+        "max_s": 0.6075370670005213
+      },
+      {
+        "label": "get_sky_series_7day_1hour",
+        "repeats": 3,
+        "median_s": 0.04736700600005861,
+        "min_s": 0.046536371000001964,
+        "max_s": 0.05168097899968416
+      },
+      {
+        "label": "get_sky_series_30day_5min",
+        "repeats": 3,
+        "median_s": 3.041900745000021,
+        "min_s": 2.9811939740002344,
+        "max_s": 3.04957697700047
+      },
+      {
+        "label": "get_sky_series_30day_1hour",
+        "repeats": 3,
+        "median_s": 0.23262309200072195,
+        "min_s": 0.23041119600020465,
+        "max_s": 0.24753930999941076
+      }
+    ],
+    "worst_case_render": [
+      {
+        "label": "render_scribal_json_worst_case",
+        "repeats": 3,
+        "median_s": 0.6890657869998904,
+        "min_s": 0.6816137310006525,
+        "max_s": 0.8362464479996561
+      },
+      {
+        "label": "render_kinematic_json_worst_case",
+        "repeats": 3,
+        "median_s": 0.8979780830004529,
+        "min_s": 0.8957354449994455,
+        "max_s": 0.8999878020003962
+      }
+    ]
+  },
+  "http_remote": {
+    "timestamp": "2026-07-01",
+    "base_url": "https://sask.davidstitt.net",
+    "warmup": 0,
+    "repeats": 3,
+    "interactive": [
+      {
+        "label": "interactive_index",
+        "url": "https://sask.davidstitt.net/?pulse=104548096103",
+        "status": 200,
+        "repeats": 3,
+        "median_s": 0.13177256600010878,
+        "min_s": 0.12339330800023163,
+        "max_s": 0.153355874999761,
+        "payload_bytes": 2526
+      },
+      {
+        "label": "interactive_sky",
+        "url": "https://sask.davidstitt.net/sky?pulse=104548096103",
+        "status": 200,
+        "repeats": 3,
+        "median_s": 0.1306658490002519,
+        "min_s": 0.12282697899991035,
+        "max_s": 0.1328007339998294,
+        "payload_bytes": 11415
+      },
+      {
+        "label": "interactive_moons",
+        "url": "https://sask.davidstitt.net/moons?pulse=104548096103",
+        "status": 200,
+        "repeats": 3,
+        "median_s": 0.12063933699937479,
+        "min_s": 0.1196705229995132,
+        "max_s": 0.13456694500018784,
+        "payload_bytes": 7813
+      },
+      {
+        "label": "interactive_planets",
+        "url": "https://sask.davidstitt.net/planets?pulse=104548096103",
+        "status": 200,
+        "repeats": 3,
+        "median_s": 0.13188522699965688,
+        "min_s": 0.1284664389995669,
+        "max_s": 0.13605577899943455,
+        "payload_bytes": 8822
+      }
+    ],
+    "ephemeris_preview": [],
+    "ephemeris_download_worst_case": [
+      {
+        "label": "ephemeris_download_worst_case_scribal",
+        "url": "https://sask.davidstitt.net/ephemeris/download?start=104548096103&end=104550688103&step=300&profile=scribal",
+        "status": 200,
+        "repeats": 1,
+        "median_s": 9.731044372000724,
+        "min_s": 9.731044372000724,
+        "max_s": 9.731044372000724,
+        "payload_bytes": 26965311
+      },
+      {
+        "label": "ephemeris_download_worst_case_kinematic",
+        "url": "https://sask.davidstitt.net/ephemeris/download?start=104548096103&end=104550688103&step=300&profile=kinematic",
+        "status": 200,
+        "repeats": 1,
+        "median_s": 8.807617898999524,
+        "min_s": 8.807617898999524,
+        "max_s": 8.807617898999524,
+        "payload_bytes": 17347815
+      }
+    ],
+    "budget_checks": [
+      {
+        "label": "interactive_index",
+        "median_ms": 131.8,
+        "budget_ms": 500.0,
+        "pass": true
+      },
+      {
+        "label": "interactive_sky",
+        "median_ms": 130.7,
+        "budget_ms": 500.0,
+        "pass": true
+      },
+      {
+        "label": "interactive_moons",
+        "median_ms": 120.6,
+        "budget_ms": 500.0,
+        "pass": true
+      },
+      {
+        "label": "interactive_planets",
+        "median_ms": 131.9,
+        "budget_ms": 500.0,
+        "pass": true
+      },
+      {
+        "label": "ephemeris_download_worst_case_scribal",
+        "median_s": 9.731,
+        "budget_s": [
+          3.0,
+          5.0
+        ],
+        "pass": false
+      },
+      {
+        "label": "ephemeris_download_worst_case_kinematic",
+        "median_s": 8.808,
+        "budget_s": [
+          3.0,
+          5.0
+        ],
+        "pass": false
+      }
+    ]
+  }
+}

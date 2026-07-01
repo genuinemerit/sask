@@ -38,10 +38,14 @@ libsqlite3-dev libncursesw5-dev xz-utils tk-dev libxml2-dev
 libxmlsec1-dev libffi-dev liblzma-dev
 
 # runtime / harness / dev tooling
-git curl wget ca-certificates openssh-client shellcheck tree ansible rsync
+git curl wget ca-certificates openssh-client shellcheck tree ansible rsync golang-go
 
 # deploy harness
 snap install opentofu --classic
+
+# xcaddy — not packaged in apt; builds the custom Caddy binary (with the
+# rate-limit plugin) the deploy harness ships to the droplet
+go install github.com/caddyserver/xcaddy/cmd/xcaddy@latest
 ```
 
 ## 3. Install Python dependencies

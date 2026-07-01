@@ -27,9 +27,16 @@ bash tools/ops/export-requirements.sh
 # A freshly created or recreated droplet can take ~60 s to be ready; not
 # waiting here was the root cause of the SSH-readiness race flagged in the
 # SPEC-029 addendum. Succeeds immediately when the droplet is already running.
+#
+# Tries both root and dave: a freshly provisioned droplet only has root;
+# a droplet where a prior deploy.sh run got as far as the base role's sshd
+# hardening (PermitRootLogin no) before failing later (e.g. mid-Caddy-build)
+# only has dave. Checking root alone would wait the full 2 minutes and fail
+# on that already-partially-deployed droplet even though SSH is fine.
 _SSH_READY=false
 for _I in $(seq 1 24); do
-    if ssh -o BatchMode=yes -o ConnectTimeout=5 -o User=root sask-droplet true 2>/dev/null; then
+    if ssh -o BatchMode=yes -o ConnectTimeout=5 -o User=root sask-droplet true 2>/dev/null \
+        || ssh -o BatchMode=yes -o ConnectTimeout=5 sask-droplet true 2>/dev/null; then
         _SSH_READY=true
         break
     fi

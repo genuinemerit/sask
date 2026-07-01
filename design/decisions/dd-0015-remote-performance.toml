@@ -1,6 +1,6 @@
 id     = "DD-0015"
 title  = "Remote performance re-validation: measurement approach and the resize-vs-cache decision"
-status = "proposed"
+status = "accepted"
 date   = "2026-06-23"
 
 [context]
@@ -61,6 +61,32 @@ summary = """
      Withdrawn 2026-06-25: export-time-estimate feature dropped; not pursued.
    - Explicit guard: more vCPUs raise concurrency, not single-request latency, so
      resizing for core count is never the fix for worst-case ephemeris time.
+
+RESOLVED 2026-07-01 (re-affirmed; an earlier pass reached the same call
+without recording it clearly here, which caused this exact question to
+resurface - this entry is the fix for that): first real remote run, against
+droplet 581645959 (s-1vcpu-1gb, fra1), measured worst-case ephemeris download
+at 9.731 s (scribal) / 8.808 s (kinematic) against the 3-5 s budget - a
+genuine breach. On-droplet engine timing (remote vs local, apples-to-apples)
+shows a uniform ~2.0-2.6x slowdown across every hot path (e.g.
+get_sky_series_30day_5min: 6924 ms remote vs 3042 ms local;
+render_kinematic_json_worst_case: 2369 ms vs 898 ms) - a consistent per-core
+clock/IPC difference between the $6/mo droplet and the dev host, not an
+erratic pattern that would indicate redundant/cacheable recompute. On-droplet
+compute alone (~8.5-9.3 s) already accounts for essentially all of the
+measured end-to-end download time, confirming this is the "raw per-core
+compute" branch of the rubric above, not the cache-trigger branch.
+Decision: accept-and-document. Explicitly declined the CPU-Optimized-tier
+resize option - not worth the added DigitalOcean spend at this time/scale.
+The regenerable-cache option is also declined for the same reason (no
+measured recompute redundancy to amortize; it would only mask the same raw
+per-core cost). No further action item is open here: the budget breach is a
+known, accepted characteristic of the current $6/mo single-vCPU droplet for
+the worst-case (30-day/5-min) ephemeris download, re-affirmed via
+REQ-OPS-016/SPEC-025's procedure, and does not require a droplet resize or a
+cache to be revisited unless the cost/traffic profile changes. See
+docs/devlog.md (2026-07-01) and tests/results/perf/REMOTE-2026-07-01.md for
+the full evidence.
 """
 rationale = """
 Re-validating on a live, hardened, single-vCPU public host needs a method that
@@ -83,7 +109,7 @@ negative = [
 ]
 followups = [
   "REQ-OPS-016 and SPEC-025: the reproducible, non-destructive remote procedure and harness.",
-  "Conditional: a regenerable-cache spec, or a droplet-resize decision, if the rubric fires.",
+  "RESOLVED 2026-07-01: the rubric fired (raw per-core compute breach); accept-and-document chosen over a regenerable-cache spec or a droplet-resize decision. See the decision summary's RESOLVED note and docs/devlog.md (2026-07-01). No open follow-up unless cost/traffic profile changes.",
   "On a within-budget outcome: unblock the ephemeris export-time-estimate feature. Withdrawn 2026-06-25: export-time-estimate feature dropped; not pursued.",
 ]
 

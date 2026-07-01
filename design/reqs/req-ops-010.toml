@@ -17,6 +17,22 @@ in connection with the ephemeris export-time-estimate feature (DD-0015). That
 feature was withdrawn 2026-06-25 and will not be pursued, so the anticipated
 revision is moot. The existing budget text above is unaffected and stands as
 accurate.
+
+Resolution note (2026-07-01): the remote re-validation (REQ-OPS-016/SPEC-025)
+against the live droplet measured a genuine worst-case ephemeris-download
+budget breach (9.731 s / 8.808 s vs. the 3-5 s budget) - acceptance
+criterion #4 above has now been exercised for real, not just designed. Per
+DD-0015's rubric, the on-droplet engine timing shows this is raw per-core
+compute cost (a uniform ~2-2.6x slowdown vs. the dev host across every hot
+path), not redundant/cacheable recompute. Decision: accept-and-document: no
+range-query cache added, no droplet resize - the added DigitalOcean spend
+for a CPU-Optimized tier isn't justified at this scale. This is the second
+time this exact call has been reached; the first pass didn't record it
+clearly enough here to stick, which is why this note exists now. Unless the
+cost/traffic profile changes, this acceptance criterion is considered
+closed - a future breach re-run would need a new decision only if
+circumstances materially change. See DD-0015's RESOLVED note and
+docs/devlog.md (2026-07-01).
 """
 [links]
 dds=["DD-0002","DD-0003"]

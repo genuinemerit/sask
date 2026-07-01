@@ -1,5 +1,81 @@
 # Dev log
 
+## 2026-07-01 — Full deploy/redeploy/perf validation on rebuilt Ubuntu dev host; ephemeris budget accept-and-documented
+
+First live exercise of the deploy harness (REQ-OPS-013) and the remote
+perf procedure (REQ-OPS-016/SPEC-025) since the DD-0019 Ubuntu/Poetry port,
+plus two more port gaps found and fixed along the way.
+
+**Pre-flight:** local Tofu state was empty (never migrated off the old
+NixOS VM) while the real droplet, reserved IP, firewall, SSH key, and DNS
+record were still live in DigitalOcean - an orphaned-from-state situation
+DD-0014 explicitly names as a risk of local-only state. Reconciled via
+`tofu import` (6 resources); `tofu plan` showed drift on `image` (slug vs.
+the numeric ID DO's API returns) and `ssh_keys` (not persisted on droplet
+reads) - both known import artifacts of the DO provider, harmless for the
+immediate next step since `tofu destroy` acts on state IDs, not config
+diff. `tofu plan -destroy` confirmed exactly the 6 real resources and
+nothing else before anything was touched.
+
+**Two more DD-0019 port gaps found (same shape as the ansible gap from the
+audit earlier today - a tool the retired `flake.nix` devShell provided
+directly, dropped without a replacement):**
+
+1. `xcaddy` (+ `go`) - builds the custom Caddy binary with the rate-limit
+   plugin, run locally by the `caddy` Ansible role (`delegate_to:
+   localhost`). Not packaged in apt; fixed via `golang-go` added to
+   `init-dev-host.sh`'s apt list plus a new `go install
+   github.com/caddyserver/xcaddy/cmd/xcaddy@latest` step (with the
+   `~/go/bin` PATH addition persisted to `.bashrc`, matching the
+   pyenv/poetry installers' own convention).
+2. `tools/ops/deploy.sh`'s SSH-readiness wait loop hardcoded `-o
+   User=root`, so it always timed out on a droplet where an earlier
+   partial run had already gotten as far as the base role's `PermitRootLogin
+   no` (i.e., any re-run after a failure past that point, not just a fresh
+   droplet). Fixed to accept either root or dave.
+
+**Full cycle executed and verified, in order:**
+
+- `destroy.sh -y` - clean teardown of the real live stack (6 resources),
+  confirmed via `doctl` and DNS no longer resolving.
+- `provision.sh -y` - clean rebuild from zero (`7 added, 0 changed, 0
+  destroyed`), new reserved IP `46.101.68.21` (droplet `581640609`).
+- `deploy.sh` - failed first attempt at the Caddy build step (xcaddy gap
+  above); after the fix, re-run resumed cleanly. A second consecutive run
+  reported `ok=32 changed=0 failed=0` - REQ-OPS-013's idempotency bar met
+  for real.
+- `acceptance-test.sh` - all 5 checks pass; independently confirmed via
+  browser (including asset retrieval).
+- `redeploy.sh -y` - the full single-mainline-act cycle: droplet
+  recreated (`581640609` -> `581645959`) with the reserved IP held
+  unchanged at `46.101.68.21`, confirming REQ-OPS-013's DNS/SSH-alias
+  survival guarantee. Deploy + acceptance both auto-ran and passed on the
+  first try (both gaps already fixed by this point).
+
+**Performance validation (REQ-OPS-010/016):**
+
+- Local Layer 1 (pytest-benchmark, 20 hot paths) and Layer 2 (local
+  gunicorn + `perf_http.py`) both saved; all budgets pass on this dev host
+  (interactive ~0.5-1.4 ms, worst-case ephemeris download 4.19-4.28 s
+  against the 3-5 s budget).
+- Remote (`perf-remote.sh`, against droplet `581645959`): interactive
+  pages pass comfortably (~120-135 ms vs. 500 ms budget). Worst-case
+  ephemeris download genuinely breaches: 9.731 s (scribal) / 8.808 s
+  (kinematic) vs. the 3-5 s budget. On-droplet engine timing shows a
+  uniform ~2.0-2.6x slowdown vs. the dev host across every single hot
+  path (e.g. `get_sky_series_30day_5min`: 6924 ms remote vs. 3042 ms
+  local) - raw per-core compute cost on the $6/mo `s-1vcpu-1gb` droplet,
+  not redundant/cacheable recompute. Full results: `tests/results/perf/
+  REMOTE-2026-07-01.md`.
+
+**Decision: accept-and-document (per DD-0015's rubric).** User confirmed
+this exact call was reached once before but never recorded clearly enough
+to stick, causing the same question to resurface - DD-0015 and
+REQ-OPS-010 have both been updated with explicit RESOLVED notes so this
+doesn't happen a third time. No cache, no CPU-Optimized droplet resize -
+the added DigitalOcean spend isn't justified at this scale. DD-0015 moved
+from `proposed` to `accepted`.
+
 ## 2026-07-01 — DD-0019 port audit: found ansible gap + 3 more `.venv` bugs
 
 Pre-flight audit ahead of next session's full deploy/redeploy + perf-test

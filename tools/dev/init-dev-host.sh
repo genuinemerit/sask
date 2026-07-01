@@ -31,13 +31,14 @@ PYTHON_MINOR="3.12"
 # (https://github.com/pyenv/pyenv/wiki#suggested-build-environment), and the
 # runtime/harness/dev-tooling essentials configuration.nix also declared.
 # The lint binary used by pre-commit-check.sh, the tree binary used by
-# tools/helpers/make_tree.sh, and ansible + rsync used by the tools/ops/
-# deploy harness are native tools, not Python packages, so they are listed
-# here as apt prerequisites, not Poetry dev-deps. Ubuntu's `ansible` apt
-# package (unlike pip's `ansible-core`) bundles the collections the deploy
-# harness needs (e.g. ansible.posix.synchronize) — this replaces the
-# `pkgs.ansible` + `pkgs.ansible-lint` the retired flake.nix devShell
-# provided, which the DD-0019 port dropped without a replacement.
+# tools/helpers/make_tree.sh, ansible + rsync used by the tools/ops/
+# deploy harness, and golang-go (needed to build xcaddy below) are native
+# tools, not Python packages, so they are listed here as apt prerequisites,
+# not Poetry dev-deps. Ubuntu's `ansible` apt package (unlike pip's
+# `ansible-core`) bundles the collections the deploy harness needs (e.g.
+# ansible.posix.synchronize) — this replaces the `pkgs.ansible` +
+# `pkgs.ansible-lint` the retired flake.nix devShell provided, which the
+# DD-0019 port dropped without a replacement.
 APT_PYENV_BUILD_DEPS=(
     build-essential
     libssl-dev
@@ -63,6 +64,7 @@ APT_ESSENTIALS=(
     tree
     ansible
     rsync
+    golang-go
 )
 
 # ── Helpers ──────────────────────────────────────────────────────────────────
@@ -151,6 +153,25 @@ else
         fail "Poetry install completed but 'poetry' not found on PATH (expected ~/.local/bin)"
     fi
     ok "Poetry installed: $(poetry --version)"
+fi
+
+# ── xcaddy (builds the custom Caddy binary the caddy role ships) ───────────
+# Not packaged in apt; installed via `go install`, matching the retired
+# flake.nix devShell's `pkgs.xcaddy` (built from the same upstream source).
+step "Install xcaddy"
+GO_BIN_LINE='export PATH="$HOME/go/bin:$PATH"'
+if ! grep -qF "$GO_BIN_LINE" "$HOME/.bashrc" 2>/dev/null; then
+    printf '\n# go install binaries (added by tools/dev/init-dev-host.sh)\n%s\n' "$GO_BIN_LINE" >> "$HOME/.bashrc"
+fi
+export PATH="$HOME/go/bin:$PATH"
+if command -v xcaddy &>/dev/null; then
+    ok "xcaddy already installed: $(xcaddy version)"
+else
+    go install github.com/caddyserver/xcaddy/cmd/xcaddy@latest
+    if ! command -v xcaddy &>/dev/null; then
+        fail "xcaddy install completed but 'xcaddy' not found on PATH (expected ~/go/bin — add it to your shell rc)"
+    fi
+    ok "xcaddy installed: $(xcaddy version)"
 fi
 
 # ── Host secrets — presence check ONLY, never installed or generated here ──
