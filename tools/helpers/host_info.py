@@ -22,8 +22,8 @@ import psutil
 logger = logging.getLogger(__name__)
 
 
-def sys_info() -> str:
-    """Return host platform/network/hardware diagnostics as a JSON string.
+def sys_info() -> dict[str, str]:
+    """Return host platform/network/hardware diagnostics.
 
     Keys: platform, platform-release, platform-version, architecture,
     python-version, hostname, ip-address, mac-address, processor, ram.
@@ -49,8 +49,8 @@ def sys_info() -> str:
     except OSError:
         logger.exception("Failed to collect full host diagnostics")
 
-    return json.dumps(info)
+    return info
 
 
 if __name__ == "__main__":
-    print(sys_info())
+    print(json.dumps(sys_info()))

@@ -38,3 +38,6 @@ Thumbs.db
 
 # Logs
 *.log
+
+# tools/helpers/make_tree.sh output
+/tree.txt

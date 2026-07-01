@@ -1,5 +1,33 @@
 # Dev log
 
+## 2026-07-01 — `tools/helpers/` housekeeping: reviewed, fixed, tested
+
+Reviewed the 5 scripts in `tools/helpers/` (imported from another project,
+unused so far) for readability/flexibility and added unit tests (31 tests,
+happy + unhappy path each).
+
+**Found `host_info.py` and `validate_json.py` were unrunnable as committed:**
+they import `psutil` and `jsonschema`, neither declared in `pyproject.toml`.
+Added both to the `dev` dependency group and relocked (user-authorized,
+following the same "eyes wide open" standard as the DD-0019 port relocks).
+
+**Minor refactors:**
+
+- `host_info.py`: `sys_info()` now returns a `dict` instead of a
+  pre-serialized JSON string; `__main__` does the `json.dumps()` for CLI
+  output. More flexible for callers wanting structured data.
+- `make_tree.sh`: added a `command -v tree` guard with a friendly error —
+  the script depended on `tree` but nothing installed it. Since the user
+  wants to keep this script working, added `tree` to
+  `tools/dev/init-dev-host.sh`'s `APT_ESSENTIALS` and to
+  `docs/dev-setup.md`'s reference list, and installed it on this host.
+  `tree.txt` output added to `.gitignore`.
+- `validate_json.py`: missing/malformed input files now print a one-line
+  stderr message and exit 2, instead of a raw traceback.
+- `match_semver.py`, `stamps.py`: no changes needed.
+
+Full suite: 669 passed (638 prior + 31 new). Pre-commit clean.
+
 ## 2026-07-01 — fix `tools/dev/start_web.sh` for Poetry (post DD-0019 port)
 
 `start_web.sh` was never updated when the dev host moved off NixOS: it called

@@ -38,7 +38,7 @@ libsqlite3-dev libncursesw5-dev xz-utils tk-dev libxml2-dev
 libxmlsec1-dev libffi-dev liblzma-dev
 
 # runtime / harness / dev tooling
-git curl wget ca-certificates openssh-client shellcheck
+git curl wget ca-certificates openssh-client shellcheck tree
 
 # deploy harness
 snap install opentofu --classic

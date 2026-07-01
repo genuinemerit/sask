@@ -28,8 +28,15 @@ def parse_args() -> argparse.Namespace:
 
 def main() -> int:
     args = parse_args()
-    schema = json.loads(args.schema_path.read_text())
-    data = json.loads(args.data_path.read_text())
+    try:
+        schema = json.loads(args.schema_path.read_text())
+        data = json.loads(args.data_path.read_text())
+    except FileNotFoundError as exc:
+        print(f"error: {exc.filename}: file not found", file=sys.stderr)
+        return 2
+    except json.JSONDecodeError as exc:
+        print(f"error: {exc}", file=sys.stderr)
+        return 2
 
     errors = sorted(
         Draft202012Validator(schema).iter_errors(data), key=lambda e: list(e.path)

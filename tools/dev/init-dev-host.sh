@@ -30,8 +30,9 @@ PYTHON_MINOR="3.12"
 # not sask dependencies. Two groups: pyenv's documented build dependencies
 # (https://github.com/pyenv/pyenv/wiki#suggested-build-environment), and the
 # runtime/harness/dev-tooling essentials configuration.nix also declared.
-# The lint binary used by pre-commit-check.sh is a native tool, not a Python
-# package, so it is listed here as an apt prerequisite, not a Poetry dev-dep.
+# The lint binary used by pre-commit-check.sh, and the tree binary used by
+# tools/helpers/make_tree.sh, are native tools, not Python packages, so they
+# are listed here as apt prerequisites, not Poetry dev-deps.
 APT_PYENV_BUILD_DEPS=(
     build-essential
     libssl-dev
@@ -54,6 +55,7 @@ APT_ESSENTIALS=(
     ca-certificates
     openssh-client
     shellcheck
+    tree
 )
 
 # ── Helpers ──────────────────────────────────────────────────────────────────

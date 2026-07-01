@@ -18,6 +18,8 @@ ruff = "*"
 pytest = "*"
 pytest-benchmark = "^5.2.3"
 pymarkdownlnt = "*"
+psutil = ">=5.9"
+jsonschema = ">=4.20"
 
 [tool.poetry.group.acceptance.dependencies]
 requests = "*"
