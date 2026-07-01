@@ -1,5 +1,17 @@
 # Dev log
 
+## 2026-07-01 — fix `tools/dev/start_web.sh` for Poetry (post DD-0019 port)
+
+`start_web.sh` was never updated when the dev host moved off NixOS: it called
+`.venv/bin/flask` directly, but Poetry here creates the venv out-of-project
+(`~/.cache/pypoetry/virtualenvs/...`), not in a repo-local `.venv/`, so the
+script failed with "No such file or directory". Header comments also still
+referenced the retired `sask-dev` VM. Fixed to `poetry run flask --app
+sask.web run` and updated the SSH-tunnel comment to `ubuvm`. Verified
+end-to-end: `ssh -L 5000:localhost:5000 ubuvm` -> `cd ~/code/sask` -> `bash
+tools/dev/start_web.sh` -> `curl localhost:5000/health` returns 200; user
+confirmed working via manual smoke test.
+
 ## 2026-06-30 — DD-0019/SPEC-031: de-NixOS port complete; dev host now Ubuntu 26.04 LTS + Poetry
 
 Retired the NixOS `sask-dev` VM as the canonical dev environment and ported
