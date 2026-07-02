@@ -1,5 +1,36 @@
 # Dev log
 
+## 2026-07-02 — fix: /help never actually deployed live (SPEC-030 gap, not a port bug)
+
+User manual browser testing found `/help` on production rendering the page
+shell with no intro text and no topic links, while working correctly on
+`http://127.0.0.1:5000/help` locally.
+
+**Root cause, confirmed - a pre-existing SPEC-030 gap, unrelated to the
+DD-0019 Ubuntu/Poetry port:** `src/sask/help/loader.py`'s `discover_topics()`
+scans `docs/help/` for Markdown files at `create_app()` time.
+`src/sask/web/__init__.py` resolves that path via the same file-relative
+walk-up as `config_dir`. Locally, `docs/help/` is just there in the full git
+checkout, so it works. On production, `ansible/roles/app/tasks/main.yml`
+only ever synced `src/sask/`, `config/`, `assets/<version>/`, and `wsgi.py`
+to `/opt/sask/` - never `docs/help/`. `SPEC-030`'s own addendum said this
+plainly: *"No live redeploy in this spec... deploying the help guide live is
+a separate, later action."* That action was never done - not by this
+session's deploy-pipeline work, and not before it either. The help feature
+has never worked on any production droplet since it was built (2026-06-25).
+
+**Fix:** added `app_help_dir` (`app_root/docs/help`) to
+`ansible/group_vars/all.yml`, and a new sync task in the `app` role -
+parent-dir-then-`synchronize`, same pattern as `config/`/`assets/`,
+notifying a service restart (the topic map is built once at startup per
+DD-0018's `render_timing`, so a new/removed topic file needs one).
+
+Verified live: `deploy.sh` re-run showed the two new tasks as `changed`;
+`/help` now shows the intro paragraph and both starter topics
+(`getting-started`, `calendar-lore`); `/help/getting-started` renders its
+table and code block correctly. Acceptance suite still green. SPEC-030's
+addendum carries a RESOLVED note with the full detail.
+
 ## 2026-07-01 — Full deploy/redeploy/perf validation on rebuilt Ubuntu dev host; ephemeris budget accept-and-documented
 
 First live exercise of the deploy harness (REQ-OPS-013) and the remote

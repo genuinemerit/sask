@@ -149,4 +149,21 @@ the app.
 No live redeploy in this spec - out of scope for its own acceptance
 criteria (local verification is the bar). Deploying the help guide live
 is a separate, later action.
+
+RESOLVED 2026-07-02: that later action turned out to have been missed
+entirely, not just deferred. Found via manual browser testing after the
+DD-0019 deploy-pipeline validation session: src/sask/help/loader.py and
+the /help routes deployed fine (synced as part of src/sask/), but
+ansible/roles/app/tasks/main.yml never synced docs/help/ itself, so
+discover_topics() found an empty directory on every production droplet
+that ever existed - /help rendered the page shell with no intro text and
+no topic links, while working correctly locally. Fixed: docs/help/ now
+syncs to app_help_dir (app_root/docs/help, matching the exact path
+src/sask/web/__init__.py's file-relative walk-up resolves at that same
+depth as config_dir), with the same parent-dir-then-synchronize pattern
+already used for config/ and assets/, notifying a service restart (the
+topic map is built once at create_app() time per DD-0018's
+render_timing). Verified live: /help now shows the intro paragraph and
+both starter topics; /help/getting-started renders its table and code
+block correctly. See docs/devlog.md (2026-07-02).
 """

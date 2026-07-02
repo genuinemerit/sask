@@ -56,6 +56,35 @@
       - "--no-group"
   notify: Restart sask service
 
+# docs/help/ is two levels below app_root (docs/, then help/) — same rsync
+# one-level limitation as src/ and assets/ above. Missing until 2026-07-02:
+# SPEC-030 built the help feature but explicitly deferred wiring up its
+# live deploy; src/sask/help/loader.py and the /help routes were already
+# synced (they live under src/sask/), but the Markdown content itself
+# never was, so discover_topics() found an empty directory on every
+# production droplet — /help rendered the page shell with no topics and
+# no intro text, while working fine locally where docs/help/ is just
+# there in the checkout.
+- name: Ensure the docs/ parent directory exists
+  ansible.builtin.file:
+    path: "{{ app_root }}/docs"
+    state: directory
+    mode: "0755"
+
+# Notifies a restart: the app's topic map is built once at create_app()
+# time (DD-0018's render_timing), so a new or removed topic file needs a
+# restart to be picked up — existing-topic content edits render fresh per
+# request and don't need one, but the sync task can't tell those apart.
+- name: Sync the docs/help/ content tree
+  ansible.posix.synchronize:
+    src: "{{ repo_root }}/docs/help/"
+    dest: "{{ app_help_dir }}/"
+    delete: true
+    rsync_opts:
+      - "--no-owner"
+      - "--no-group"
+  notify: Restart sask service
+
 # wsgi.py lives at the repo root, not inside src/sask/, so it needs its own
 # explicit task — the rsync above doesn't carry it.
 - name: Copy wsgi.py to the app root

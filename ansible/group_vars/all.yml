@@ -33,6 +33,14 @@ app_config_dir: "{{ app_root }}/config"
 assets_version: v0
 app_assets_dir: "{{ app_root }}/assets/{{ assets_version }}"
 
+# docs/help/ (Markdown help content, DD-0018/SPEC-030) lands at the same
+# walk-up depth src/sask/web/__init__.py resolves config_dir from, so it
+# must land at exactly app_root/docs/help — not a sibling of config/assets.
+# SPEC-030 explicitly deferred wiring this sync up ("deploying the help
+# guide live is a separate, later action"); that action is this variable
+# plus the app role's sync task.
+app_help_dir: "{{ app_root }}/docs/help"
+
 # --- network / domain -------------------------------------------------------
 domain: "sask.davidstitt.net"
 
