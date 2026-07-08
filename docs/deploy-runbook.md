@@ -22,6 +22,30 @@ bash tools/ops/connect.sh 'sudo journalctl -u caddy -n 50 --no-pager'
 bash tools/ops/acceptance-test.sh                  # external: TLS, /health, rendered content
 ```
 
+## Logging (SPEC-032)
+
+The app logs structured JSON to stdout; gunicorn writes no log files of
+its own. Under systemd, that stdout is captured by journald, which is
+capped (`SystemMaxUse`/`MaxRetentionSec`, `roles/base/templates/journald-sask.conf.j2`)
+so it can't grow unbounded on the 1GB droplet.
+
+```bash
+# Raw JSON lines (one per request/event), newest last:
+bash tools/ops/connect.sh 'sudo journalctl -u sask -o cat -n 100 --no-pager'
+
+# Follow live:
+bash tools/ops/connect.sh 'sudo journalctl -u sask -o cat -f'
+
+# Automated check (criterion 7): recent lines are valid JSON, no
+# cleartext secrets, journald caps are applied:
+bash tools/ops/verify-logging.sh
+
+# Change the production log level (INFO/DEBUG/TRACE/...); re-templates
+# the environment file via Ansible and restarts the service — see
+# tools/ops/set-log-level.sh for why this isn't a direct SSH edit:
+bash tools/ops/set-log-level.sh DEBUG
+```
+
 ## Deploy a code change
 
 ```bash

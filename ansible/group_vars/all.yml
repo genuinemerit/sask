@@ -52,6 +52,19 @@ gunicorn_timeout: 30
 gunicorn_max_requests: 500
 gunicorn_max_requests_jitter: 50
 
+# --- logging (SPEC-032) ---------------------------------------------------------
+# Read by src/sask/logsetup.py at create_app() time (DD-0020
+# production_threshold). Override per-run via set-log-level.sh, which
+# passes -e sask_log_level=<LEVEL> — this default is what a plain
+# deploy.sh/redeploy.sh converges back to.
+sask_log_level: INFO
+# journald caps for the app's own structured-JSON stdout stream (captured
+# under the sask.service unit), sized for the 1GB droplet. Values are
+# generous relative to actual volume at INFO in production (DEBUG/TRACE
+# are dev-only) — the point is a hard ceiling exists, not that it's tight.
+sask_journald_system_max_use: 200M
+sask_journald_max_retention: 14day
+
 # --- caddy / rate limiting -----------------------------------------------------
 caddy_user: caddy
 caddy_etc_dir: /etc/caddy

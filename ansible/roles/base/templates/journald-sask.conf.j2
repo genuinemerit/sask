@@ -1,0 +1,7 @@
+# Managed by Ansible (roles/base) — SPEC-032. Bounds total persistent
+# journal size/age on the 1GB droplet so the app's structured-JSON stdout
+# (captured under the sask.service unit) and every other unit's journal
+# output cannot grow unbounded.
+[Journal]
+SystemMaxUse={{ sask_journald_system_max_use }}
+MaxRetentionSec={{ sask_journald_max_retention }}

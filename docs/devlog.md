@@ -1,5 +1,67 @@
 # Dev log
 
+## 2026-07-08 — SPEC-032 Phase 4: deploy wiring (not yet live-verified)
+
+Fourth commit of the SPEC-032 logging port — the deploy-side half. No
+Python changes; Ansible, ops scripts, and docs only.
+
+**Found and fixed a real pre-existing conflict:**
+`ansible/roles/runtime/templates/sask.service.j2` was already running
+gunicorn with `--access-logfile {{ log_dir }}/access.log
+--error-logfile {{ log_dir }}/error.log` — i.e. writing its own log files,
+bypassing journald entirely, directly conflicting with REQ-OPS-019.
+Removed both flags (gunicorn reverts to its stdout/stderr defaults, both
+journald-captured under systemd); also dropped the now-unneeded
+`ReadWritePaths={{ log_dir }}` hardening line. `log_dir` itself is left in
+place — it's one of REQ-OPS-015's three standing platform directories,
+unrelated to this spec, just no longer written into by sask.
+
+**Journald caps:** new `roles/base/templates/journald-sask.conf.j2`
+(`SystemMaxUse=200M`, `MaxRetentionSec=14day` — new `group_vars/all.yml`
+vars `sask_journald_system_max_use`/`sask_journald_max_retention`),
+templated to `/etc/systemd/journald.conf.d/sask.conf` by a new `base` role
+task, restarting `systemd-journald` on change.
+
+**SASK_LOG_LEVEL:** added to `roles/runtime/templates/environment.j2`,
+sourced from a new `sask_log_level: INFO` group_vars default.
+
+**Two new ops scripts** (`tools/ops/`):
+
+- `set-log-level.sh <LEVEL>` — validates the level name, then runs
+  `ansible-playbook site.yml --tags runtime -e sask_log_level=<LEVEL>`
+  (new `runtime` tag added to `site.yml`'s role list) and restarts the
+  service. Ansible-driven rather than a direct SSH+sed edit, per
+  discussion: keeps Ansible the single source of truth, so a later plain
+  `deploy.sh` run doesn't silently revert a hand-edited environment file.
+  Written as a standalone script (not inline Ansible) so it can be called
+  the same way once the CLI's log-level command exists.
+- `verify-logging.sh` — automates SPEC-032 acceptance criterion 7:
+  SSHes to the droplet (read-only) and (1) validates recent
+  `journalctl -u sask -o cat` lines are well-formed JSON with the expected
+  keys and scans for cleartext `DIGITALOCEAN_TOKEN`/`dop_v1_` occurrences,
+  failing on either; (2) confirms the journald drop-in exists with both
+  caps set; (3) prints `journalctl --disk-usage` informationally. Only
+  needs `sudo` for the `journalctl` read (matches the pattern already in
+  the runbook — passwordless sudo per DD-0019/REQ-SEC-003).
+
+**Docs:** new "Logging" section in `docs/deploy-runbook.md` — raw/follow
+journalctl commands, `verify-logging.sh`, `set-log-level.sh`.
+
+**Verification done this round:** `ansible-playbook site.yml
+--syntax-check` passes; manually rendered the three touched/new templates
+with `group_vars/all.yml` via Jinja2 directly to confirm the new lines
+(`SASK_LOG_LEVEL=INFO`, the journald caps, the trimmed `ExecStart`) render
+correctly; `shellcheck -S warning` clean on both new scripts; full
+`pre-commit-check.sh` green; full Python suite still 710 passed (no
+Python touched this phase).
+
+**Not done — needs a live droplet and your go-ahead:** actually deploying
+this (`redeploy.sh` or `deploy.sh`), then running `verify-logging.sh`
+against the real box to satisfy acceptance criterion 7. DD-0020 and
+SPEC-032 stay `status = "proposed"` until that live check passes — flipping
+them to `"accepted"` now would be claiming a criterion that hasn't
+actually been exercised yet.
+
 ## 2026-07-08 — SPEC-032 Phase 3: web adapter — request-context binding
 
 Third commit of the SPEC-032 logging port. `src/sask/web/__init__.py`
