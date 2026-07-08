@@ -1,0 +1,42 @@
+id        = "REQ-SEC-004"
+title     = "No secrets or PII in log output"
+category  = "SEC"
+priority  = "must"
+
+statement = """
+Log output shall never contain secrets or personally identifying information.
+Known-sensitive values - including but not limited to the DIGITALOCEAN_TOKEN,
+any host secrets, and any future authentication credentials or tokens - shall
+be redacted by a shared-spine redaction step before a log record is emitted,
+regardless of which layer produced the record.
+"""
+
+rationale = """
+Structured logging captured by journald and retrievable over SSH becomes a
+persistent, searchable record; a secret written to a log is a secret leaked to
+everyone who can read the journal or a captured log line. sask handles at least
+one production secret today (DIGITALOCEAN_TOKEN, kept out of the repo and out
+of logs per DD-0014/DD-0019) and will handle more as auth is added. Redaction
+must be centralized in the spine so no individual caller can accidentally
+bypass it, and enforced as a security-category MUST, not a best-effort.
+ADR-0017's own redaction section justifies treating this as a first-class
+requirement.
+"""
+
+acceptance = """
+1. A redaction step in the shared-spine logging facility scrubs a configured
+   set of known-sensitive keys/patterns from every emitted record, independent
+   of the producing layer.
+2. A test asserts that a record whose fields include a sensitive key (e.g. a
+   token value) is emitted with that value redacted, not in cleartext.
+3. The redaction set is documented and extensible (new secret names can be
+   added as auth grows) without changing call sites.
+4. No log line produced during normal operation, startup, or error handling
+   contains the DIGITALOCEAN_TOKEN or other known secrets - confirmed on the
+   live droplet during acceptance.
+"""
+
+[links]
+implements   = ["DD-0020"]
+relates_to   = ["DD-0014", "DD-0019", "REQ-OPS-019"]
+specified_by = ["SPEC-032"]

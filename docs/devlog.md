@@ -1,5 +1,31 @@
 # Dev log
 
+## 2026-07-08 — SPEC-032 accepted: full redeploy verified, DD-0020/SPEC-032 → accepted
+
+Ran `tools/ops/redeploy.sh -y` (full destroy/recreate/deploy/acceptance
+cycle, not just a converge) to confirm the logging port survives a
+from-scratch droplet build, not just an in-place update: OpenTofu
+recreated the droplet + firewall + reserved-IP assignment, the one-time
+root bootstrap ran, then the full `site.yml` play — `ok=42 changed=36
+failed=0`. `acceptance-test.sh` (run automatically at the end of
+`redeploy.sh`) — all 5 checks pass.
+
+`verify-logging.sh` re-run against the fresh droplet: `total=50
+json_ok=16 secret_hits=0`; journald drop-in present with both caps;
+8.0M disk usage, well under the 200M cap. Also grepped the full `sask`
+unit journal for "error"/"permission denied" — zero matches (confirms the
+control-socket fix from the prior entry holds on a clean build, not just
+the box it was first fixed on). User independently ran `verify-logging.sh`
+and manually browsed `journalctl` for `sask` entries themselves, seeing
+both the app's structured records and the systemd/gunicorn lifecycle
+lines, no issues.
+
+Both the in-place `deploy.sh` path and the full `redeploy.sh` path are now
+verified against a live droplet, satisfying SPEC-032 acceptance criterion
+7. Setting DD-0020 and SPEC-032 to `status = "accepted"`
+(REQ-OPS-019/REQ-SEC-004 have no `status` field in the reqs schema — only
+`decisions` and `specs` carry one).
+
 ## 2026-07-08 — SPEC-032 live deploy: gunicorn control-socket fix + verify-logging.sh over-strictness fix
 
 First live deploy of the SPEC-032 logging port (`tools/ops/deploy.sh`

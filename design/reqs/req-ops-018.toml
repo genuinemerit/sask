@@ -1,4 +1,4 @@
-id        = "REQ-OPS-017"
+id        = "REQ-OPS-018"
 title     = "Verified minimal host-environment contract"
 category  = "OPS"
 priority  = "should"

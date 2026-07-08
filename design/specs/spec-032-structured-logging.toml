@@ -1,0 +1,182 @@
+id     = "SPEC-032"
+title  = "Structured logging: spine facility, Flask lifecycle, redaction, journald"
+status = "accepted"
+
+[implements]
+requirements = ["REQ-OPS-019", "REQ-SEC-004"]
+decisions    = ["DD-0020"]
+notes = """
+First implementation SPEC of the saskan-app-alt -> sask port (Port Phase 1,
+logging half; decoupled from the import-layering contract per DD-0020). Adopts
+ADR-0017 policy as a pattern, re-centered on the Flask lifecycle and sask's
+engine/adapter/spine layers. Greenfield: the legacy logging subsystem had no
+tests and its event vocabulary is not ported.
+"""
+
+[scope]
+in = """
+A shared-spine structured-logging facility (JSON formatter, level/range filter,
+TRACE level, configure/get_logger/context-binding, redaction); engine-level
+context-free logging; web-adapter request-context binding via Flask hooks; a
+minimal Flask-lifecycle event surface; the DigitalOcean deploy wiring
+(app-to-stdout, gunicorn/systemd-to-journald, journald size/retention caps,
+journalctl retrieval); greenfield tests; and live-droplet acceptance.
+"""
+
+out = """
+- The socket-server event vocabulary and TCP framework (parked with the socket
+  prototype).
+- The never-called game-loop helpers (tick, state_snap, ai_gen, asset_fetch).
+- The importlinter layering contract (separate future effort).
+- Centralized/multi-host log aggregation (Loki/ELK/etc.).
+- i18n of log text (operator-facing, not localized).
+- Any change to engine BEHAVIOR or message-unit shapes (adding context-free log
+  calls is not a behavior change, but no engine logic changes).
+- New pre-commit gates (mypy etc.).
+"""
+
+[deliverables]
+spine_module = """
+A shared-spine logging module at the package root (e.g. src/sask/logsetup.py -
+NAME MUST NOT shadow the stdlib logging module; do not name it logging.py).
+Provides: a JSON formatter emitting one structured object per line (timestamp,
+level, logger name, message, and any bound/extra fields); a level/range filter;
+a registered TRACE level below DEBUG; configure() to install handlers/formatter
+on the root or a sask logger writing to stdout; get_logger(name) for callers; a
+context-binding helper for attaching per-request fields; and the redaction stage
+(see redaction). Imports no Flask and no engine domain code - pure
+infrastructure. configure() is idempotent and safe to call once at app startup
+(create_app) rather than at import time (the legacy import-time configure() is
+an anti-pattern not reproduced).
+"""
+
+engine_logging = """
+Engine modules (calendar/, asset/) obtain loggers via get_logger(__name__) and
+emit context-free structured records, each following DD-0020's level rubric and
+what-to-log convention (log OUTCOMES/DECISIONS, not narration; correct level per
+the rubric). They take NO request/transport context and do not import the
+adapter's request-context machinery.
+
+Instrument a DELIBERATE MINIMAL STARTER SET, not every function - further calls
+are added later as real diagnostic need arises, each following the same rubric:
+- Config load: success at INFO with counts (e.g. N calendars / M assets / etc.);
+  a ConfigError at create_app is CRITICAL (the app cannot serve).
+- Ephemeris: one INFO record per completed request with size + duration; WARNING
+  if it nears/exceeds the ~5s soft budget. Per-record computation, if logged at
+  all, is TRACE (off in prod) - NEVER per-record at INFO.
+- Asset retrieval: an asset served logged as an outcome; a catalog MISS is
+  normal handled behavior (INFO/DEBUG as a request outcome, NOT ERROR/WARNING,
+  per the rubric's explicit not-found note).
+- Unexpected engine exceptions: ERROR with locating context (but see
+  adapter_logging - the exception is logged ONCE at the handling boundary, not
+  re-logged at each layer).
+A layer-purity check (mirroring the Flask-free engine test) confirms the engine
+does not import the web adapter's context module.
+"""
+
+adapter_logging = """
+The web adapter (web/) binds per-request context using the spine's context
+helper via Flask before/after-request hooks: a generated request id, method,
+path (and a placeholder for locale, wired when i18n lands), so all lines from
+one request share a request id for correlation (per DD-0020's what-to-log
+convention). The minimal Flask-lifecycle event surface, following the rubric:
+- Request finished at INFO with method, path, status, duration, request id.
+  (Request start optional, at DEBUG.)
+- Error paths: an unhandled/handled exception logged ONCE here at the handling
+  boundary at ERROR with locating context - NOT re-logged at each layer it
+  bubbled through (avoids the double-logged-exception failure mode).
+- An expected not-found (404) is logged as the request's normal INFO outcome,
+  not as an error/warning.
+configure() is invoked once from create_app(), not at import time.
+"""
+
+redaction = """
+A redaction stage in the spine scrubs a configured set of known-sensitive
+keys/patterns (DIGITALOCEAN_TOKEN and other host/auth secrets) from every
+emitted record, before serialization, independent of the producing layer. The
+sensitive-key set is defined in one documented place and is extensible without
+touching call sites. Redaction applies to both message text and structured
+fields. This satisfies REQ-SEC-004 and must be centralized so no caller can
+bypass it.
+"""
+
+deploy_wiring = """
+DigitalOcean production wiring (touches the Ansible deploy role - in scope for
+this feature, unlike the de-NixOS port):
+1. Confirm/ensure the app logs JSON to stdout and gunicorn is NOT configured to
+   write its own log files that would bypass journald; gunicorn stdout/stderr
+   under systemd is captured by journald.
+2. Configure journald limits on the droplet (journald.conf or a drop-in):
+   a bounded SystemMaxUse (cap total journal size) and MaxRetentionSec (cap
+   age), with documented values chosen for the 1GB box, applied idempotently by
+   Ansible.
+3. Document retrieval: journalctl -u <sask-service> (with -o cat for raw JSON
+   lines, time filters) in the deploy-runbook / dev-setup docs.
+Do not introduce app-side file logging or rotation.
+"""
+
+tests = """
+tests/test_spec_032.py (greenfield - legacy had none):
+- Formatter emits valid one-object-per-line JSON with the expected fields.
+- Level filtering and the TRACE level behave correctly.
+- Redaction: a record containing a known sensitive key/value is emitted with the
+  value redacted, not in cleartext (covers REQ-SEC-004); an added sensitive key
+  is redacted without call-site changes.
+- Context binding: adapter-bound fields (request id, method, path) appear on
+  records emitted within a request; engine records emitted outside a request do
+  not carry request context; all lines within one request share a request id.
+- Policy conformance (DD-0020 rubric): the starter instrumentation uses the
+  correct levels - e.g. a completed request logs INFO with duration/status; an
+  expected 404 does NOT log at ERROR/WARNING; a near-budget ephemeris request
+  logs WARNING; per-record ephemeris detail does not appear at INFO. An
+  exception is logged once (not duplicated across layers).
+- Layer purity: the engine does not import the adapter request-context module
+  (AST check, mirroring the Flask-free engine test).
+- configure() is idempotent and does not double-install handlers.
+Full suite must pass at the new higher count; pre-commit and validate_specs
+clean.
+"""
+
+design_doc_status = """
+On acceptance set DD-0020, REQ-OPS-019, REQ-SEC-004, and SPEC-032 to "accepted"
+and add a devlog entry (the logging port: policy-not-code from ADR-0017, Flask-
+lifecycle re-centering, journald model, redaction, greenfield tests, live-
+droplet result).
+"""
+
+[acceptance]
+criteria = """
+1. The shared-spine logging module exists, is correctly named (no stdlib
+   shadowing), provides the full facility (JSON formatter, level/range filter,
+   TRACE, configure/get_logger/context helper, redaction), and imports no Flask
+   or engine domain code.
+2. Engine modules log context-free via get_logger; the layer-purity check
+   passes (engine does not import adapter request-context machinery).
+3. The web adapter binds request context via Flask hooks and provides the
+   minimal request-lifecycle event surface; configure() runs once at create_app,
+   not at import.
+3a. The starter instrumentation conforms to DD-0020's level rubric and what-to-
+   log convention: correct levels for request-finish / near-budget ephemeris /
+   expected-404 / config-load, outcomes-not-narration, and exceptions logged
+   once at the boundary (verified by the policy-conformance tests).
+4. The app writes JSON to stdout and manages no log file.
+5. Redaction scrubs known secrets from every record regardless of layer;
+   REQ-SEC-004 tests pass.
+6. Full test suite passes at the new count; pre-commit and validate_specs clean.
+7. LIVE DROPLET: after redeploy, gunicorn stdout lands in journald; journald
+   SystemMaxUse and MaxRetentionSec caps are applied (verified on the box); logs
+   are retrievable/searchable via journalctl; a scan of live log output confirms
+   NO DIGITALOCEAN_TOKEN or other known secret appears.
+8. No engine behavior or message-unit shape changed.
+"""
+
+uat = """
+[manual, live droplet] Redeploy; exercise the app (hit a page, trigger an
+error path); confirm via journalctl -u <sask-service> that structured JSON log
+lines are present, correctly leveled, and carry request context for adapter
+records. Confirm journald caps are set (e.g. journalctl --disk-usage within the
+configured bound; verify the drop-in). Grep the live logs for the DO token and
+any known secret and confirm ZERO matches. Confirm old-log cleanup by
+inspecting the configured retention. Backend spine behavior is covered by unit
+tests; this UAT confirms the production journald model end to end.
+"""

@@ -115,6 +115,9 @@ The app runs live on a DigitalOcean droplet at
 [sask.davidstitt.net](https://sask.davidstitt.net), provisioned with
 OpenTofu (`infra/tofu/`) and configured with Ansible (`ansible/`). See
 [docs/deploy-runbook.md](docs/deploy-runbook.md) for day-to-day operation
-(connect, redeploy, full rebuild, full teardown) and
+(connect, redeploy, full rebuild, full teardown, viewing logs) and
 [design/decisions/dd-0014-deploy.toml](design/decisions/dd-0014-deploy.toml)
 for the design.
+
+The app logs structured JSON to stdout, viewable live via `journalctl`
+(see the runbook's Logging section).

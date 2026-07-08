@@ -1,0 +1,51 @@
+id        = "REQ-OPS-019"
+title     = "Operable structured logging"
+category  = "OPS"
+priority  = "should"
+
+statement = """
+sask shall emit structured, leveled log records as JSON to stdout, obtained
+through a shared-spine logging facility, without the application opening,
+rotating, or cleaning any log file itself. Log records shall support standard
+levels plus a TRACE level below DEBUG, and level/range filtering. In
+production on the DigitalOcean droplet, application stdout shall be captured by
+systemd/journald, configured to self-rotate and self-clean (bounded total size
+and retention) so logs cannot grow unbounded on the 1GB host, and shall be
+retrievable and searchable via journalctl. The engine layer shall log
+context-free (no request/transport awareness); per-request context (request id,
+method, path, and later locale) shall be bound by the web adapter.
+"""
+
+rationale = """
+sask has no logging today; operability ("manageable, friendly, searchable") is
+the goal, and it must hold on a resource-constrained droplet without manual log
+management. Logging to stdout keeps the application layer-clean and portable
+(DD-0017 layer model, DD-0020): the app does not decide where logs go, so the
+same code logs to a dev terminal and to production journald. journald is the
+Ubuntu/systemd standard and provides self-rotation/self-cleaning by
+configuration, avoiding app-side file handling and unbounded growth. Keeping
+engine logging context-free preserves engine purity exactly as the Flask-free
+rule does.
+"""
+
+acceptance = """
+1. A shared-spine logging module provides a JSON formatter, level/range
+   filtering, a TRACE level, configure(), get_logger(name), and a context-
+   binding helper; it imports no Flask and no engine domain code.
+2. Engine modules obtain loggers by name and emit structured records with no
+   request/transport awareness (verifiable: the engine does not import the
+   adapter's request-context machinery).
+3. The web adapter binds per-request fields (request id, method, path) via
+   Flask request hooks using the spine helper.
+4. The application writes JSON log lines to stdout and manages no log file.
+5. On the droplet, gunicorn stdout is captured by journald; journald is
+   configured with a bounded SystemMaxUse and MaxRetentionSec (documented
+   values); logs are retrievable via journalctl -u <service> and searchable.
+6. Log growth is bounded: a documented cap exists and is applied; old logs are
+   removed automatically.
+"""
+
+[links]
+implements   = ["DD-0020"]
+relates_to   = ["DD-0014", "DD-0017", "REQ-SEC-004"]
+specified_by = ["SPEC-032"]

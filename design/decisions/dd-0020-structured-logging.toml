@@ -1,0 +1,241 @@
+id     = "DD-0020"
+title  = "Structured logging: ADR-0017 policy re-centered on sask's Flask lifecycle"
+status = "accepted"
+date   = "2026-07-08"
+
+[context]
+summary = """
+sask has zero logging infrastructure today. The retired game-prototype
+(saskan-app-alt) contains a structured-JSON logging subsystem worth porting -
+but as a PATTERN, not as code, because it was built for a TCP-socket server
+lifecycle sask does not have. This DD decides how sask adopts structured
+logging, re-centered on its actual runtime shape (Flask request -> engine call
+-> message unit -> response) and its actual layers (engine / adapter / shared
+spine, per DD-0017), and how logs are operated on the DigitalOcean droplet.
+First formal doc of the saskan-app-alt -> sask port; the port's own analysis
+(port-*.md) is the prior-art review this rests on.
+"""
+
+prior_art = """
+The legacy infra/log/logger.py provides a JSONFormatter, a LevelRangeFilter, a
+custom TRACE level below DEBUG, and configure()/get_logger()/bind_context().
+infra/log/events.py layers semantic event helpers on top - but its vocabulary
+(conn_open, hello, draining_start, conn_close, msg_recv/msg_sent) is a SOCKET
+server's, and most helpers (tick, state_snap, ai_gen, asset_fetch) have ZERO
+callers, built ahead of a game loop that was never written. A newer logging
+design exists only as Draft ADR-0017 - assessed in the port analysis as the
+best-designed, most generic, non-lore-specific ADR in the legacy set, and a
+good candidate to port near-verbatim as a pattern, ADAPTED to a Flask request
+lifecycle instead of a TCP handshake lifecycle. The legacy subsystem has no
+test file. So this is not porting a working surface; it is adopting a policy
+and building the sask-appropriate surface fresh, with fresh tests.
+"""
+
+problem = """
+Logging is a cross-cutting concern, and the risk in porting it is that it
+violates sask's clean layer separation - specifically that a request-aware,
+transport-aware logging framework leaks into the Flask-free engine, the same
+way importing Flask into the engine would. The design must: keep the engine
+context-free and pure; put request-context binding where transport already
+lives (the adapter); make structured logging a shared-spine capability both
+layers can use; replace the socket event vocabulary with a Flask-lifecycle
+one; and be operable on a 1-vCPU/1GB droplet without logs growing unbounded or
+leaking secrets.
+"""
+
+[decision]
+summary = """
+Adopt ADR-0017's logging POLICY (structured JSON output, standard levels plus
+a TRACE level, level/range filtering, secret redaction) as a shared-spine
+capability. Re-center the event model on sask's Flask request lifecycle and
+engine/adapter/spine layers. The app emits structured JSON to stdout and never
+manages log files; the deployment environment routes logs. Discard the
+socket-lifecycle event vocabulary and the never-called game-loop helpers.
+"""
+
+layer_model = """
+Logging threads through sask's layers without violating them:
+- SHARED SPINE: a logging module at the package root (alongside message.py,
+  config_loader.py) provides the machinery - the JSON formatter, level/range
+  filter, TRACE level, configure(), get_logger(name), and a context-binding
+  helper. It imports no Flask and no engine domain code; it is pure
+  infrastructure. (Module name avoids shadowing the stdlib logging module -
+  e.g. logsetup.py / logconfig.py, not logging.py.)
+- ENGINE (calendar/, asset/): logs CONTEXT-FREE. Engine modules obtain a logger
+  by name from the spine and emit structured records with no awareness of
+  requests, transports, or who is calling. This preserves engine purity exactly
+  as the Flask-free rule does: the engine must not import request/transport-
+  aware logging context.
+- ADAPTER (web/): binds REQUEST CONTEXT. The web adapter attaches per-request
+  fields (request id, method, path; locale once i18n lands) via Flask
+  before/after-request hooks, using the spine's context helper. Request-aware
+  logging lives where the request already lives.
+This is the "plays nicely with clean layer separation" answer: infrastructure
+in the spine, context-free logging in the engine, request-context binding in
+the adapter.
+"""
+
+event_vocabulary = """
+The socket-lifecycle event helpers (conn_open, hello, draining_start,
+conn_close, msg_recv/msg_sent) are NOT ported - they belong to the TCP server
+framework that was deliberately excluded from this merge (parked with the
+socket prototype). The never-called game-loop helpers (tick, state_snap,
+ai_gen, asset_fetch) are NOT ported - no callers, no features behind them. In
+their place, a minimal sask-appropriate event surface keyed to the Flask
+request lifecycle and existing engine operations (e.g. request start/finish,
+engine-operation outcomes, config-load events, error paths). The surface starts
+small and grows with real callers, not ahead of them.
+"""
+
+level_rubric = """
+PROPOSED STARTING RUBRIC - owned and adjustable by the maintainer, not a fixed
+mandate. The value is sask-SPECIFIC meaning for each level, so that "which
+level" is a rule to apply, not a per-call guess. The boundaries encode judgment
+about what matters when reading these logs later; review and tune them.
+
+- CRITICAL: the app cannot continue or start. In sask: config validation fails
+  at create_app() (ConfigError) so the app cannot serve; an unrecoverable
+  startup fault. Emitted, then the process exits.
+- ERROR: an operation failed and its caller/user is affected, but the app
+  survives and keeps serving other requests. In sask: an unhandled exception in
+  a route (500), a payload read that should have succeeded but the file was
+  unreadable, an engine operation that raised unexpectedly.
+- WARNING: degraded or recoverable - notable, but not a failure; the app and
+  caller are fine. In sask: an ephemeris request approaching or exceeding the
+  ~5s soft budget (delivered, but slow), a fallback taken (e.g. the i18n
+  missing-translation fallback, once i18n lands), a retry. NOTE the deliberate
+  judgment: an EXPECTED not-found (a request for a (kind,id) not in the asset
+  catalog, or an unknown calendar value) is NORMAL handled behavior, NOT a
+  WARNING - it is part of a request that finished correctly with a 404, logged
+  at INFO as the request outcome (or DEBUG), never as ERROR/WARNING.
+- INFO: normal notable lifecycle an operator wants in the standard record, and
+  the DEFAULT production threshold. In sask: app ready, request finished
+  (method, path, status, duration, request id), config loaded (with counts,
+  e.g. N calendars / M assets), a completed ephemeris request (size + duration).
+- DEBUG: developer diagnostic detail, OFF in production. Intermediate decisions
+  and values useful only while actively diagnosing.
+- TRACE: the firehose - per-record / per-iteration / per-step detail, almost
+  never enabled. In sask: per-record ephemeris computation (a single request can
+  be ~8,640 records - this MUST be TRACE and off, never INFO), per-body
+  kinematic steps.
+
+Worked example (one real feature, three levels): a normal ephemeris request logs
+once at INFO with size+duration; a request that nears/exceeds the ~5s budget
+logs WARNING; the per-record math inside it is TRACE (off in prod). One event
+maps to one deliberate level, not scattered lines.
+"""
+
+what_to_log = """
+PROPOSED CONVENTION - the principle is: log DECISIONS and OUTCOMES, not
+narration. Tuned to prevent the specific failure modes that make logging
+painful (noise burying signal, un-correlatable lines, double-logged errors).
+
+DO log:
+- Request boundaries: request finished at INFO (method, path, status, duration,
+  request id). Request start optional, at DEBUG.
+- Errors WITH enough context to locate them (what failed, where, the exception),
+  logged ONCE at the boundary that handles them (the adapter) - not re-logged at
+  every layer the exception bubbles through.
+- Config-load outcomes: success with counts at INFO; failure at CRITICAL.
+- Notable engine OUTCOMES that an operator or debugger would want: ephemeris
+  request size+duration, asset served/missed as a request outcome.
+- Lifecycle/state transitions: app ready, shutdown.
+- (Later, with auth) security-relevant events: auth failures.
+
+DO NOT log:
+- Every function entry/exit, or successful trivial operations (a normal date
+  conversion needs no line).
+- Intermediate values of a computation (DEBUG at most; usually TRACE).
+- Anything per-record inside a large loop at INFO (ephemeris's thousands of
+  records - TRACE only, off in prod, or the journal fills and evicts the useful
+  lines first, which on the 1GB box is a real cost).
+- Redundant narration ("about to do X" / "did X" for trivial X).
+- Secrets or PII of any kind (enforced by REQ-SEC-004 redaction, restated here
+  as an absolute never).
+
+Correlation: because the adapter binds a request id, all lines from one request
+share it - use it rather than adding narration to trace a request's path.
+"""
+
+production_threshold = """
+Production (the droplet) emits INFO and above; DEBUG and TRACE are off. The
+active level is controlled by an environment variable (e.g. SASK_LOG_LEVEL) so
+dev can raise it to DEBUG/TRACE without code changes. The INFO threshold is the
+first line of defense for bounded journal volume, working with the journald
+size/retention caps: keeping DEBUG/TRACE off in prod is what makes the caps
+comfortable rather than tight.
+"""
+
+do_operational_model = """
+The app logs structured JSON to STDOUT and never opens or rotates a log file
+itself. On the droplet, gunicorn runs under systemd, whose stdout/stderr is
+captured by journald - the Ubuntu/systemd standard. journald provides
+self-rotation and self-cleaning via configuration (SystemMaxUse caps total
+journal size; MaxRetentionSec caps age), so logs cannot grow unbounded or
+accumulate forever on the 1GB box. Retrieval/searching is via journalctl
+(e.g. journalctl -u <sask-service> -o cat to recover the raw JSON lines, with
+time filters and grep). Rationale for stdout-not-files: it keeps the app
+layer-clean (the app does not know or manage WHERE logs go - dev sends JSON to
+the terminal, production to journald), it is 12-factor standard, and it moves
+rotation/retention to the platform that does it best. The Ansible deploy role
+configures the journald caps and confirms gunicorn/systemd forwards app stdout
+to journald rather than to gunicorn-managed files.
+"""
+
+redaction = """
+Log output must never carry secrets or PII (DIGITALOCEAN_TOKEN, any future auth
+material, host secrets). A redaction step in the spine (a filter or formatter
+stage) scrubs known-sensitive keys before emission. This is significant enough
+to carry its own security requirement (REQ-SEC-004), justified by ADR-0017's
+own redaction section.
+"""
+
+[consequences]
+positive = """
+- Clean layer separation preserved: engine stays pure and context-free, the
+  adapter owns request context, the spine owns the machinery.
+- Portable and 12-factor: app logs JSON to stdout; environment routes it. Same
+  code logs to a dev terminal and to production journald.
+- Standard, self-rotating, self-cleaning production logging via journald with
+  no app-side file management and no unbounded growth on the small droplet.
+- Searchable/operable via journalctl, meeting the manageable/friendly/
+  searchable goal.
+- Secret redaction is a first-class, testable requirement.
+- Greenfield tests for a subsystem the legacy project never tested.
+"""
+
+negative_or_deferred = """
+- journald stores each JSON line as its MESSAGE field, so retrieval uses
+  journalctl -o cat (or -o json, which nests sask's JSON inside journald's
+  envelope). Accepted: keeps the app portable rather than coupling it to
+  journald's native protocol.
+- No centralized/multi-host log aggregation (e.g. Loki/ELK). Unnecessary for a
+  single droplet; revisit only if sask ever runs multiple hosts.
+- The event surface is intentionally minimal at first and grows with callers;
+  some ADR-0017 richness is deferred until there is something to log.
+- This DD deliberately does NOT adopt the import-layering contract
+  (importlinter) that the port roadmap bundled with logging; that is a separate
+  effort with its own future DD.
+"""
+
+out_of_scope = """
+- The socket-server event vocabulary and the TCP framework (parked with the
+  socket prototype; revisited only when the RAG/graph engines define a real
+  transport need).
+- The importlinter layering contract (separate future decision).
+- Centralized log aggregation / multi-host shipping.
+- i18n of log text (logs are operator-facing, not user-facing; not localized).
+- mypy or other new pre-commit gates (separate discussion).
+"""
+
+[links]
+depends_on = ["DD-0014", "DD-0017"]
+relates_to = ["DD-0019"]
+implemented_by = ["REQ-OPS-019", "REQ-SEC-004", "SPEC-032"]
+notes = """
+Port analysis: port-README.md, port-feature-analysis.md (Logging section),
+port-design-components-analysis.md (ADR-0017 assessment), porting-roadmap.md
+(Phase 1). ADR-0017 is the legacy source policy, ported as pattern not code.
+DD-0014 owns the gunicorn/systemd/Ansible deploy the journald wiring extends;
+DD-0017 owns the engine/adapter/spine layer model logging must respect.
+"""
