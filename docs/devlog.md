@@ -1,5 +1,63 @@
 # Dev log
 
+## 2026-07-08 — SPEC-032 live deploy: gunicorn control-socket fix + verify-logging.sh over-strictness fix
+
+First live deploy of the SPEC-032 logging port (`tools/ops/deploy.sh`
+converging the existing droplet, not a full rebuild). Two real issues
+surfaced, both investigated and fixed before re-deploying — not dismissed
+as noise.
+
+**Issue 1 — gunicorn 26.0.0 control-socket permission error.** First
+`verify-logging.sh` run failed (`bad_json=42/50`). `journalctl -u sask -o
+cat -n 50` showed `[ERROR] Control server error: [Errno 13] Permission
+denied: '/home/sask'` on every gunicorn start, plus gunicorn's own
+plain-text startup lines ("Starting gunicorn", "Listening at:", "Using
+worker:", "Booting worker with pid:") interleaved with the app's JSON.
+`gunicorn --help` confirmed: 26.0.0 added a control socket defaulting
+under the user's home dir; `ProtectSystem=strict`/`ProtectHome=true`
+(already in the unit, intentional hardening) correctly blocks it, and
+`app_user=sask` has no real home dir anyway (`create_home: false`). Non-
+fatal — the app served every request correctly throughout
+(`acceptance-test.sh` passed both before and after) — but newly *visible*
+now that `--error-logfile` no longer swallows gunicorn's own stderr into
+an unread file. Confirmed via `sudo systemctl status sask` that the
+crash-loop entries also visible in that journal window (`203/EXEC`,
+several restart cycles) were old history from 2026-07-01, unrelated to
+this deploy — the service was `active (running)` throughout.
+
+Fix: added `--no-control-socket` to `sask.service.j2`'s `ExecStart` (a
+real gunicorn flag, confirmed via `gunicorn --help`, not guessed) — this
+service doesn't use the control interface, so disable it rather than
+carve a `ProtectHome` exception for an unused feature. Re-deployed;
+confirmed the error is gone and the app still serves correctly.
+
+**Issue 2 — `verify-logging.sh` was checking the wrong thing.** Its
+original check demanded *every* line under the unit be valid JSON, which
+is wrong: SPEC-032's own `deploy_wiring` text already says gunicorn's own
+operational notices legitimately flow to journald as plain text — only
+the app's own request-level records need to be structured JSON. Changed
+the check from "zero non-JSON lines" to "at least one well-formed app
+JSON line, and zero cleartext secrets across all lines regardless of
+format" — the actual acceptance-criterion-7 bar, not an accidentally
+stricter one.
+
+**Live results after both fixes, on the existing (not recreated)
+droplet:**
+
+- `tools/ops/deploy.sh` — `failed=0`.
+- `tools/ops/acceptance-test.sh` — all 5 checks pass.
+- `tools/ops/verify-logging.sh` — `total=50 json_ok=16 secret_hits=0`;
+  journald drop-in present with both caps; disk usage 8.0M (well under
+  the 200M cap).
+- `tools/ops/set-log-level.sh DEBUG` then `INFO` — both converged cleanly
+  (`--tags runtime` correctly scoped to just that role), the environment
+  file updated each time, confirmed via a live request that the service
+  kept serving throughout, then set back to `INFO` for production.
+
+**Still to do:** `tools/ops/redeploy.sh -y` (full destroy/recreate cycle)
+to confirm the whole thing survives a from-scratch build, then flip
+DD-0020/SPEC-032 to `"accepted"`.
+
 ## 2026-07-08 — SPEC-032 Phase 4: deploy wiring (not yet live-verified)
 
 Fourth commit of the SPEC-032 logging port — the deploy-side half. No

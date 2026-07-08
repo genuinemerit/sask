@@ -15,12 +15,19 @@ EnvironmentFile={{ etc_dir }}/environment
 # journald's JSON-per-line stream. gunicorn's own stderr (worker
 # boot/reload/error notices) still flows to journald via systemd's default
 # stream capture.
+# --no-control-socket: gunicorn 26+'s control socket defaults under the
+# user's home dir, which ProtectHome=true blocks (surfaced as a harmless
+# but noisy "Control server error: Permission denied" on every start once
+# --error-logfile stopped swallowing it into an unread file); this service
+# doesn't use the control interface, so disable it rather than carve out
+# a ProtectHome exception for an unused feature.
 ExecStart={{ venv_dir }}/bin/gunicorn {{ wsgi_module }} \
     --bind {{ gunicorn_bind }} \
     --workers {{ gunicorn_workers }} \
     --timeout {{ gunicorn_timeout }} \
     --max-requests {{ gunicorn_max_requests }} \
-    --max-requests-jitter {{ gunicorn_max_requests_jitter }}
+    --max-requests-jitter {{ gunicorn_max_requests_jitter }} \
+    --no-control-socket
 Restart=on-failure
 RestartSec=5
 
