@@ -206,4 +206,5 @@ def reset() -> None:
     logger = logging.getLogger("sask")
     for handler in list(logger.handlers):
         logger.removeHandler(handler)
+    logger.propagate = True
     _configured = False

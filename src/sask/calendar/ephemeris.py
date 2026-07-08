@@ -17,6 +17,7 @@ render_kinematic_json(series, config):
 from __future__ import annotations
 
 import json
+import time
 from dataclasses import dataclass
 
 from sask.calendar.bodies import all_body_states
@@ -24,7 +25,15 @@ from sask.calendar.scene import get_sky_scene, render_night_summary
 from sask.calendar.season import season_info
 from sask.calendar.sky import all_sky_positions
 from sask.config_loader import AppConfig
+from sask.logsetup import get_logger
 from sask.message import BodyState, SkyPosition, SkyScene
+
+logger = get_logger(__name__)
+
+# DD-0020 level_rubric: WARNING when a request nears/exceeds the ~5s soft
+# ephemeris budget (REQ-OPS-010 upper bound; tools/ops/perf_config.py
+# BUDGETS["ephemeris_worst_case_s"] = (3.0, 5.0)).
+_EPHEMERIS_NEAR_BUDGET_S = 4.5
 
 
 # ── Internal series data structures ───────────────────────────────────────────
@@ -116,6 +125,7 @@ def get_sky_series(
     distinct Astro day and referenced by all steps within that day.
     """
     _validate_throttle(start_pulse, end_pulse, step_pulses, config)
+    started = time.perf_counter()
 
     ppd = config.time_constants.pulses_per_day
     day_contexts: dict[int, _DayCtx] = {}
@@ -160,6 +170,16 @@ def get_sky_series(
                 sky_positions=step_sky_positions,
             )
         )
+
+    duration_s = time.perf_counter() - started
+    log_fields = {
+        "step_count": len(steps),
+        "duration_s": round(duration_s, 3),
+    }
+    if duration_s >= _EPHEMERIS_NEAR_BUDGET_S:
+        logger.warning("ephemeris request completed", extra=log_fields)
+    else:
+        logger.info("ephemeris request completed", extra=log_fields)
 
     return EphemerisSeries(
         start_pulse=start_pulse,

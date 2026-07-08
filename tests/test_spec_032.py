@@ -1,6 +1,6 @@
-"""SPEC-032 tests — structured logging spine facility (Phase 1).
+"""SPEC-032 tests — structured logging: spine, engine, layer purity.
 
-Covers the shared-spine module (src/sask/logsetup.py) only:
+Phase 1 — the shared-spine module (src/sask/logsetup.py):
   - JsonFormatter emits one valid JSON object per line with the expected
     base fields
   - TRACE is registered below DEBUG and Logger.trace() respects it
@@ -13,17 +13,37 @@ Covers the shared-spine module (src/sask/logsetup.py) only:
     secret value appearing in free text is scrubbed (REQ-SEC-004)
   - configure() is idempotent (does not double-install handlers) and
     resolves level from the SASK_LOG_LEVEL env var
+
+Phase 2 — engine-layer instrumentation (context-free; DD-0020 level rubric):
+  - config_loader.load_config() logs one INFO record with counts
+  - calendar.ephemeris.get_sky_series() logs one INFO record with
+    step_count + duration on a normal request, WARNING when the duration
+    nears/exceeds the ~5s soft budget
+  - asset.retrieval: a served asset logs INFO; a catalog miss logs INFO
+    (never WARNING/ERROR) from both resolve_descriptor() and fetch_payload()
+  - layer purity: engine modules (config_loader.py, calendar/*.py,
+    asset/*.py) import no Flask and no sask.web (mirrors the existing
+    Flask-free engine test, extended to the adapter's context module)
 """
 
 from __future__ import annotations
 
+import ast
 import io
 import json
 import logging
+from pathlib import Path
 
 import pytest
 
 from sask import logsetup
+from sask.asset.retrieval import fetch_payload, resolve_descriptor
+from sask.calendar.ephemeris import get_sky_series
+from sask.config_loader import load_config
+
+PROJECT_ROOT = Path(__file__).parent.parent
+REAL_CONFIG = PROJECT_ROOT / "config"
+CONFIG = load_config(REAL_CONFIG)
 
 
 @pytest.fixture(autouse=True)
@@ -203,3 +223,112 @@ def test_configure_writes_json_to_given_stream():
     logsetup.get_logger("sask.test.configured").info("app ready")
     record = json.loads(buffer.getvalue().strip())
     assert record["message"] == "app ready"
+
+
+# ── Engine instrumentation (Phase 2) ────────────────────────────────────────
+
+_STORY = CONFIG.timeline.story_now_pulse
+_STEP = CONFIG.ephemeris.step_floor_pulses
+
+
+def test_config_load_logs_info_with_counts():
+    logger, buffer = _make_logger_with_buffer("sask.config_loader")
+    load_config(REAL_CONFIG)
+
+    record = json.loads(buffer.getvalue().strip())
+    assert record["level"] == "INFO"
+    assert record["message"] == "config loaded"
+    assert record["bodies"] == len(CONFIG.bodies)
+    assert record["assets"] == len(CONFIG.asset_catalog.entries)
+
+
+def test_ephemeris_normal_request_logs_info():
+    logger, buffer = _make_logger_with_buffer("sask.calendar.ephemeris")
+    get_sky_series(_STORY, _STORY, _STEP, CONFIG)
+
+    record = json.loads(buffer.getvalue().strip())
+    assert record["level"] == "INFO"
+    assert record["step_count"] == 1
+    assert record["duration_s"] < 1.0
+
+
+def test_ephemeris_near_budget_logs_warning(monkeypatch):
+    values = iter([0.0, 4.6])
+    monkeypatch.setattr(
+        "sask.calendar.ephemeris.time.perf_counter", lambda: next(values)
+    )
+    logger, buffer = _make_logger_with_buffer("sask.calendar.ephemeris")
+    get_sky_series(_STORY, _STORY, _STEP, CONFIG)
+
+    record = json.loads(buffer.getvalue().strip())
+    assert record["level"] == "WARNING"
+    assert record["duration_s"] == 4.6
+
+
+def test_asset_served_logs_info():
+    logger, buffer = _make_logger_with_buffer("sask.asset.retrieval")
+    descriptor = resolve_descriptor("image", "splash.bg", CONFIG)
+    fetch_payload(descriptor, CONFIG)
+
+    record = json.loads(buffer.getvalue().strip())
+    assert record["level"] == "INFO"
+    assert record["message"] == "asset served"
+    assert record["kind"] == "image"
+    assert record["id"] == "splash.bg"
+
+
+def test_asset_catalog_miss_logs_info_not_warning():
+    from sask.asset.retrieval import AssetNotFoundError
+
+    logger, buffer = _make_logger_with_buffer("sask.asset.retrieval")
+    with pytest.raises(AssetNotFoundError):
+        resolve_descriptor("image", "does-not-exist", CONFIG)
+
+    record = json.loads(buffer.getvalue().strip())
+    assert record["level"] == "INFO"
+    assert record["message"] == "asset catalog miss"
+
+
+def test_fetch_payload_miss_logs_info_independently():
+    from sask.asset.retrieval import AssetNotFoundError
+    from sask.message import AssetDescriptor
+
+    logger, buffer = _make_logger_with_buffer("sask.asset.retrieval")
+    ghost = AssetDescriptor(kind="image", id="does-not-exist", content_type="x", size=0)
+    with pytest.raises(AssetNotFoundError):
+        fetch_payload(ghost, CONFIG)
+
+    record = json.loads(buffer.getvalue().strip())
+    assert record["level"] == "INFO"
+    assert record["message"] == "asset catalog miss"
+
+
+# ── Layer purity: engine imports no Flask, no sask.web ──────────────────────
+
+_ENGINE_FILES = (
+    [PROJECT_ROOT / "src" / "sask" / "config_loader.py"]
+    + sorted((PROJECT_ROOT / "src" / "sask" / "calendar").glob("*.py"))
+    + sorted((PROJECT_ROOT / "src" / "sask" / "asset").glob("*.py"))
+)
+
+
+def _forbidden_imports_in(path: Path) -> list[str]:
+    """Return flask / sask.web import lines found in path (SPEC-032)."""
+    tree = ast.parse(path.read_text(encoding="utf-8"))
+    found = []
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Import):
+            for alias in node.names:
+                lowered = alias.name.lower()
+                if "flask" in lowered or lowered.startswith("sask.web"):
+                    found.append(f"import {alias.name}")
+        elif isinstance(node, ast.ImportFrom):
+            module = (node.module or "").lower()
+            if "flask" in module or module.startswith("sask.web"):
+                found.append(f"from {module} import ...")
+    return found
+
+
+@pytest.mark.parametrize("path", _ENGINE_FILES, ids=lambda p: p.name)
+def test_engine_modules_import_no_flask_or_web(path: Path):
+    assert _forbidden_imports_in(path) == []

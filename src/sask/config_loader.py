@@ -16,6 +16,10 @@ import tomllib
 from dataclasses import dataclass
 from pathlib import Path
 
+from sask.logsetup import get_logger
+
+logger = get_logger(__name__)
+
 
 class ConfigError(ValueError):
     """Raised when a config file is missing, malformed, or invalid."""
@@ -1082,7 +1086,7 @@ def load_config(config_dir: Path, assets_dir: Path | None = None) -> AppConfig:
         "asset_catalog_data.toml",
         assets_dir,
     )
-    return AppConfig(
+    cfg = AppConfig(
         time_constants=tc,
         astro=astro,
         fatunik=fatunik,
@@ -1106,3 +1110,17 @@ def load_config(config_dir: Path, assets_dir: Path | None = None) -> AppConfig:
         lore_calendars=lore_calendars,
         asset_catalog=asset_catalog,
     )
+    logger.info(
+        "config loaded",
+        extra={
+            "bodies": len(cfg.bodies),
+            "stars": len(cfg.stars),
+            "houses": len(cfg.houses),
+            "comets": len(cfg.comets),
+            "lunar_calendars": len(cfg.lunar_calendars),
+            "sky_styles": len(cfg.sky_styles),
+            "lore_calendars": len(cfg.lore_calendars),
+            "assets": len(cfg.asset_catalog.entries),
+        },
+    )
+    return cfg

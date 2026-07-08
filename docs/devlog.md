@@ -1,5 +1,47 @@
 # Dev log
 
+## 2026-07-08 — SPEC-032 Phase 2: engine-layer log instrumentation
+
+Second commit of the SPEC-032 logging port. Instruments the three engine
+call sites DD-0020's starter set names, all context-free (`get_logger`
+only, no request/transport awareness):
+
+- `config_loader.load_config()` — one INFO record on success with counts
+  (bodies, stars, houses, comets, lunar_calendars, sky_styles,
+  lore_calendars, assets). No CRITICAL-on-`ConfigError` here by design —
+  SPEC-032 places that at the `create_app()` boundary (Phase 3), so a
+  config failure is logged once, not at every layer it bubbles through.
+- `calendar/ephemeris.py get_sky_series()` — one INFO record per completed
+  request (`step_count`, `duration_s`); WARNING instead of INFO once
+  duration reaches 4.5s (near/at the ~5s soft budget from REQ-OPS-010 /
+  `tools/ops/perf_config.py BUDGETS["ephemeris_worst_case_s"]`). No
+  per-record logging added — DD-0020 marks it optional and there's no
+  caller need yet.
+- `asset/retrieval.py` — `fetch_payload()` logs "asset served" (kind, id,
+  size) at INFO on success; `resolve_descriptor()` and `fetch_payload()`
+  each independently log "asset catalog miss" at INFO (never
+  WARNING/ERROR, per the rubric's explicit not-found note) since each is
+  an independently callable lookup — in the normal routes.py call
+  sequence only one of the two ever actually fires per request.
+
+Also fixed a latent gap in Phase 1's `logsetup.reset()`: it cleared
+handlers but never restored `propagate`, so after any `configure()` call
+the `"sask"` logger stayed non-propagating for the rest of the process.
+Not hit by Phase 1's own tests, but caught while wiring Phase 2's tests.
+
+**Tests:** `tests/test_spec_032.py` grew to 35 cases — added config-load
+counts, ephemeris INFO/WARNING level selection (WARNING case verified via
+a monkeypatched `time.perf_counter`, no real 4.5s sleep), asset
+served/miss outcomes at the correct level, and a layer-purity AST check
+(mirroring the existing Flask-free engine test) confirming
+`config_loader.py`, all of `calendar/*.py`, and all of `asset/*.py` import
+neither `flask` nor `sask.web`. Full suite: 704 passed. `pre-commit-check.sh`:
+all green.
+
+**Scope note:** engine only — nothing calls `logsetup.configure()` yet, so
+none of this actually reaches stdout in the running app until Phase 3
+wires the adapter.
+
 ## 2026-07-08 — SPEC-032 Phase 1: structured-logging spine module
 
 First commit of the SPEC-032 logging port (DD-0020, REQ-OPS-019,
