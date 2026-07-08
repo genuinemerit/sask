@@ -1,5 +1,40 @@
 # Dev log
 
+## 2026-07-08 — SPEC-032 Phase 1: structured-logging spine module
+
+First commit of the SPEC-032 logging port (DD-0020, REQ-OPS-019,
+REQ-SEC-004). Adds `src/sask/logsetup.py`, the shared-spine facility the
+rest of the port builds on:
+
+- `JsonFormatter` — one structured JSON object per stdout line (timestamp,
+  level, logger, message, bound context, extra fields, exception text).
+- `TRACE` level registered below `DEBUG`, with a guarded `Logger.trace()`
+  so per-record firehose logging (e.g. ephemeris) costs nothing when off.
+- `LevelRangeFilter` — a reusable [min, max] level gate.
+- `bind_context()`/`reset_context()`/`current_context()` — `contextvars`-based
+  per-request field binding, for the web adapter to use in Phase 3.
+- `redact_fields()` (REQ-SEC-004) — scrubs fields whose key matches a
+  documented, extensible marker set (`token`, `password`, `secret`, ...),
+  recursing into nested dicts, plus scrubs known secret env-var values
+  (starting with `DIGITALOCEAN_TOKEN`) wherever they appear in message
+  text or string fields.
+- `configure()` — idempotent, installs the JSON handler on the `"sask"`
+  logger once; reads `SASK_LOG_LEVEL` (default `INFO`). Not yet called
+  from `create_app()` — that's Phase 3.
+- `reset()` — test-support only, un-configures between test cases.
+
+No new dependency: implemented on stdlib `logging`/`contextvars`, per
+`pyproject.toml`'s no-new-deps-without-permission rule.
+
+**Tests:** `tests/test_spec_032.py`, 15 cases — formatter shape, TRACE
+gating, level-range filtering, context binding/leak safety, redaction
+(key-based, extensible, env-value, nested), `configure()` idempotency and
+env-level resolution. Full suite: 684 passed. `pre-commit-check.sh`: all
+green.
+
+**Scope note:** this commit is the spine only — no engine or adapter code
+logs anything yet (Phase 2/3), and no deploy wiring yet (Phase 4).
+
 ## 2026-07-02 — fix: /help never actually deployed live (SPEC-030 gap, not a port bug)
 
 User manual browser testing found `/help` on production rendering the page
