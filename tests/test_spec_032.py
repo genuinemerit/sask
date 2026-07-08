@@ -24,6 +24,24 @@ Phase 2 — engine-layer instrumentation (context-free; DD-0020 level rubric):
   - layer purity: engine modules (config_loader.py, calendar/*.py,
     asset/*.py) import no Flask and no sask.web (mirrors the existing
     Flask-free engine test, extended to the adapter's context module)
+
+Phase 3 — web adapter (create_app request-context binding, SPEC-032
+adapter_logging), end to end against real captured stdout (capsys), since
+configure() writes to sys.stdout by default:
+  - create_app() configures logging before Flask's own app.logger is
+    touched; a ConfigError during create_app logs CRITICAL and still
+    propagates
+  - a normal request logs "request finished" at INFO with request_id,
+    method, path, status, duration
+  - an engine outcome line (e.g. an asset catalog miss on a 404) and the
+    adapter's "request finished" line share one request_id; the 404 stays
+    INFO on both, never WARNING/ERROR
+  - a genuinely unhandled exception is logged exactly once, at ERROR, by
+    Flask's own app.logger (a child of "sask"), carrying the bound
+    request_id/method/path
+  - request context does not leak between two sequential requests
+  - "config loaded" (emitted outside any request, at create_app time)
+    carries no request context
 """
 
 from __future__ import annotations
@@ -39,18 +57,44 @@ import pytest
 from sask import logsetup
 from sask.asset.retrieval import fetch_payload, resolve_descriptor
 from sask.calendar.ephemeris import get_sky_series
-from sask.config_loader import load_config
+from sask.config_loader import ConfigError, load_config
+from sask.web import create_app
 
 PROJECT_ROOT = Path(__file__).parent.parent
 REAL_CONFIG = PROJECT_ROOT / "config"
 CONFIG = load_config(REAL_CONFIG)
 
 
+def _json_lines(text: str) -> list[dict]:
+    return [json.loads(line) for line in text.strip().splitlines() if line.strip()]
+
+
+def _reset_all_sask_loggers() -> None:
+    """Blank-slate every "sask"/"sask.*" logger: no handlers, propagate=True.
+
+    _make_logger_with_buffer() below mutates real, cached logger singletons
+    (e.g. "sask.config_loader") directly, since that's exactly what
+    src/sask modules obtain via get_logger(__name__). Without resetting
+    them between tests, a stale handler/propagate=False from one test
+    silently swallows another test's records (they'd go to an abandoned
+    buffer instead of propagating to "sask"'s real handler).
+    """
+    for name, candidate in list(logging.Logger.manager.loggerDict.items()):
+        if isinstance(candidate, logging.Logger) and (
+            name == "sask" or name.startswith("sask.")
+        ):
+            candidate.handlers = []
+            candidate.propagate = True
+            candidate.setLevel(logging.NOTSET)
+
+
 @pytest.fixture(autouse=True)
 def _reset_logsetup():
+    _reset_all_sask_loggers()
     logsetup.reset()
     yield
     logsetup.reset()
+    _reset_all_sask_loggers()
 
 
 def _make_logger_with_buffer(
@@ -332,3 +376,110 @@ def _forbidden_imports_in(path: Path) -> list[str]:
 @pytest.mark.parametrize("path", _ENGINE_FILES, ids=lambda p: p.name)
 def test_engine_modules_import_no_flask_or_web(path: Path):
     assert _forbidden_imports_in(path) == []
+
+
+# ── Web adapter (Phase 3) ─────────────────────────────────────────────────────
+
+
+def test_config_loaded_log_has_no_request_context(capsys):
+    capsys.readouterr()
+    create_app(config_dir=REAL_CONFIG)
+
+    records = _json_lines(capsys.readouterr().out)
+    config_line = next(r for r in records if r["message"] == "config loaded")
+    assert "request_id" not in config_line
+
+
+def test_config_error_logs_critical_and_reraises(capsys, tmp_path):
+    capsys.readouterr()
+    with pytest.raises(ConfigError):
+        create_app(config_dir=tmp_path)
+
+    records = _json_lines(capsys.readouterr().out)
+    critical = [r for r in records if r["level"] == "CRITICAL"]
+    assert len(critical) == 1
+    assert critical[0]["message"] == "config load failed; app cannot serve"
+
+
+def test_request_finished_logs_info_with_context(capsys):
+    app = create_app(config_dir=REAL_CONFIG)
+    client = app.test_client()
+    capsys.readouterr()
+
+    resp = client.get("/")
+    assert resp.status_code == 200
+
+    records = _json_lines(capsys.readouterr().out)
+    finished = [r for r in records if r["message"] == "request finished"]
+    assert len(finished) == 1
+    assert finished[0]["level"] == "INFO"
+    assert finished[0]["method"] == "GET"
+    assert finished[0]["path"] == "/"
+    assert finished[0]["status"] == 200
+    assert isinstance(finished[0]["duration_s"], (int, float))
+    assert finished[0]["request_id"]
+
+
+def test_engine_and_adapter_lines_share_request_id_on_404(capsys):
+    app = create_app(config_dir=REAL_CONFIG)
+    client = app.test_client()
+    capsys.readouterr()
+
+    resp = client.get("/asset/image/does-not-exist")
+    assert resp.status_code == 404
+
+    records = _json_lines(capsys.readouterr().out)
+    miss = next(r for r in records if r["message"] == "asset catalog miss")
+    finished = next(r for r in records if r["message"] == "request finished")
+    assert miss["request_id"] == finished["request_id"]
+    assert miss["level"] == "INFO"
+    assert finished["level"] == "INFO"
+    assert finished["status"] == 404
+
+
+def test_unhandled_exception_logs_error_once_with_context(capsys):
+    app = create_app(config_dir=REAL_CONFIG)
+
+    @app.route("/__test_boom__")
+    def _boom():
+        raise RuntimeError("synthetic failure for testing")
+
+    client = app.test_client()
+    capsys.readouterr()
+
+    resp = client.get("/__test_boom__")
+    assert resp.status_code == 500
+
+    records = _json_lines(capsys.readouterr().out)
+    errors = [r for r in records if r["level"] == "ERROR"]
+    assert len(errors) == 1
+    assert "RuntimeError" in errors[0]["exception"]
+    assert errors[0]["request_id"]
+
+    finished = [r for r in records if r["message"] == "request finished"]
+    assert len(finished) == 1
+    assert finished[0]["status"] == 500
+    assert finished[0]["request_id"] == errors[0]["request_id"]
+
+
+def test_context_does_not_leak_between_requests(capsys):
+    app = create_app(config_dir=REAL_CONFIG)
+    client = app.test_client()
+
+    capsys.readouterr()
+    client.get("/")
+    id1 = next(
+        r["request_id"]
+        for r in _json_lines(capsys.readouterr().out)
+        if r["message"] == "request finished"
+    )
+
+    capsys.readouterr()
+    client.get("/")
+    id2 = next(
+        r["request_id"]
+        for r in _json_lines(capsys.readouterr().out)
+        if r["message"] == "request finished"
+    )
+
+    assert id1 != id2

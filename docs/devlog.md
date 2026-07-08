@@ -1,5 +1,61 @@
 # Dev log
 
+## 2026-07-08 — SPEC-032 Phase 3: web adapter — request-context binding
+
+Third commit of the SPEC-032 logging port. `src/sask/web/__init__.py`
+`create_app()`:
+
+- Calls `logsetup.configure()` as its first line — before `Flask(__name__,
+  ...)` is instantiated, so `"sask"` already has its stdout handler
+  installed by the time Flask's own `app.logger` (a child logger, since
+  `app.name` == `"sask.web"`) is first touched. This means Flask's own
+  automatic unhandled-exception logging (`app.logger.error(...,
+  exc_info=...)`, built into `handle_exception`) lands on our JSON handler
+  for free, rather than Flask installing its own default stderr handler.
+- Wraps `load_config()` in try/except `ConfigError`: logs CRITICAL
+  ("config load failed; app cannot serve") then re-raises — the process
+  still exits, but the failure is on record first.
+- `before_request`/`after_request`/`teardown_request` hooks: bind a
+  per-request `request_id` (uuid4 hex) + method + path via
+  `logsetup.bind_context()`; log one INFO "request finished" record
+  (status, duration_s) in `after_request`; unbind in `teardown_request` so
+  context never leaks into the next request on the same worker.
+
+Manually verified against a live `create_app()`/test-client run before
+writing formal tests — confirmed: a normal request's "request finished"
+line and an engine outcome line (e.g. an asset-catalog-miss on a 404)
+share one `request_id`; a genuinely unhandled exception produces exactly
+one ERROR line (Flask's own, via `app.logger`) carrying the full
+traceback and the bound request context — not a second, redundant
+error log from anywhere else.
+
+**Bug found and fixed while writing Phase 3's end-to-end tests:**
+`_make_logger_with_buffer()` (Phase 1/2 test helper) mutates real, cached
+logger singletons directly (e.g. `logging.getLogger("sask.config_loader")`
+— the exact object `config_loader.py` logs through) and never restored
+`propagate`/handlers afterward. Once any Phase 2 test ran, later
+end-to-end tests relying on propagation up to `"sask"`'s real handler
+silently lost records to an abandoned per-test buffer. Fixed by having the
+autouse fixture blank-slate every `"sask"`/`"sask.*"` logger (handlers
+cleared, `propagate=True`, level `NOTSET`) before and after each test —
+full isolation regardless of run order, not just for the specific loggers
+one test happens to touch.
+
+**Tests:** `tests/test_spec_032.py` grew to 41 cases — 6 new end-to-end
+adapter tests using `capsys` against real stdout (since `configure()`
+targets `sys.stdout` by default, not an injectable stream, when invoked
+via `create_app()`): config-load context-freedom, CRITICAL-and-reraise on
+`ConfigError`, request-finished shape, engine/adapter request-id
+correlation on a 404, single-ERROR-with-context on an unhandled exception,
+and no context leakage across two sequential requests. Full suite: 710
+passed. `pre-commit-check.sh`: all green.
+
+**Scope note:** the app now actually emits structured JSON to stdout at
+runtime (verified manually against a real `poetry run` process). Deploy
+wiring — gunicorn-to-journald, journald caps, `SASK_LOG_LEVEL` in the
+Ansible environment template, the log-level-change and log-verification
+ops scripts — is Phase 4.
+
 ## 2026-07-08 — SPEC-032 Phase 2: engine-layer log instrumentation
 
 Second commit of the SPEC-032 logging port. Instruments the three engine
