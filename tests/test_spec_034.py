@@ -270,6 +270,26 @@ def test_runnable_via_python_dash_m():
     assert "convert" in result.stdout
 
 
+def test_cli_logs_go_to_stderr_not_stdout():
+    """Diagnostics (e.g. config_loader's "config loaded", emitted on every
+    command that touches config) must not pollute stdout — noticed live
+    during Dave's own droplet UAT: the log record was interleaving with
+    actual command output, breaking any attempt to pipe/redirect results
+    cleanly. main() configures logging to stderr specifically so stdout
+    stays clean regardless.
+    """
+    result = subprocess.run(
+        [sys.executable, "-m", "sask.cli", "convert", "--pulse", "0"],
+        capture_output=True,
+        text=True,
+        env={**os.environ, "PYTHONPATH": str(PROJECT_ROOT / "src")},
+    )
+    assert result.returncode == 0
+    assert "config loaded" not in result.stdout
+    assert "config loaded" in result.stderr
+    assert "orbital_position" in result.stdout
+
+
 def test_cli_app_is_runnable_via_typer_testrunner():
     result = runner.invoke(cli_app, ["--help"])
     assert result.exit_code == 0

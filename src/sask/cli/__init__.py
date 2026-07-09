@@ -12,6 +12,8 @@ import cli/ (layer-purity test, tests/test_spec_034.py).
 
 from __future__ import annotations
 
+import sys
+
 import typer
 
 from sask import logsetup
@@ -40,9 +42,16 @@ def main() -> None:
 
     Calls logsetup.configure() once, at invocation time — never at import
     time (SPEC-032 named the legacy project's import-time configure() call
-    an anti-pattern; this CLI does not repeat it).
+    an anti-pattern; this CLI does not repeat it). Logs to stderr, not the
+    stdout default create_app() uses: the web app's stdout is captured by
+    journald, invisible in normal use, but the CLI is a fresh process per
+    invocation run directly at a terminal — its stdout IS the terminal, so
+    routine log records (e.g. config_loader's "config loaded" on every
+    command) would otherwise interleave with actual command output and
+    break any attempt to pipe/redirect it cleanly. Diagnostics to stderr,
+    results to stdout is the standard split.
     """
-    logsetup.configure()
+    logsetup.configure(stream=sys.stderr)
     app()
 
 

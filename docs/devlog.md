@@ -1,5 +1,30 @@
 # Dev log
 
+## 2026-07-09 — CLI UX follow-up: logs to stderr, not stdout
+
+Second UX finding from Dave's own droplet UAT: `sask asset info json
+varkaar-questions` printed `config_loader`'s "config loaded" JSON log
+record ahead of the actual asset descriptor block, on every command. Root
+cause: `main()` called `logsetup.configure()` with its stdout default, same
+as `create_app()` — correct for the web app (gunicorn's stdout is captured
+by journald, invisible in normal use) but wrong for the CLI, which is a
+fresh process per invocation run directly at a terminal, so that same
+stdout stream *is* the terminal, and every command reloads config fresh
+(no long-lived process to load it once). Put a design question rather than
+silently deciding: leave as-is / suppress by default with a --verbose flag
+/ route to stderr. **Chose stderr** — standard diagnostics-vs-results
+split, doesn't touch the web app's stdout-to-journald behavior at all, and
+a plain terminal still shows both streams together (unchanged visual
+experience) while `sask ... > file` or piping stdout now stays clean.
+
+Fix: `sask.cli.main()` now calls `logsetup.configure(stream=sys.stderr)`.
+New regression test `test_cli_logs_go_to_stderr_not_stdout` (subprocess-based,
+asserts "config loaded" absent from stdout, present in stderr). Full suite:
+747 passed. Verified locally (stdout/stderr split via redirection) and live
+on the droplet (`sask asset info json varkaar-questions` — the user's exact
+example — clean on stdout when redirected, both streams shown together
+otherwise); `acceptance-test.sh` still 5/5 PASS.
+
 ## 2026-07-09 — CLI UX follow-up: `sask` wrapper on the droplet
 
 Dave's own manual UAT pass on the droplet (post-acceptance, running his own
