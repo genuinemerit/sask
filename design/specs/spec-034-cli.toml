@@ -1,0 +1,135 @@
+id     = "SPEC-034"
+title  = "CLI: Typer consumer adapter, initial commands, clean-room purity"
+status = "proposed"
+
+[implements]
+requirements = ["REQ-FUN-014"]
+decisions    = ["DD-0021"]
+notes = """
+Third functional area of the saskan-app-alt port (after logging). Depends on
+SPEC-033 for the dev journal the logs command queries. Two analysis tasks
+precede code and produce /analysis artifacts (recommend-only, no migration).
+"""
+
+[scope]
+in = """
+A Typer CLI consumer adapter in src/sask/cli/ that wraps clean-room engine/spine
+functions; an initial player-tier and admin-tier command set; a layer-purity
+test (engine/spine must not import cli/); tests; and two pre-implementation
+analyses written to /analysis (legacy-CLI deepening, and tools/ ops-vs-CLI
+classification), both recommend-only.
+"""
+
+out = """
+- Any domain logic in command bodies (commands are thin adapters over clean-room
+  functions).
+- Wholesale porting of legacy CLI command logic (legacy = Typer-idiom reference
+  only).
+- Migrating any existing tools/ ops script into the CLI (the tools analysis
+  RECOMMENDS only; no migration this spec). In particular verify-logging.sh is
+  NOT migrated here; whether/how to split it is an analysis output.
+- Service-mutating commands (stay in the ops harness).
+- Auth enforcement (tiers are tagged, not enforced).
+- Remote-execution/credential logic in the CLI (SSH-into-environment model).
+- Changes to engine behavior or message-unit shapes.
+"""
+
+[deliverables]
+legacy_cli_analysis = """
+FIRST, before writing CLI code: deepen the existing port-*.md first-pass
+analysis for the CLI area specifically, through sask's clean-room lens. Write
+analysis/legacy-cli-deepening.md separating (a) reusable Typer IDIOM/mechanics
+(app structure, command/option patterns, help-text and output-formatting
+conventions) from (b) legacy command LOGIC and structure that must NOT be
+ported (anything that bundles domain logic into commands, or calls the legacy
+engine). Recommend which idioms to adopt. This is analysis + recommendation
+only; it ports no code.
+"""
+
+tools_analysis = """
+Also before/alongside: write analysis/tools-ops-vs-cli.md classifying every
+script in tools/ against DD-0021's ops-vs-CLI boundary principle (acts-on-app ->
+CLI-nature; acts-on-infrastructure -> ops; service-mutating -> stays ops).
+Identify straddlers (notably verify-logging.sh's app-output half vs. its
+journald-infra half) and RECOMMEND which, if any, should eventually migrate to
+the CLI and which stay ops. Recommend-only; take no migration action.
+"""
+
+cli_package = """
+src/sask/cli/ - a Typer application (entry point wired so it is runnable, e.g. a
+console script in pyproject.toml). Commands are thin: parse args -> call a
+clean-room engine/spine function -> format output for the terminal. No domain
+logic in command bodies. Shared output-formatting helpers live in cli/ (adapter
+concern), not in the engine. cli/ may import engine/spine; a layer-purity test
+asserts the engine/spine never imports cli/.
+"""
+
+commands_player = """
+Player-tier commands (read-only, tagged for eventual guest/registered):
+- help [topic]: render DD-0018 help content to the terminal from the SAME
+  Markdown source the web adapter renders to HTML (one source, two adapters).
+- a calendar/ephemeris read query (e.g. convert or position): calls the SAME
+  engine operation the web route calls and returns the SAME message unit -
+  the message-seam proof against the astronomy engine.
+- asset list and asset info <kind> <id>: descriptor-only (DD-0016 split), NO
+  payload reads for inventory/examination.
+"""
+
+commands_admin = """
+Admin-tier commands (owner; read/verify/query - none mutate the service):
+- config check: on-demand config validation (the same validation run at
+  create_app), reporting results.
+- logs query [--level] [--since] [--grep] (or similar): wraps journalctl -u for
+  the sask service with friendly flags; works uniformly in dev (via SPEC-033's
+  dev journal) and prod (on the droplet). Read-only.
+"""
+
+tests = """
+tests/test_spec_034.py:
+- Each command: parses input, calls the expected clean-room function, formats
+  output; command bodies contain no domain logic (verify by asserting the
+  command delegates to the shared function, e.g. via the same message unit the
+  web path produces for the calendar query).
+- Layer purity: engine/spine does not import cli/ (AST check, mirroring the
+  Flask-free engine test).
+- help renders the same Markdown source as web; asset list/info perform no
+  payload read (descriptor-only); config check reports validation outcome.
+- logs query: unit-test the argument-to-journalctl mapping without requiring a
+  live journal (e.g. build the command/args and assert; the live behavior is
+  covered by UAT against dev and prod journals).
+Full suite passes at the new higher count; pre-commit and validate_specs clean.
+"""
+
+design_doc_status = """
+On acceptance set DD-0021, SPEC-034 (and SPEC-033 if not already) to "accepted"
+and add a devlog entry: the CLI adapter, the command set, the clean-room purity
+test, and the two /analysis artifacts (with their recommend-only status and any
+follow-on migration proposals noted for a later decision).
+"""
+
+[acceptance]
+criteria = """
+1. analysis/legacy-cli-deepening.md and analysis/tools-ops-vs-cli.md exist,
+   separate reuse-vs-do-not-port (legacy) and CLI-vs-ops (tools) respectively,
+   and recommend without taking migration action.
+2. src/sask/cli/ is a runnable Typer app; command bodies contain no domain
+   logic; output formatting lives in cli/.
+3. The layer-purity test passes (engine/spine does not import cli/).
+4. Player-tier commands work: help (same Markdown source as web), a calendar/
+   ephemeris query (same message unit as the web route), asset list/info
+   (descriptor-only, no payload reads).
+5. Admin-tier commands work: config check; logs query (uniform across dev via
+   SPEC-033 and prod).
+6. No command mutates the running service; no legacy command logic ported; no
+   tools/ script migrated.
+7. Full suite passes at the new count; pre-commit and validate_specs clean.
+"""
+
+uat = """
+[manual] In dev: run help (compare to the web help content), run the calendar
+query (compare to the web route's result), run asset list/info, run config
+check, run logs query against the dev journal (SPEC-033) and confirm records
+appear. Then SSH to sask-droplet and run logs query there, confirming identical
+behavior against the production journal. Confirm no command offers a service-
+mutating action.
+"""

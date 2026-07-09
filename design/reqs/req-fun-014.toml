@@ -1,0 +1,53 @@
+id        = "REQ-FUN-014"
+title     = "CLI consumer adapter over the sask engine"
+category  = "FUN"
+priority  = "should"
+
+statement = """
+sask shall provide a command-line interface, built with Typer, as a thin
+consumer adapter in src/sask/cli/ that invokes the same clean-room engine/spine
+functions used by the web adapter and returns the same message units. CLI
+command bodies shall contain no domain logic (parse -> call clean-room function
+-> format output only). The engine/spine shall never import the CLI package
+(enforced by a layer-purity check). The CLI shall act only on its own
+environment (dev or, when run on the droplet, production) and shall contain no
+remote-execution or credential logic. An initial command set shall span both
+player-tier (read-only) and admin-tier (diagnostic) capabilities, tagged by
+eventual role tier; no command shall mutate the running service.
+"""
+
+rationale = """
+A CLI is a natural surface for admin/monitoring operations and is the second
+live proof (after web) that sask's message-based architecture is transport-
+neutral rather than web-shaped (DD-0003, DD-0021). Building it as a clean-room
+adapter - a mouth over shared engine functions, not a bundle of its own logic -
+keeps it in its lane and reuses the engine/spine directly. Populating the cli/
+adapter home created by DD-0017, and exploiting DD-0016's descriptor/payload
+split for cheap inventory, makes the initial commands low-risk and immediately
+useful. Role-tier tagging pre-wires the auth boundary without enforcing it yet.
+"""
+
+acceptance = """
+1. src/sask/cli/ contains a Typer application whose commands parse input, call
+   clean-room engine/spine functions, and format output - with no domain logic
+   in command bodies.
+2. A layer-purity test confirms the engine/spine does not import cli/.
+3. Initial commands exist and work in the dev environment:
+   - Player-tier: help (renders DD-0018 help content to the terminal from the
+     same Markdown source the web adapter uses); a calendar/ephemeris read query
+     returning the same message unit the web route returns; asset inventory
+     (list + info) that is descriptor-only (no payload reads).
+   - Admin-tier: config check (on-demand config validation); log query (queries
+     the local journal).
+4. No command mutates the running service.
+5. The CLI acts only on its own environment; it holds no remote/credential
+   logic. Run on the droplet (via SSH) it acts on production; run in dev it acts
+   on dev.
+6. Full test suite passes at the new higher count; pre-commit and
+   validate_specs clean.
+"""
+
+[links]
+implements   = ["DD-0021"]
+relates_to   = ["DD-0003", "DD-0016", "DD-0017", "DD-0018", "REQ-OPS-020"]
+specified_by = ["SPEC-034"]

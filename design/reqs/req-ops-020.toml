@@ -1,0 +1,44 @@
+id        = "REQ-OPS-020"
+title     = "Dev/prod logging parity via journald"
+category  = "OPS"
+priority  = "should"
+
+statement = """
+The development environment shall route application logs through journald by the
+same mechanism production uses (application stdout captured by a systemd
+service), so that log storage and retrieval are identical in dev and
+production and journalctl (and the CLI log-query command) behave the same in
+both. This shall be achieved without any application code change: the app
+continues to emit structured JSON to stdout (per DD-0020), and the dev
+environment runs it as a systemd (user) service whose stdout journald captures.
+A direct-run mode (JSON to terminal) shall remain available for fast iteration.
+"""
+
+rationale = """
+Dev/prod parity in logging is a correctness property, not a convenience: the
+gunicorn control-socket issue was invisible until live deploy precisely because
+dev and prod logging differed. Routing dev stdout through journald the same way
+prod does closes that gap structurally (same stdout->systemd->journald path,
+not a parallel code path), preserves DD-0020's app portability (the app still
+does not know where logs go), and gives dev a real journal so the CLI's
+log-query command (REQ-FUN-014/SPEC-034) works uniformly across environments
+rather than being a prod-only tool.
+"""
+
+acceptance = """
+1. The dev environment can run the sask app as a systemd (user) service whose
+   stdout is captured by journald; journalctl retrieves the app's structured
+   JSON records in dev as it does in prod.
+2. No application code change was required (the app still logs JSON to stdout;
+   routing is environment-level).
+3. A documented direct-run mode remains for fast iteration (JSON to terminal).
+4. The dev-setup documentation covers standing up the dev systemd user service
+   and retrieving logs via journalctl.
+5. The CLI log-query command behaves identically against the dev journal and
+   the production journal.
+"""
+
+[links]
+implements   = ["DD-0021"]
+relates_to   = ["DD-0020", "REQ-OPS-019", "REQ-FUN-014"]
+specified_by = ["SPEC-033"]

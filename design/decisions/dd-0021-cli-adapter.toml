@@ -1,0 +1,163 @@
+id     = "DD-0021"
+title  = "CLI consumer adapter: clean-room commands, ops boundary, dev/prod log parity"
+status = "proposed"
+date   = "2026-07-09"
+
+[context]
+summary = """
+The saskan-app-alt port brings a working Typer-based CLI. This DD decides how
+sask adopts a CLI: as a consumer adapter over the sask engine (a third surface
+alongside web, and the future api), built to sask's clean-separation
+discipline rather than ported wholesale. It also settles three questions the
+CLI forces: the boundary between the CLI and the existing ops harness, how the
+CLI behaves in dev vs. production, and dev/prod logging parity (so a
+log-querying CLI works identically in both). Second functional area of the
+port (after logging, DD-0020); precedes i18n and auth in the port batch.
+"""
+
+prior_art = """
+Claude Code has already produced a first-pass, whole-project port analysis
+(port-*.md) that surveyed the legacy CLI. That survey predates sask's
+clean-room/layer discipline. This effort DEEPENS that analysis for the CLI
+area specifically, through the clean-room lens: the legacy CLI is a reference
+for Typer IDIOM and mechanics only, not an architectural template - prototype
+CLIs commonly bundle logic into commands (the exact anti-pattern to avoid), and
+the legacy commands call a legacy engine that does not exist in sask. So Typer
+patterns may be reused; legacy command LOGIC is not ported.
+"""
+
+problem = """
+Three risks to resolve: (1) a CLI that bundles engine logic into commands
+violates clean separation - it must be a thin adapter over clean-room
+functions; (2) the CLI and the ops harness (tools/ops/) overlap in fuzzy ways
+(some existing bash "ops" scripts actually consume the app and are CLI-nature),
+risking duplicated capability; (3) a log-querying CLI needs a log store to
+query, but dev logging currently differs from prod (prod routes stdout to
+journald; dev prints to the terminal), which is both a parity gap that already
+hid a bug and a blocker for a uniform logs command.
+"""
+
+[decision]
+summary = """
+Build the CLI as a thin Typer consumer adapter in src/sask/cli/ that calls the
+same clean-room engine/spine functions the web adapter calls, returning the
+same message units. Establish an explicit ops-vs-CLI boundary. Achieve dev/prod
+logging parity by routing dev stdout through journald the same way prod does,
+with no application code change.
+"""
+
+clean_room = """
+The CLI is a MOUTH, not a BRAIN. Each Typer command does only: parse args ->
+call a clean-room engine/spine function -> format the result for the terminal.
+Command bodies contain no domain logic. The clean-room functions are the SAME
+ones the web adapter uses; the CLI is one more caller of the shared engine/
+spine, never a parallel implementation. Structural backstop: cli/ may import
+the engine/spine (to call it) but the engine/spine must NEVER import cli/,
+enforced by a layer-purity test mirroring the Flask-free engine check. This is
+the "executes a script/function that lives in a clean room, not bundled with
+the CLI itself" requirement made structural.
+"""
+
+ops_vs_cli_boundary = """
+Distinguishing principle: does the capability act on the running sask APP/ENGINE
+or on the INFRASTRUCTURE sask runs on?
+- Acts on the app/engine (consumes message units, engine functions, the app's
+  own log stream) -> CLI (src/sask/cli/). E.g. help, calendar/asset queries,
+  config check, log query, logging verification of app output.
+- Acts on infrastructure (provision, deploy, droplet lifecycle, Ansible
+  convergence, host config; runs local->remote) -> ops harness (tools/ops/).
+  E.g. deploy.sh, destroy.sh, provision.sh, redeploy.sh, connect.sh.
+Refinement: capabilities that MUTATE the running service stay in the ops
+harness even though they touch the app, to preserve the Ansible-source-of-truth
+discipline (e.g. set-log-level.sh drives ansible-playbook so a later deploy
+does not silently revert a hand-edit). The CLI's admin commands are therefore
+read/verify/query/safe-operations; service mutation stays ops-side.
+Some existing tools/ scripts straddle this line (notably verify-logging.sh,
+which mixes app-output checks with journald-infra checks). Re-homing straddlers
+is done DELIBERATELY and INCREMENTALLY, informed by analysis, not wholesale in
+this effort. Bash ops scripts that work are not rewritten for their own sake.
+"""
+
+dev_prod_model = """
+The CLI is part of the sask package and deploys with it, so it exists in every
+sask environment. It always acts on ITS OWN environment; it contains no remote-
+execution, host-awareness, or credential logic. "Prod mode" is simply the CLI
+running ON the droplet: the user ssh-es to sask-droplet (via existing key/
+connect tooling) and runs the CLI there, where it acts on the production app,
+journal, and config. "Dev mode" is the CLI running in the dev environment,
+acting on the local app/journal/config. SSH changes which environment the user
+is in; the CLI itself never reaches across environments. (Local->remote
+infrastructure operations remain the ops harness's job, not the CLI's.)
+"""
+
+dev_prod_log_parity = """
+Dev logging is made to match prod by ROUTING, not by code: run the dev app as a
+systemd (user) service whose stdout is captured by journald exactly as the
+droplet's systemd service does. This keeps the app pure-stdout (DD-0020's
+portability preserved - the app still does not know where logs go), makes dev/
+prod parity STRUCTURAL (same stdout->systemd->journald path, not a parallel
+code path), gives dev a real journal so journalctl and the CLI's log-query
+command behave identically in both environments, and improves parity broadly
+(service-lifecycle issues surface in dev, as the gunicorn control-socket issue
+would have). A quick escape hatch remains: running the app directly in a
+terminal prints JSON to stdout for fast iteration. Default dev = systemd user
+service -> journald; quick dev = direct run -> terminal.
+"""
+
+role_tiers = """
+Commands are tagged by the eventual role tier (guest/registered/admin, per the
+forthcoming auth round) so authorization slots in at the CLI boundary later
+without restructuring:
+- Player-tier (read-only, safe, eventually guest/registered): help, calendar/
+  ephemeris queries, asset inventory (descriptor-only).
+- Admin-tier (owner): config check, log query, logging verification, other
+  diagnostics.
+No command mutates the running service (that is ops). Tagging now is
+documentation + future-auth seam, not enforced access control yet.
+"""
+
+[consequences]
+positive = """
+- A third consumer over the identical engine seam proves the message-based
+  architecture is genuinely transport-neutral, not web-shaped.
+- Clean-room + layer-purity test keeps command logic out of the adapter,
+  structurally.
+- A stated ops-vs-CLI rule ends the "which bin" ambiguity and prevents
+  duplicated capability.
+- Dev/prod logging parity closes a real bug-hiding gap and makes the log-query
+  command uniform across environments, with no app code change.
+- Role-tier tagging pre-wires the auth seam.
+- Descriptor-only asset inventory commands exploit the DD-0016 split (no payload
+  reads for listing).
+"""
+
+negative_or_deferred = """
+- Running dev under a systemd user service has minor well-trodden wrinkles
+  (user vs system journal scoping); handled at implementation.
+- Some existing ops bash scripts straddle the boundary; their re-homing is
+  deferred to analysis + incremental migration, not done here.
+- Role tiers are tagged but not enforced until the auth round.
+- The api/ adapter remains an empty home; only web and cli are live consumers.
+"""
+
+out_of_scope = """
+- Wholesale porting of legacy CLI command logic (Typer idiom only is reused).
+- Migrating existing tools/ ops scripts into the CLI (analysis + recommend only
+  this round; migrations are follow-on).
+- Service-mutating operations in the CLI (stay ops-side).
+- Auth/authorization enforcement (future round; tiers tagged, not enforced).
+- Remote-execution/credential logic in the CLI (SSH-into-environment model
+  makes it unnecessary).
+"""
+
+[links]
+depends_on = ["DD-0003", "DD-0016", "DD-0017", "DD-0020"]
+relates_to = ["DD-0014"]
+implemented_by = ["REQ-FUN-014", "REQ-OPS-020", "SPEC-033", "SPEC-034"]
+notes = """
+DD-0017 established the cli/ adapter home (empty until now); DD-0016's
+descriptor/payload split enables descriptor-only asset inventory; DD-0020's
+stdout logging is what makes dev/prod journald parity a routing change, not a
+code change; DD-0014 owns the ops harness the boundary principle divides from.
+Legacy CLI analysis DEEPENS the existing port-*.md first pass.
+"""

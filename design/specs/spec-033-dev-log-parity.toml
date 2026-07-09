@@ -1,0 +1,80 @@
+id     = "SPEC-033"
+title  = "Dev/prod logging parity: dev systemd-user-service to journald"
+status = "accepted"
+
+[implements]
+requirements = ["REQ-OPS-020"]
+decisions    = ["DD-0021"]
+notes = """
+Prerequisite for the CLI log-query command (SPEC-034): dev needs a journal to
+query. Routing/config only - NO application code change (the app already logs
+JSON to stdout per DD-0020/SPEC-032). Land this before SPEC-034's logs command.
+"""
+
+[scope]
+in = """
+Provide a way to run the dev sask app as a systemd (user) service whose stdout
+is captured by journald, mirroring the droplet's stdout->systemd->journald
+path, so journalctl works in dev as in prod. Document standing it up and
+retrieving logs. Keep a direct-run (JSON-to-terminal) mode for fast iteration.
+"""
+
+out = """
+- Any application code change (the app continues to emit JSON to stdout;
+  routing is environment-level only).
+- Production changes (prod already routes stdout->journald via SPEC-032; this is
+  the DEV side).
+- The CLI itself (SPEC-034); this spec only gives dev a journal to query.
+- journald cap tuning for dev (dev volume is small; the prod caps from SPEC-032
+  are not required in dev, though the user journal has its own defaults).
+"""
+
+[deliverables]
+dev_service = """
+A systemd user unit (e.g. ~/.config/systemd/user/sask-dev.service, or a
+provided template + install step under tools/dev/) that runs the dev app
+(gunicorn or the app's normal entrypoint) with stdout/stderr going to journald.
+Mirror the production unit's relevant shape (ExecStart via the poetry/pyenv
+3.12 environment) minus production-only hardening that does not apply in dev.
+Provide a small tools/dev/ helper to enable/start/stop it and to tail its
+journal (journalctl --user -u sask-dev), so the workflow is one command.
+"""
+
+direct_run_mode = """
+Preserve/confirm a direct-run path (e.g. tools/dev/start_web.sh or equivalent)
+that runs the app in the foreground with JSON logs to the terminal, for fast
+iteration when journald routing is not wanted. Document when to use which.
+"""
+
+docs = """
+Update docs/dev-setup.md: how to install/enable the dev systemd user service,
+how to retrieve logs with journalctl --user -u sask-dev, and the direct-run
+alternative. Note the parity intent (dev now matches prod's log path) with a
+one-line pointer to DD-0021.
+"""
+
+devlog_and_status = """
+Devlog entry recording the parity mechanism and the wrinkles resolved (user vs
+system journal scoping, any lingerd/enable-linger need for the user service).
+On acceptance set SPEC-033 to "accepted" (REQ-OPS-020 has no status field).
+"""
+
+[acceptance]
+criteria = """
+1. The dev app can run as a systemd user service; journalctl --user -u sask-dev
+   shows the app's structured JSON records, matching prod's journald behavior.
+2. No application code changed; the app still logs JSON to stdout.
+3. A tools/dev helper enables/starts/stops the service and tails its journal.
+4. A direct-run (JSON-to-terminal) mode remains and is documented.
+5. docs/dev-setup.md covers both modes and the parity intent.
+6. Full suite still passes at its count; pre-commit and validate_specs clean.
+7. A subsequent SPEC-034 logs-query command works identically against this dev
+   journal and the prod journal (verified when SPEC-034 lands).
+"""
+
+uat = """
+[manual] In dev: enable the user service, hit the app, run
+journalctl --user -u sask-dev and confirm structured JSON records appear as
+they do on the droplet. Stop the service, run the direct-run mode, confirm JSON
+to terminal. Confirm the documented steps work from a clean read of dev-setup.md.
+"""
