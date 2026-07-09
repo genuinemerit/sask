@@ -270,6 +270,26 @@ def test_runnable_via_python_dash_m():
     assert "convert" in result.stdout
 
 
+def test_help_usage_line_says_sask_not_python_dash_m():
+    """The Usage: line must read the same regardless of invocation
+    mechanism. Click's default prog_name detection reports "python -m
+    sask.cli" for -m invocations (used by the droplet's wrapper, since it
+    never pip-installs sask) vs. "sask" for a real console script (used by
+    `poetry run sask` in dev) — noticed live during Dave's droplet UAT as an
+    inconsistency between the two environments' --help output. main() pins
+    prog_name="sask" so both show the same thing.
+    """
+    result = subprocess.run(
+        [sys.executable, "-m", "sask.cli", "--help"],
+        capture_output=True,
+        text=True,
+        env={**os.environ, "PYTHONPATH": str(PROJECT_ROOT / "src")},
+    )
+    assert result.returncode == 0
+    assert "Usage: sask " in result.stdout
+    assert "python -m sask.cli" not in result.stdout
+
+
 def test_cli_logs_go_to_stderr_not_stdout():
     """Diagnostics (e.g. config_loader's "config loaded", emitted on every
     command that touches config) must not pollute stdout — noticed live

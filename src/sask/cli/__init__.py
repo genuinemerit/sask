@@ -50,9 +50,19 @@ def main() -> None:
     command) would otherwise interleave with actual command output and
     break any attempt to pipe/redirect it cleanly. Diagnostics to stderr,
     results to stdout is the standard split.
+
+    prog_name="sask" pins the name Typer/Click shows in `Usage:`/help text
+    regardless of how this process was actually launched — a real
+    pip/poetry-installed console script (dev: `poetry run sask`) already
+    reports "sask" on its own, but a plain-module invocation (the droplet's
+    /usr/local/bin/sask wrapper runs `python3 -m sask.cli`, since the
+    droplet never pip-installs the sask package itself) would otherwise
+    show "python -m sask.cli" — Click's own behavior for -m invocations.
+    Pinning it keeps --help identical in both environments regardless of
+    which underlying mechanism is running it.
     """
     logsetup.configure(stream=sys.stderr)
-    app()
+    app(prog_name="sask")
 
 
 if __name__ == "__main__":

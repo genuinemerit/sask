@@ -1,5 +1,30 @@
 # Dev log
 
+## 2026-07-09 — CLI UX follow-up: consistent `Usage: sask` in both environments
+
+Third UX finding from Dave's droplet UAT: `sask --help` on the droplet
+showed `Usage: python -m sask.cli [OPTIONS] COMMAND [ARGS]...` — Click's own
+prog_name auto-detection reports "python -m sask.cli" for -m invocations
+(what the /usr/local/bin/sask wrapper actually runs under the hood, since
+the droplet never pip-installs the sask package itself) vs. "sask" for a
+real console script (`poetry run sask` in dev, which already worked and
+already showed the clean form — confirmed by re-checking, not assumed).
+Fixed by pinning `app(prog_name="sask")` in `main()`, so `--help` output is
+now identical in both environments regardless of the underlying invocation
+mechanism. New regression test:
+`test_help_usage_line_says_sask_not_python_dash_m`. Full suite: 748 passed.
+Verified live: `sask --help` on the droplet now shows `Usage: sask ...`;
+`acceptance-test.sh` still 5/5 PASS.
+
+Clarified for Dave (not a doc fix — `docs/user_testing.md`'s TC-034 steps
+already used this form throughout): the local equivalent of the droplet's
+`sask ...` is `poetry run sask ...`, not `python -m sask.cli ...` — the
+latter is what `__main__.py`/the droplet wrapper use internally so the CLI
+runs without a pip-installed package, not the recommended everyday dev
+command. `poetry run sask` already gets you the same typed command as the
+droplet, modulo the `poetry run` prefix (standard for any poetry-managed
+project; not itself something to reconcile away).
+
 ## 2026-07-09 — CLI UX follow-up: logs to stderr, not stdout
 
 Second UX finding from Dave's own droplet UAT: `sask asset info json
