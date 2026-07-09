@@ -2161,9 +2161,16 @@ deploy/redeploy round following this UAT).
 ```bash
 bash tools/ops/connect.sh
 # on the droplet:
-cd /opt/sask   # or wherever the app root resolves to — see deploy-runbook.md
-poetry run sask logs query --unit sask -n 20
+sask logs query --unit sask -n 20
 ```
+
+`sask` on the droplet is a thin wrapper (`/usr/local/bin/sask`, installed by
+the `runtime` role) around `PYTHONPATH=/opt/sask/src /opt/sask/.venv/bin/python3
+-m sask.cli` — there is no `poetry`/`pip`-installed console script on the
+droplet (only `requirements.txt`'s dependencies are installed there; the
+`sask` package itself is run via `PYTHONPATH`, same as `wsgi.py`). Requires
+a fresh SSH session after the wrapper/group-membership Ansible tasks first
+land, for the account's group membership to take effect.
 
 **Pass criteria:**
 

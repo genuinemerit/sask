@@ -36,3 +36,14 @@
     name: "{{ service_name }}"
     enabled: true
     state: started
+
+# DD-0021/SPEC-034: lets an admin who can reach app_root (see roles/base's
+# systemd-journal/app-group tasks) just type `sask ...` over SSH instead of
+# the full PYTHONPATH=... .venv/bin/python3 -m sask.cli invocation.
+- name: Install the sask CLI wrapper
+  ansible.builtin.template:
+    src: sask-cli-wrapper.sh.j2
+    dest: /usr/local/bin/sask
+    owner: root
+    group: root
+    mode: "0755"

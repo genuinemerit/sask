@@ -1,0 +1,12 @@
+#!/usr/bin/env bash
+# Managed by Ansible (roles/runtime) — DD-0021/SPEC-034.
+#
+# Thin wrapper so `sask ...` works directly, instead of the full
+# `PYTHONPATH={{ app_root }}/src {{ venv_dir }}/bin/python3 -m sask.cli ...`
+# invocation. The pyproject.toml console script only exists where sask
+# itself is pip/poetry-installed with entry points (true in dev); the app
+# role installs only requirements.txt and runs the app via PYTHONPATH, so
+# this wrapper — not a real console script — is what makes `sask` a command
+# on this host. Any user who can reach {{ app_root }} (the app group; see
+# roles/base/tasks/main.yml) can run it.
+exec env PYTHONPATH="{{ app_root }}/src" "{{ venv_dir }}/bin/python3" -m sask.cli "$@"

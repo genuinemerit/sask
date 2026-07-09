@@ -1,5 +1,23 @@
 # Dev log
 
+## 2026-07-09 — CLI UX follow-up: `sask` wrapper on the droplet
+
+Dave's own manual UAT pass on the droplet (post-acceptance, running his own
+`apt` updates in the same session) surfaced a reasonable UX gap: typing
+`PYTHONPATH=/opt/sask/src /opt/sask/.venv/bin/python3 -m sask.cli ...` every
+time is exactly the friction the wrapper-free invocation was always going
+to cause. Fixed with a small root-owned wrapper,
+`ansible/roles/runtime/templates/sask-cli-wrapper.sh.j2` →
+`/usr/local/bin/sask` (mode 0755): `exec env PYTHONPATH=... .venv/bin/python3
+-m sask.cli "$@"`. Not a real pip/poetry console script (the droplet still
+doesn't install the `sask` package itself — same deploy model as before,
+unchanged); just a thin `exec` wrapper, one new Ansible task in
+`roles/runtime/tasks/main.yml`, applied via `deploy.sh` and verified live:
+`sask --help` and `sask logs query --unit sask -n 5` both work directly
+over SSH, `acceptance-test.sh` still 5/5 PASS (no web-app impact — this
+only adds a file under `/usr/local/bin`). `docs/user_testing.md`'s
+TC-034-06 action steps updated to the simpler form.
+
 ## 2026-07-09 — DD-0021/SPEC-034 accepted: droplet verified, two real gaps found and fixed
 
 TC-034-06 closed out; both `DD-0021` and `SPEC-034` set to `"accepted"`. Two
