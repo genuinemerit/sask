@@ -1,5 +1,180 @@
 # Dev log
 
+## 2026-07-09 — SPEC-034: local UAT passed (TC-034-01–05); droplet check pending deploy
+
+Formal UAT recorded in `docs/user_testing.md` (SPEC-034 section,
+TC-034-01 through TC-034-06). User ran TC-034-01 through TC-034-05 on the
+dev host (transcript: `docs/console_log.txt`) — all PASS, no notes requiring
+fixes. TC-034-06 (SSH to `sask-droplet`, run `sask logs query` against the
+production journal, confirm identical behavior to the dev journal) is
+correctly still PENDING — the CLI hasn't been deployed yet. `DD-0021` and
+`SPEC-034` stay `"proposed"` until TC-034-06 closes out after the upcoming
+deploy/redeploy round.
+
+**Observation from the transcript, noted for a future iteration, not
+actioned now:** piping Markdown-formatted CLI output (`sask help <topic>`)
+through an external pager like `glow` already renders it richly in-terminal
+with zero `sask` code changes (visible in `docs/console_log.txt` — the same
+`getting-started` content shown plain, then `glow`-rendered with real tables
+and styled headings). Recorded as Open Question 9 in
+`design/analysis/saskan-app-alt-port/port-open-questions.md`: a possible
+future refactor to have the CLI's own output use `rich` formatting directly
+(already an installed transitive dependency of `typer`, so no new dependency
+needed) rather than relying on the user piping through an external tool.
+Explicitly deferred — the CLI's current plain `typer.echo()` output stands
+for this round.
+
+## 2026-07-09 — SPEC-034: CLI adapter implemented (pending manual UAT)
+
+Third functional area of the `saskan-app-alt` port, sub-phase 2 of 2 (after
+SPEC-033, which this depends on for `logs query`'s dev journal).
+
+**Two pre-implementation analyses first, per SPEC-034's own ordering**, both
+in `design/analysis/saskan-app-alt-port/` (extending, not replacing, the
+existing `port-*.md` set — see that folder's `README.md` for the location
+reasoning): `legacy-cli-deepening.md` separates reusable Typer idiom (the
+required no-op root callback — the legacy project's own devlog records a
+real bug from omitting it; paired long/short options with example-invocation
+docstrings; `typer.Exit(code)`; a generalized `echo_dict` helper) from legacy
+command logic that must not be ported (`connect.py`/`version.py` both bundle
+domain logic directly into the command body, with no delegation to a
+separate function — precisely DD-0021's "MOUTH not BRAIN" anti-pattern), and
+recommends `typer.echo()` uniformly over the legacy project's inconsistent
+`rich`/`typer.echo()` mix — so `sask` adds no `rich` dependency of its own
+(it still arrives transitively via `typer`, confirmed at `poetry install`,
+but nothing in `sask`'s own code imports it).
+`tools-ops-vs-cli.md` classifies every `tools/` script against DD-0021's
+boundary: all of `tools/ops/*`'s infra/deploy scripts stay ops;
+`set-log-level.sh` stays ops as DD-0021's own named example (its
+aspirational code comment about a future CLI command is now stale,
+superseded by DD-0021's written decision — flagged for correction next time
+that file is touched, not actioned here); `verify-logging.sh` is the one
+real straddler, with a proposed (not actioned) future `logs verify` CLI
+command as a follow-on; `tools/dev/` and `tools/helpers/` are named as a
+third bucket outside DD-0021's scope entirely (host bootstrap / sask-unaware
+utilities). No `tools/` file was edited, moved, or had logic ported —
+recommend-only, per scope.
+
+**`src/sask/cli/`** — a Typer consumer adapter, thin per DD-0021's clean-room
+rule (parse → call the same clean-room engine/spine function the web adapter
+calls → format output; no domain logic in any command body):
+
+- `sask help [topic]` — reads the identical Markdown source
+  `discover_topics()`/`index_path()` (`sask.help.loader`) resolve for the web
+  `/help` route; one source, two adapters.
+- `sask convert --pulse N` — calls `sask.calendar.pulse.pulse_info()`, the
+  same function the web `/` route calls, returning the same `PulseInfo`
+  fields (verified: `sask convert --pulse 0` prints `orbital_position: 0.0`,
+  matching the `/?pulse=0` → `0.0000%` behavior `test_spec_005.py` already
+  documents).
+- `sask asset list` / `sask asset info <kind> <id>` — descriptor-only
+  (DD-0016's split); the module never imports `fetch_payload` at all, so
+  neither command can read a payload file even by accident (a structural
+  guarantee, not just a runtime check).
+- `sask config check` — runs the same `load_config()` `create_app()` calls,
+  reports success with the identical count fields `config_loader`'s own
+  "config loaded" log line carries, or the `ConfigError` message at exit 1 —
+  never a raw traceback.
+- `sask logs query [--level] [--since] [--grep] [--unit] [--user] [-n]` —
+  wraps `journalctl`. The argv is built as a **list**
+  (`_build_journalctl_argv`), never a shell string
+  (`subprocess.run(argv, shell=False)`), so a `--grep` value containing
+  shell metacharacters is inert — confirmed live:
+  `sask logs query --grep '; echo INJECTED'` never executed the injected
+  command (journalctl itself rejected the pattern; nothing was echoed).
+  Verified end-to-end against the real SPEC-033 dev journal:
+  `sask logs query --user --unit sask-dev -n 5` returned real gunicorn +
+  app JSON lines from the running dev service.
+
+**Layer purity**: a new AST-based test
+(`test_engine_modules_import_no_cli`, mirroring `test_spec_005.py`/
+`test_spec_032.py`'s Flask-free check) confirms `config_loader.py`,
+`logsetup.py`, `message.py`, every `calendar/*.py`, and every `asset/*.py`
+import no `sask.cli`. `cli/_paths.py` centralizes the repo-root walk-up (the
+same depth as `web/__init__.py`, since `cli/` and `web/` are siblings) so no
+`commands/*.py` file has to re-derive its own path-resolution depth — the
+exact class of bug the SPEC-029 tools/ reorg hit when moved files sat one
+directory level deeper than old math assumed.
+
+**New dependency:** `typer >=0.12` (pulls in `rich` transitively for
+Typer's own help rendering — not used directly by any `sask` code, per the
+analysis's recommendation above). New console script: `sask = "sask.cli:main"`.
+
+**Tests:** `tests/test_spec_034.py`, 35 tests — layer purity (parametrized),
+help/convert/asset/config-check behavior (via `typer.testing.CliRunner` and
+direct function calls), `logs query`'s argv-mapping and injection-safety
+tests run without any live journal (per the spec's own guidance), a
+structural check that no command name in `--help` output suggests service
+mutation. Full suite: 745 passed (was 710). `bash tools/dev/pre-commit-check.sh`
+clean (ruff lint/format, shellcheck, pymarkdown, validate_specs, the
+validate_specs pytest suite).
+
+**Manually exercised locally** (not yet the formal UAT): every command run
+directly (`convert`, `asset list`/`info`, `config check`, `help`
+index/topic, `logs query` against the real dev journal) plus each error path
+(unknown asset, unknown help topic, invalid `--config-dir`) — all clean exits
+and messages, no tracebacks.
+
+**Not done in this pass, deliberately:** no `tools/ops/*` script was edited,
+moved, or migrated (recommend-only this round, per SPEC-034 scope-out). No
+SSH to the droplet to run `logs query` against the production journal —
+that's SPEC-034's own `[manual]` UAT step. `design/decisions/dd-0021-cli-adapter.toml`
+and `design/specs/spec-034-cli.toml` stay `"proposed"` until that manual UAT
+is confirmed.
+
+## 2026-07-09 — SPEC-033: dev/prod logging parity implemented (pending manual UAT)
+
+Second functional area of the `saskan-app-alt` port, sub-phase 1 of 2 (SPEC-033
+before SPEC-034 — the CLI's `logs query` command needs a dev journal to query).
+Routing/docs only, no application code change, per REQ-OPS-020/SPEC-033 scope.
+
+**New:** `tools/dev/sask-dev.service.template` — a systemd *user* unit modeled
+on the production unit (`ansible/roles/runtime/templates/sask.service.j2`):
+same `gunicorn wsgi:app --no-control-socket` invocation and no
+`--access-logfile`/`--error-logfile` (so stdout/stderr flow to the user
+journal exactly as prod's flow to the system journal via journald), but with
+all production-only hardening (`ProtectSystem`, `ProtectHome`,
+`NoNewPrivileges`, `PrivateTmp`) and the `EnvironmentFile=` dropped — dev runs
+as the developer's own user with no `/etc/sask/environment`.
+`tools/dev/sask-dev-service.sh` — one helper
+(`install|enable|start|stop|restart|status|tail|logs`) that resolves the repo
+root and venv path (`poetry env info --path`) into the template at install
+time and writes it to `~/.config/systemd/user/sask-dev.service`.
+
+**Linger investigated, not guessed:** systemd's documented behavior
+(`systemd-logind(8)`) is that a user's `--user` instance stops when their last
+session ends unless lingering is enabled (`loginctl enable-linger <user>`).
+This is general systemd behavior, not something host-specific to empirically
+discover. `install` checks and reports the current linger state rather than
+changing it — enabling linger is a host/account-level change left to the
+developer, consistent with not auto-running infra/session commands.
+
+**Docs:** `docs/dev-setup.md` gained a new "## 6. Run the app as a dev
+systemd service" section (existing "Run pre-commit checks" renumbered 6→7),
+covering install/enable/start, log retrieval
+(`journalctl --user -u sask-dev` or the helper's `logs`/`tail` subcommands),
+the linger note, and when to prefer this over the existing direct-run path
+(`tools/dev/start_web.sh`, unchanged).
+
+No `tests/test_spec_033.py` was added — the spec's own acceptance criteria
+scope this as infra/docs only, with no application code change to test.
+
+## 2026-07-09 — SPEC-033 accepted: dev systemd service verified by user
+
+User ran `install`/`enable`/`start` and confirmed via `journalctl --user -u
+sask-dev` (transcript: `docs/console_log.txt`): the unit installs and starts
+cleanly (`Started sask-dev.service`), gunicorn's own plain-text startup lines
+(`Starting gunicorn 26.0.0`, `Listening at: http://127.0.0.1:8000`, `Booting
+worker`) and the app's structured JSON (`{"timestamp": ..., "level": "INFO",
+"logger": "sask.config_loader", "message": "config loaded", "bodies": 15,
+"stars": 16, ...}`) both land in the user journal, coexisting exactly the way
+SPEC-032's prod journal already does — confirming dev/prod parity structurally,
+not just by inspection. Lingering is not enabled for the account (expected,
+`install`'s own check reported this); the service will stop at logout unless
+`loginctl enable-linger` is run, which remains the developer's call. Setting
+`SPEC-033` to `status = "accepted"` (`REQ-OPS-020` has no `status` field, same
+as other reqs). Next: SPEC-034, the CLI adapter itself, now unblocked.
+
 ## 2026-07-08 — SPEC-032 accepted: full redeploy verified, DD-0020/SPEC-032 → accepted
 
 Ran `tools/ops/redeploy.sh -y` (full destroy/recreate/deploy/acceptance

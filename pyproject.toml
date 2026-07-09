@@ -12,6 +12,10 @@ python    = "~3.12"
 flask     = ">=3.0"
 gunicorn  = ">=22.0"
 markdown  = ">=3.6"
+typer     = ">=0.12"
+
+[tool.poetry.scripts]
+sask = "sask.cli:main"
 
 [tool.poetry.group.dev.dependencies]
 ruff = "*"

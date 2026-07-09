@@ -2012,3 +2012,188 @@ Tested on `sask-dev` via SSH tunnel. All cases pass.
 
 Stop the Flask server with `Ctrl+C` in the VM terminal. Close the SSH tunnel
 terminal.
+
+---
+
+## SPEC-034 — CLI: Typer consumer adapter, initial commands, clean-room purity
+
+SPEC-034 adds `src/sask/cli/`, a Typer CLI (`sask ...`) with five commands:
+`help`, `convert`, `asset list`/`asset info`, `config check`, `logs query`.
+Each is a thin adapter over the same clean-room engine/spine functions the
+web adapter calls (DD-0021) — automated tests
+(`tests/test_spec_034.py`) cover layer purity, delegation, and the
+`journalctl` argv-building logic; this UAT checks what those tests can't:
+does each command actually behave correctly against the real dev
+environment, and — the one piece automated tests structurally cannot cover
+— does `logs query` behave identically against the real production journal
+on the droplet. Depends on SPEC-033 (dev/prod logging parity, already
+accepted) for the dev journal `logs query` reads in TC-034-04.
+
+Test cases TC-034-01 through TC-034-05 can be run now, on the dev host.
+TC-034-06 requires the CLI to actually be deployed first — run it after the
+deploy/redeploy round that follows this UAT.
+
+### SPEC-034 Setup
+
+**In a terminal on the dev host** (no browser or SSH tunnel needed — the CLI
+is a terminal tool):
+
+```bash
+cd ~/Code/sask
+poetry install   # only needed once, to pick up the new typer dependency
+```
+
+---
+
+### SPEC-034 Test cases
+
+#### TC-034-01 — `help` and `convert` render content and match the web engine
+
+**Action:**
+
+```bash
+poetry run sask help
+poetry run sask help getting-started
+poetry run sask convert --pulse 0
+```
+
+**Pass criteria:**
+
+- `sask help` prints the same intro text as `docs/help/index.md`, plus a
+  `Topics:` line listing `calendar-lore` and `getting-started`.
+- `sask help getting-started` prints the same Markdown source as
+  `docs/help/getting-started.md` (the same file the web `/help/getting-started`
+  page renders to HTML).
+- `sask convert --pulse 0` prints `orbital_position: 0.0` — matches the web
+  `/` route's own documented behavior for `pulse=0` (0.0000% orbital
+  position).
+
+---
+
+#### TC-034-02 — `asset` commands are descriptor-only
+
+**Action:**
+
+```bash
+poetry run sask asset list
+poetry run sask asset info image splash.bg
+poetry run sask asset info image does-not-exist
+```
+
+**Pass criteria:**
+
+- `asset list` prints one line per catalog asset (kind/id/content-type/size)
+  — no payload bytes, just descriptors.
+- `asset info image splash.bg` prints descriptor fields only (kind, id,
+  content_type, size) — again, no payload bytes.
+- `asset info image does-not-exist` prints a clean `Error: no such asset...`
+  line and exits non-zero — no traceback.
+
+---
+
+#### TC-034-03 — `config check` reports success and failure cleanly
+
+**Action:**
+
+```bash
+poetry run sask config check
+poetry run sask config check --config-dir /tmp
+```
+
+**Pass criteria:**
+
+- The first command prints `Config OK:` with count fields (bodies, stars,
+  houses, ...) matching the numbers `docs/devlog.md`'s SPEC-032 entries
+  record (15 bodies, 16 stars, 14 houses, ...).
+- The second command (pointed at a directory with no config files) prints a
+  clean `Error: config invalid: ...` message and exits non-zero — no
+  traceback.
+
+---
+
+#### TC-034-04 — `logs query` works against the dev journal
+
+**Action:**
+
+```bash
+poetry run sask logs query --user --unit sask-dev -n 20
+```
+
+(Requires the SPEC-033 dev systemd service to be running —
+`bash tools/dev/sask-dev-service.sh start` if it isn't.)
+
+**Pass criteria:**
+
+- Output shows real lines from the dev journal, including at least one
+  well-formed structured JSON line (`"logger": "sask...`) — confirming
+  `logs query` reads the same journal `journalctl --user -u sask-dev` shows
+  directly.
+
+---
+
+#### TC-034-05 — No command mutates the running service
+
+**Action:**
+
+```bash
+poetry run sask --help
+poetry run sask asset --help
+poetry run sask config --help
+poetry run sask logs --help
+```
+
+**Pass criteria:**
+
+- Reading every command and subcommand listed, none starts, stops,
+  restarts, deploys, or otherwise changes any running service or its
+  configuration — every command is read/query-only (DD-0021's ops-vs-CLI
+  boundary; service mutation stays in `tools/ops/`).
+
+---
+
+#### TC-034-06 — [after deploy] `logs query` against the production journal
+
+**Precondition:** the CLI has been deployed to `sask-droplet` (the
+deploy/redeploy round following this UAT).
+
+**Action:**
+
+```bash
+bash tools/ops/connect.sh
+# on the droplet:
+cd /opt/sask   # or wherever the app root resolves to — see deploy-runbook.md
+poetry run sask logs query --unit sask -n 20
+```
+
+**Pass criteria:**
+
+- Output shows real lines from the **production** journal (the same one
+  `tools/ops/verify-logging.sh` inspects), with the same shape as
+  TC-034-04's dev output — confirming `logs query` behaves identically in
+  dev and prod, the core claim of REQ-OPS-020/DD-0021.
+
+---
+
+### SPEC-034 Results — 2026-07-09
+
+Tested on the dev host (transcript: `docs/console_log.txt`). TC-034-01
+through TC-034-05 all pass, no notes requiring fixes. TC-034-06 pending the
+deploy/redeploy round.
+
+| TC | Result | Notes |
+|---|---|---|
+| TC-034-01 | PASS | |
+| TC-034-02 | PASS | |
+| TC-034-03 | PASS | |
+| TC-034-04 | PASS | |
+| TC-034-05 | PASS | |
+| TC-034-06 | PENDING | requires deploy first |
+
+---
+
+### SPEC-034 Teardown
+
+None required — the CLI makes no persistent changes. If you started the
+SPEC-033 dev service just for TC-034-04, stop it with
+`bash tools/dev/sask-dev-service.sh stop` if you don't want it running
+continuously.

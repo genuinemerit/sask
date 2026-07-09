@@ -1,0 +1,28 @@
+[Unit]
+Description=sask dev gunicorn service (log parity with prod — DD-0021, SPEC-033)
+After=default.target
+
+[Service]
+Type=simple
+WorkingDirectory=__REPO_ROOT__
+Environment=PYTHONPATH=__REPO_ROOT__/src
+# No --access-logfile/--error-logfile (mirrors SPEC-032's prod unit): gunicorn's
+# stdout/stderr under the user systemd instance is captured by the user journal
+# as-is. --no-control-socket: gunicorn 26+'s control socket default is under the
+# user's home dir; this service doesn't use the control interface, so disable it
+# rather than carve out an exception (same rationale as the prod unit).
+ExecStart=__VENV_PATH__/bin/gunicorn wsgi:app \
+    --bind 127.0.0.1:8000 \
+    --workers 1 \
+    --timeout 30 \
+    --no-control-socket
+Restart=on-failure
+RestartSec=5
+
+# Deliberately NOT ported from the prod unit (sask.service.j2): ProtectSystem,
+# ProtectHome, NoNewPrivileges, PrivateTmp, and EnvironmentFile. Dev runs as the
+# developer's own user and needs normal home-dir/venv access; there is no
+# /etc/sask/environment in dev (SPEC-033 scope).
+
+[Install]
+WantedBy=default.target

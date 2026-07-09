@@ -1,0 +1,50 @@
+"""Typer CLI consumer adapter for sask (DD-0021, REQ-FUN-014, SPEC-034).
+
+Thin adapter: each command parses args, calls the same clean-room
+engine/spine functions the web adapter calls, and formats output. No domain
+logic lives here or in commands/*.py — see
+design/analysis/saskan-app-alt-port/legacy-cli-deepening.md for the legacy
+anti-pattern this deliberately avoids.
+
+cli/ may import the engine/spine (to call it); the engine/spine must never
+import cli/ (layer-purity test, tests/test_spec_034.py).
+"""
+
+from __future__ import annotations
+
+import typer
+
+from sask import logsetup
+from sask.cli.commands import asset, calendar, config, help as help_cmd, logs
+
+app = typer.Typer(help="sask calendar-engine CLI", no_args_is_help=True)
+
+
+@app.callback()
+def _root() -> None:
+    """sask — Saskan calendar engine CLI."""
+    # Required no-op root callback: the legacy CLI's own devlog records a
+    # real bug (a subcommand silently broke) when this was omitted. Kept
+    # deliberately, not rediscovered — see legacy-cli-deepening.md.
+
+
+app.command("help")(help_cmd.help_command)
+app.command("convert")(calendar.convert)
+app.add_typer(asset.app, name="asset")
+app.add_typer(config.app, name="config")
+app.add_typer(logs.app, name="logs")
+
+
+def main() -> None:
+    """Console-script entry point (pyproject.toml: sask = "sask.cli:main").
+
+    Calls logsetup.configure() once, at invocation time — never at import
+    time (SPEC-032 named the legacy project's import-time configure() call
+    an anti-pattern; this CLI does not repeat it).
+    """
+    logsetup.configure()
+    app()
+
+
+if __name__ == "__main__":
+    main()

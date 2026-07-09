@@ -79,7 +79,50 @@ PYTHONPATH=src poetry run flask --app sask.web run
 Then open <http://localhost:5000/>. The `/health` route returns
 `{"status": "ok"}` and is useful for scripted checks.
 
-## 6. Run pre-commit checks
+## 6. Run the app as a dev systemd service (log parity with prod)
+
+Mirrors production's stdout → journald path (DD-0021, SPEC-033), so
+`journalctl` — and the CLI's `logs query` command — behave the same way in
+dev as they do on the droplet. This is optional for day-to-day work; use it
+when you specifically want to validate logging behavior or exercise a
+journal-querying command against a real journal.
+
+```bash
+bash tools/dev/sask-dev-service.sh install   # writes ~/.config/systemd/user/sask-dev.service
+bash tools/dev/sask-dev-service.sh enable
+bash tools/dev/sask-dev-service.sh start
+```
+
+Retrieve logs:
+
+```bash
+bash tools/dev/sask-dev-service.sh logs        # last 50 lines
+bash tools/dev/sask-dev-service.sh logs 200     # last 200 lines
+bash tools/dev/sask-dev-service.sh tail         # follow
+# or directly:
+journalctl --user -u sask-dev
+```
+
+`install` checks whether lingering is enabled for your account and tells you
+either way — lingering (`loginctl enable-linger $USER`) keeps the user
+systemd instance (and this service) running independent of active login
+sessions; without it, `sask-dev.service` stops when your last session ends.
+This is standard systemd behavior (see `systemd-logind(8)`), not sask-specific
+— enable it yourself if you want the dev service to persist across logout.
+
+**When to use which:** the direct-run path below (step 5,
+`tools/dev/start_web.sh`) is faster for iterating on code — Flask's reloader
+restarts on save and output prints straight to your terminal. Use the
+systemd-service path when you need a real journal to query (journald-backed
+`journalctl`/`logs query`), matching what's available on the droplet.
+
+Stop it when you're done:
+
+```bash
+bash tools/dev/sask-dev-service.sh stop
+```
+
+## 7. Run pre-commit checks
 
 Before every commit:
 
