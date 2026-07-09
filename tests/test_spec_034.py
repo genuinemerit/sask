@@ -21,6 +21,9 @@ Covers:
 from __future__ import annotations
 
 import ast
+import os
+import subprocess
+import sys
 from pathlib import Path
 
 import pytest
@@ -245,6 +248,26 @@ def test_line_matches_level_only_matches_wellformed_json():
 
 
 # ── CLI runnable ──────────────────────────────────────────────────────────
+
+
+def test_runnable_via_python_dash_m():
+    """python -m sask.cli must work standalone via plain module import, not
+    just the pyproject.toml console script — the console script only exists
+    where sask itself is pip/poetry-installed with entry points (true in
+    dev), but the droplet's app role installs only requirements.txt's
+    dependencies and runs the app via PYTHONPATH (matching wsgi.py), never
+    pip-installing the sask package itself. Caught live during SPEC-034's
+    droplet UAT: `sask --help` on the droplet failed with "No such file or
+    directory" for exactly this reason.
+    """
+    result = subprocess.run(
+        [sys.executable, "-m", "sask.cli", "--help"],
+        capture_output=True,
+        text=True,
+        env={**os.environ, "PYTHONPATH": str(PROJECT_ROOT / "src")},
+    )
+    assert result.returncode == 0
+    assert "convert" in result.stdout
 
 
 def test_cli_app_is_runnable_via_typer_testrunner():

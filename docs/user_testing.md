@@ -2176,9 +2176,14 @@ poetry run sask logs query --unit sask -n 20
 
 ### SPEC-034 Results — 2026-07-09
 
-Tested on the dev host (transcript: `docs/console_log.txt`). TC-034-01
-through TC-034-05 all pass, no notes requiring fixes. TC-034-06 pending the
-deploy/redeploy round.
+TC-034-01 through TC-034-05 tested on the dev host (transcript:
+`docs/console_log.txt`), all pass, no notes requiring fixes. TC-034-06
+tested after the deploy/redeploy round (see `docs/devlog.md`'s "DD-0021/
+SPEC-034 accepted" entry for the full sequence and two real gaps found and
+fixed along the way — a `python -m sask.cli` invocation fix and a
+droplet permission-model fix, neither guessed at, both confirmed with Dave
+before applying) — also PASS, confirming `logs query` behaves identically
+against the dev and production journals.
 
 | TC | Result | Notes |
 |---|---|---|
@@ -2187,7 +2192,7 @@ deploy/redeploy round.
 | TC-034-03 | PASS | |
 | TC-034-04 | PASS | |
 | TC-034-05 | PASS | |
-| TC-034-06 | PENDING | requires deploy first |
+| TC-034-06 | PASS | required two fixes first — see devlog |
 
 ---
 

@@ -40,6 +40,34 @@
     shell: /usr/sbin/nologin
     create_home: false
 
+# DD-0021/SPEC-034: the CLI's `logs query` admin command reads the journal
+# on whichever environment it runs in. On the droplet it's run by the admin
+# user over SSH, not the (deliberately unprivileged, no journal access)
+# app_user — group membership, not sudo, is the least-privilege way to grant
+# read access (matches journalctl's own suggested remedy: "Users in groups
+# 'adm', 'systemd-journal' can see all messages"). A fresh SSH session is
+# required after this first applies for the new group membership to take
+# effect (standard Linux group-membership behavior, not sask-specific).
+- name: Add the admin user to systemd-journal for passwordless journal reads
+  ansible.builtin.user:
+    name: "{{ admin_user }}"
+    groups: systemd-journal
+    append: true
+
+# DD-0021/SPEC-034: separately from journal access, the admin user needs to
+# reach app_root (venv + src) at all to invoke the CLI over SSH — app_root
+# is 0750 app_user:app_group, not readable by admin_user otherwise. Group
+# membership (read+traverse via the group's r-x bits, no write) rather than
+# loosening app_root's own mode, so config/secrets/assets stay exactly as
+# restricted as before; this only widens WHO can read them, to the one
+# already-trusted admin account. Same fresh-session caveat as the
+# systemd-journal task above.
+- name: Add the admin user to the app group for CLI invocation
+  ansible.builtin.user:
+    name: "{{ admin_user }}"
+    groups: "{{ app_group }}"
+    append: true
+
 - name: Create the three top-level app directories
   ansible.builtin.file:
     path: "{{ item }}"

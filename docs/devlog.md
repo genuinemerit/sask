@@ -1,5 +1,87 @@
 # Dev log
 
+## 2026-07-09 — DD-0021/SPEC-034 accepted: droplet verified, two real gaps found and fixed
+
+TC-034-06 closed out; both `DD-0021` and `SPEC-034` set to `"accepted"`. Two
+genuine gaps surfaced during deploy — neither was guessed at; both
+investigated and fixed before re-verifying, same discipline as SPEC-032's
+live-deploy history.
+
+**Gap 1 — `sask --help` failed on the droplet with "No such file or
+directory".** The `pyproject.toml` console script (`sask = "sask.cli:main"`)
+only exists where the `sask` package itself is pip/poetry-installed with
+entry points — true in dev (`poetry install`), but the droplet's `app` role
+installs only `requirements.txt`'s dependencies and runs the app via
+`PYTHONPATH` (matching how `wsgi.py` already works), never pip-installing
+`sask` itself. Fixed with `src/sask/cli/__main__.py`, so `python -m
+sask.cli` works via plain module import on both environments without
+changing the deploy/install model. Covered by a new regression test
+(`test_runnable_via_python_dash_m`, subprocess-based). Full suite: 746
+passed.
+
+**Gap 2 — even after that fix, nobody could actually run it as themselves.**
+Tried `sudo -u sask python3 -m sask.cli logs query`: `journalctl` failed
+("insufficient permissions") because the `sask` service account is
+deliberately unprivileged (no journal access, by design). Tried running as
+`dave` (the admin/SSH user) directly instead: failed differently — `dave`
+couldn't even reach `/opt/sask/.venv` (`0750 sask:sask`), and `dave` has no
+*passwordless* sudo, so journalctl's own suggested fix ("users in groups
+`adm`, `systemd-journal` can see all messages") didn't apply either. Two
+architecturally real questions, put to Dave rather than guessed:
+
+1. Journal read access: group membership (`systemd-journal`) vs. baking
+   `sudo` into the CLI's own `journalctl` call vs. defer. **Chose group
+   membership** — matches journalctl's own suggested remedy, keeps `logs
+   query` genuinely passwordless/non-interactive like the rest of the
+   admin-tier commands, and avoids embedding a privilege-escalation call
+   inside general-purpose CLI code.
+2. App-tree read access (venv/src, needed just to invoke the CLI at all):
+   add `dave` to the `sask` app group (tree-wide read, including wherever
+   real secrets eventually land once auth exists) vs. loosen only the
+   venv/src directory modes (narrower, but permission-inconsistent within
+   `app_root`) vs. defer. **Chose the app-group addition** — same pattern as
+   (1), explicitly flagging the future-secrets tradeoff rather than treating
+   it as a non-issue (nothing sensitive is actually staged there yet — the
+   secrets task is a stub, per DD-0014).
+
+Both landed as two new `ansible/roles/base/tasks/main.yml` tasks
+(`ansible.builtin.user` with `groups:`/`append: true`), each with an inline
+comment recording the reasoning above and the fresh-SSH-session caveat
+(standard Linux group-membership behavior — a change doesn't apply to an
+already-open session). `ansible-playbook site.yml --syntax-check` clean
+(`ansible-lint` isn't installed in this environment, unlike some earlier
+SPEC-032 sessions).
+
+**Full verification sequence, in order:**
+
+1. `tools/ops/deploy.sh` (converge) — `__main__.py` fix — `deploy.sh` again
+   — confirmed `python -m sask.cli --help` runs on the droplet.
+2. Ansible permission fixes added — `deploy.sh` again (`changed=1` each,
+   idempotent otherwise) — fresh `connect.sh` session — confirmed `dave` is
+   in `sask sudo systemd-journal`; `logs query`, `convert`, `config check`
+   all run directly as `dave`, no `sudo -u sask` impersonation needed.
+   `logs query --unit sask` returned real production journal lines
+   (gunicorn lifecycle + app JSON), same shape as TC-034-04's dev journal —
+   confirming REQ-OPS-020's dev/prod parity claim end to end.
+3. `tools/ops/acceptance-test.sh` — all 5 checks PASS.
+4. `tools/ops/verify-logging.sh` — PASS, no regression from the ansible
+   changes.
+5. `tools/ops/redeploy.sh -y` — full destroy/recreate/deploy/acceptance
+   cycle, confirming the whole thing (including both new permission-model
+   tasks) survives a from-scratch droplet build, not just an in-place
+   update: `ok=44 changed=38 failed=0`, automatic `acceptance-test.sh` at
+   the end all PASS.
+6. Re-verified on the freshly-recreated droplet: `logs query` and
+   `verify-logging.sh` both clean; live traffic (background vulnerability
+   scanners hitting `/js/config.js`, `/.env.example`, etc. — ordinary
+   internet noise, not a sask-specific concern) visible in the journal with
+   correct structured request-finished records, confirming the logging
+   pipeline handles real, unplanned traffic correctly.
+
+`docs/user_testing.md`'s SPEC-034 Results table updated: TC-034-06 now
+PASS. `docs/console_log.txt` was not further appended for this droplet
+work — evidence is this devlog entry plus the command transcripts above.
+
 ## 2026-07-09 — SPEC-034: local UAT passed (TC-034-01–05); droplet check pending deploy
 
 Formal UAT recorded in `docs/user_testing.md` (SPEC-034 section,
