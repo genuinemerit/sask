@@ -40,4 +40,11 @@ run_check "validate_specs" \
 run_check "pytest (validate_specs suite)" \
     poetry run pytest tests/test_validate_specs.py -q
 
+# Permissive mode: malformed tags / missing base content still hard-fail;
+# missing non-base translations only warn here (DD-0022, REQ-OPS-021).
+# Strict mode (--strict, hard-fails incomplete locales too) is the
+# deploy-time gate, not a commit-time one — see tools/ops/deploy.sh.
+run_check "validate_i18n" \
+    python3 tools/dev/validate_i18n.py
+
 printf '\n[ALL PASS] Pre-commit checks complete.\n'

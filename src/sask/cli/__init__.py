@@ -17,21 +17,36 @@ import sys
 import typer
 
 from sask import logsetup
-from sask.cli.commands import asset, calendar, config, help as help_cmd, logs
+from sask.cli.commands import asset, calendar, config, help as help_cmd, logs, season
 
 app = typer.Typer(help="sask calendar-engine CLI", no_args_is_help=True)
 
 
 @app.callback()
-def _root() -> None:
+def _root(
+    ctx: typer.Context,
+    lang: str = typer.Option(
+        None,
+        "--lang",
+        envvar="SASK_LOCALE",
+        help="Locale for interface text/results, e.g. es-ES (DD-0022). "
+        "Flag overrides SASK_LOCALE overrides the catalog's base locale.",
+    ),
+) -> None:
     """sask — Saskan calendar engine CLI."""
-    # Required no-op root callback: the legacy CLI's own devlog records a
-    # real bug (a subcommand silently broke) when this was omitted. Kept
-    # deliberately, not rediscovered — see legacy-cli-deepening.md.
+    # Required no-op-shaped root callback: the legacy CLI's own devlog
+    # records a real bug (a subcommand silently broke) when a root
+    # callback was omitted entirely. Kept deliberately, not rediscovered —
+    # see legacy-cli-deepening.md. ctx.obj threads the resolved --lang/
+    # SASK_LOCALE value to subcommands that need it (season) — Typer's
+    # envvar= handles flag-overrides-env-var-overrides-default precedence
+    # natively, no hand-rolled logic needed.
+    ctx.obj = {"lang": lang}
 
 
 app.command("help")(help_cmd.help_command)
 app.command("convert")(calendar.convert)
+app.command("season")(season.season)
 app.add_typer(asset.app, name="asset")
 app.add_typer(config.app, name="config")
 app.add_typer(logs.app, name="logs")

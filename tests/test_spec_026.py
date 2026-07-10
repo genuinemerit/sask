@@ -47,6 +47,9 @@ def _minimal_catalog_dirs(tmp_path: Path) -> tuple[Path, Path]:
     config_dir.mkdir()
     for f in REAL_CONFIG.glob("*.toml"):
         shutil.copy(f, config_dir / f.name)
+    # i18n/ (DD-0022/SPEC-035) is a subdirectory, not matched by the flat
+    # glob above, but load_config() requires it (en-US.toml at minimum).
+    shutil.copytree(REAL_CONFIG / "i18n", config_dir / "i18n")
 
     assets_dir = tmp_path / "assets"
     (assets_dir / "image").mkdir(parents=True)

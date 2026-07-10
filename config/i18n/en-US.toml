@@ -1,0 +1,24 @@
+# Localization catalog: base locale (DD-0022, SPEC-035).
+#
+# en-US is the completeness floor — every tag any other locale uses must
+# exist here (enforced at config-load time, config_loader.py). Canary
+# scope only: nav labels, the 4 seasons, and 3 chunk sizes of Pulse-page
+# copy. The full ~170-tag catalog is a follow-on SPEC's job, not this
+# round's.
+
+[tags]
+"nav.pulse" = "Pulse"
+"nav.moons" = "Moons"
+"nav.planets" = "Planets"
+"nav.sky" = "Sky"
+"nav.ephemeris" = "Ephemeris"
+"nav.help" = "Help"
+
+"season.greening" = "Greening"
+"season.blazing" = "Blazing"
+"season.withering" = "Withering"
+"season.stillness" = "Stillness"
+
+"label.query_button" = "Query"
+"pulse.hint.sentence" = "Enter a pulse below to see its Astro day, time of day, and orbital position."
+"pulse.intro.statement" = "Every page in sask is driven by a pulse: an integer count of seconds since the Astro epoch. Enter a pulse, an Astro day, or a date in one of the two civil calendars, and the other forms fill in automatically."

@@ -1,5 +1,132 @@
 # Dev log
 
+## 2026-07-10 — SPEC-035: local UAT passed (TC-035-01–06); droplet check pending deploy
+
+Formal UAT recorded in `docs/user_testing.md` (SPEC-035 section,
+TC-035-01 through TC-035-07). User ran TC-035-01 through TC-035-06 on the
+dev host — all PASS, no notes requiring fixes. TC-035-07 (live site
+toggle + `sask season` on the droplet, confirming production behaves
+identically to dev) is correctly still PENDING — the i18n machinery
+hasn't been deployed yet. `DD-0022` and `SPEC-035` stay `"proposed"`
+until TC-035-07 closes out after the upcoming deploy/redeploy round.
+
+## 2026-07-10 — SPEC-035: i18n machinery + dual-mechanism canary (pending manual UAT)
+
+Fourth and final mandated functional area of the `saskan-app-alt` port
+(after logging, CLI). `DD-0022`/`REQ-FUN-015`/`REQ-OPS-021`/`REQ-SEC-005`
+were unusually thorough already — this was faithful implementation
+against an already-settled design, not re-design.
+
+**Two pre-implementation analyses first, per SPEC-035's own ordering**, in
+`design/analysis/saskan-app-alt-port/` (same folder as the CLI round's
+analyses, unprefixed): `legacy-i18n-deepening.md` resolves the legacy
+JSON/YAML inconsistency in favor of TOML, flags the `fallback or i18n_id`
+truthiness bug (fixed with explicit `None`-checks in the new resolver),
+and identifies the one genuine architectural anti-pattern not to
+repeat — legacy's global `os.getenv()` locale selection only worked
+because its server never localized anything itself (shipped tags, a
+single-user CLI client resolved them after the fact); `sask`'s web
+adapter localizes per-request in a concurrent worker, so the new resolver
+takes locale as an explicit argument, never global state.
+`i18n-content-inventory.md` tiers every user-facing string (~140 LABEL,
+~30 SENTENCE, ~2-3 STATEMENT) and flags the one real finding:
+`scene.py::render_night_summary()`/`render_image_prompt()` are genuinely
+composed prose (real English pluralization/list-joining baked into
+Python control flow — `"stars" if n != 1 else "star"`), not simple tag
+substitution — decomposition is explicitly deferred to a bulk-translation
+follow-on, not this round. Resolves DD-0022's deferred tag-vs-identifier
+question: `translator.py`'s lookup tables and `season_info()`'s
+`season_id` are uniformly 1:1, so the engine already emits domain
+identifiers and the adapter boundary is the "thin render-layer" the
+design anticipated.
+
+**Two design points the docs left open were put to the user, not
+assumed:** (1) locale storage — a plain unsigned cookie, not a signed
+Flask session, avoiding new `SECRET_KEY` secret-management footprint for
+a value with no confidentiality requirement (always re-validated against
+the known-locale set on read); (2) the canary's "one message unit, both
+adapters" proof — a new `sask season --pulse N` command wrapping
+`season_info()` directly (mirrors how `convert` wraps `pulse_info()`),
+rather than overloading `convert` with an unrelated message unit.
+
+**Shared-spine machinery** (`src/sask/i18n/{catalog,tags}.py`): `resolve(tag,
+locale, catalog)` — locale → base (en-US) → raw tag, explicit `None`-checks
+throughout (not truthiness), no Flask/engine/cli imports (new AST
+layer-purity test). No separate cache layer — the catalog loads once at
+`load_config()` time like every other config concern, exactly like
+`AssetCatalogConfig`'s existing precedent it was built to match.
+`config/i18n/{en-US,es-ES}.toml` — flat dotted-key `[tags]` tables (first
+subdirectory under `config/`, previously flat). `config_loader.py`'s
+`_load_i18n_catalog()` enforces malformed-tag-regex and missing-base-content
+as load-time `ConfigError`s (hard errors everywhere, per DD-0022); missing
+non-base translations are NOT a load-time concern — that's the standalone
+validator's job.
+
+**Parallel documents** (`help/loader.py::discover_parallel_docs()`): exact
+same known-set-at-startup + membership-lookup-only shape as
+`discover_topics()`/the asset catalog (REQ-SEC-005) — `{topic}.{locale}.md`
+naming (`getting-started.es-ES.md`), locale used only as a dict key, never
+path-joined. A traversal-safety test confirms a crafted locale value
+reads nothing outside the known set. `discover_topics()` itself was
+extended to exclude locale-suffixed files from being mistaken for their
+own base topics (a real collision that would have occurred without this:
+`Path.stem` on `getting-started.es-ES.md` is `"getting-started.es-ES"`,
+which the original glob-and-key-by-stem logic would have surfaced as a
+bogus fourth help topic).
+
+**Web adapter**: `before_request` locale binding (cookie → Accept-Language
+→ base locale, mirroring the existing logging-context-binding hook's
+shape, not replacing it), a `?locale=` toggle persisted via
+`response.set_cookie()`, a `context_processor` exposing `t(tag)` to
+templates, `base.html`'s `<html lang>` now dynamic. `/sky`'s season
+display resolves `season_id` → tag → localized text at render time;
+`season_id` itself is untouched, still locale-neutral engine output.
+
+**CLI adapter**: `--lang`/`SASK_LOCALE` as a Typer root-callback option
+using `envvar=` (Typer's native flag-overrides-env-var precedence, no
+hand-rolled logic, unlike `SASK_LOG_LEVEL` which has no flag counterpart);
+resolved locale threads via `ctx.obj` to `season`/`help`. New
+`src/sask/cli/commands/season.py`. `help`'s parallel-doc selection mirrors
+the web route exactly.
+
+**Validator** (`tools/dev/validate_i18n.py`) — self-contained, no `sask`
+package import (mirrors `validate_specs.py`'s convention, since
+`pre-commit-check.sh` invokes it via bare `python3`, not `poetry run`):
+malformed tags and missing-base content are hard errors always; missing
+non-base translations warn in permissive mode (the new pre-commit step)
+and hard-fail with `--strict` (a new fail-fast step in `deploy.sh`,
+before `export-requirements.sh`/`ansible-playbook`, alongside the existing
+`infra.env`-exists precondition — a pre-deploy correctness gate, not a
+live-HTTP check like `acceptance-test.sh`). The real committed catalog
+passes `--strict` cleanly (verified by a dedicated test,
+`test_real_catalog_passes_strict_validation` — the canary must not fail
+the gate it introduces).
+
+**Tests**: `tests/test_spec_035.py`, 28 tests (fallback chain, one
+message unit rendering differently per locale on both adapters, parallel-
+doc selection + REQ-SEC-005 traversal safety, validator severities in
+both modes, locale selection on both adapters, layer purity). Found and
+fixed two pre-existing test fixtures (`test_spec_002.py`,
+`test_spec_026.py`) that built synthetic `config/` directories via a flat
+`*.toml` glob — didn't include the new `config/i18n/` subdirectory,
+breaking `load_config()` for those fixtures; fixed with `shutil.copytree`.
+Full suite: 776 passed. Pre-commit clean, including the new
+`validate_i18n` step.
+
+**Manually verified locally** (not yet the formal UAT): the real Flask
+dev server (not just the test client) via curl — locale toggle, `/sky`
+season name, help parallel-doc/fallback all confirmed end to end; both
+`poetry run sask` and `python -m sask.cli` invocations of `season`
+confirmed with `--lang`, `SASK_LOCALE`, and flag-overrides-env-var.
+
+**Not done in this pass, deliberately:** no bulk translation beyond the
+canary (a follow-on SPEC, per DD-0022/SPEC-035's own explicit scope). No
+decomposition of `scene.py`'s composed prose. No deploy/redeploy yet —
+`design/decisions/dd-0022-i18n.toml` and `design/specs/spec-035-i18n.toml`
+stay `"proposed"` until the manual UAT (`docs/user_testing.md`'s SPEC-035
+section) and the deploy/redeploy round confirm the strict-mode gate and
+live behavior, matching the discipline of every prior port round.
+
 ## 2026-07-09 — CLI UX follow-up: consistent `Usage: sask` in both environments
 
 Third UX finding from Dave's droplet UAT: `sask --help` on the droplet

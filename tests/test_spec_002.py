@@ -253,6 +253,9 @@ def _minimal_config_dir(tmp_path: Path) -> Path:
 
     for f in REAL_CONFIG.glob("*.toml"):
         shutil.copy(f, tmp_path / f.name)
+    # i18n/ (DD-0022/SPEC-035) is a subdirectory, not matched by the flat
+    # glob above, but load_config() requires it (en-US.toml at minimum).
+    shutil.copytree(REAL_CONFIG / "i18n", tmp_path / "i18n")
     return tmp_path
 
 

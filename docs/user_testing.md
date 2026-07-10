@@ -2209,3 +2209,207 @@ None required — the CLI makes no persistent changes. If you started the
 SPEC-033 dev service just for TC-034-04, stop it with
 `bash tools/dev/sask-dev-service.sh stop` if you don't want it running
 continuously.
+
+---
+
+## SPEC-035 — i18n machinery, dual-mechanism canary, validator, locale selection
+
+SPEC-035 adds localization: a shared TOML catalog (`config/i18n/{en-US,es-ES}.toml`),
+a locale-parameterized resolver (`src/sask/i18n/`), a web nav toggle
+(cookie-based, Accept-Language default), a CLI `--lang`/`SASK_LOCALE`
+option, a new `sask season` command, parallel-locale help documents, and a
+three-severity validator (`tools/dev/validate_i18n.py`) gating deploy in
+strict mode. Scope is a deliberately small canary — a handful of nav/
+Pulse-page tags, the `/sky` season name (localized identically on web and
+CLI from the same `SeasonInfo` message unit), and one translated help
+document (`getting-started.es-ES.md`) — not a full-site translation (that's
+a follow-on). Automated tests (`tests/test_spec_035.py`) cover the
+resolver, validator, and locale-selection mechanics directly; this UAT
+checks the same things a human actually experiences: does the page/CLI
+output genuinely read in Spanish, does an untranslated page fail
+gracefully back to English, does the deploy gate actually block on an
+incomplete locale.
+
+### SPEC-035 Setup
+
+**In a terminal on the dev host:**
+
+```bash
+cd ~/Code/sask
+PYTHONPATH=src poetry run flask --app sask.web run
+```
+
+Open a browser to `http://localhost:5000/` (tunnel first if needed, as in
+earlier UAT sections). Keep a second terminal open for the CLI test cases.
+
+---
+
+### SPEC-035 Test cases
+
+#### TC-035-01 — Web locale toggle changes nav and Pulse-page copy
+
+**Action:** On the Pulse page (`/`), click the **ES** link in the top-right
+toggle.
+
+**Pass criteria:**
+
+- The URL gains `?locale=es-ES`; the nav labels change to Spanish
+  ("Pulso", "Lunas", "Planetas", "Cielo", "Efemérides", "Ayuda").
+- The `<html lang>` attribute is `es-ES` (view page source, or DevTools).
+- The Pulse page's intro paragraph, hint sentence, and **Consultar** button
+  are in Spanish.
+- Reloading the page (no query string) keeps Spanish — the choice
+  persisted via cookie, not just the one request.
+- Click **EN** to switch back; confirm everything reverts to English.
+
+---
+
+#### TC-035-02 — Localized engine result: `/sky` season name
+
+**Action:** With the locale toggled to **ES**, navigate to `/sky` and
+query the default pulse (or any pulse).
+
+**Pass criteria:**
+
+- The **Season** section shows a Spanish season name (Reverdecer / Ardor /
+  Marchitez / Quietud, depending on the date) — not the raw English name
+  and not the raw `season_id`.
+- Switch to **EN**; the same page for the same pulse shows the English
+  name instead, confirming the underlying computed season didn't change,
+  only its displayed text.
+
+---
+
+#### TC-035-03 — Parallel help document + fallback
+
+**Action:** With locale toggled to **ES**, visit `/help/getting-started`,
+then `/help/calendar-lore`.
+
+**Pass criteria:**
+
+- `/help/getting-started` renders the Spanish translation ("Primeros
+  pasos...").
+- `/help/calendar-lore` (no Spanish version exists) still renders — in
+  English, cleanly, no error — confirming fallback-to-base-document works
+  rather than 404ing or breaking.
+
+---
+
+#### TC-035-04 — CLI: `--lang`/`SASK_LOCALE`, same result as web
+
+**Action:**
+
+```bash
+poetry run sask season --pulse 0
+poetry run sask --lang es-ES season --pulse 0
+SASK_LOCALE=es-ES poetry run sask season --pulse 0
+SASK_LOCALE=es-ES poetry run sask --lang en-US season --pulse 0
+poetry run sask --lang es-ES help getting-started
+```
+
+**Pass criteria:**
+
+- First command: `name: Greening`, `locale: en-US`.
+- Second and third commands: `name: Reverdecer`, `locale: es-ES` — matches
+  what TC-035-02 showed on the web for the same pulse.
+- Fourth command: `locale: en-US` — the `--lang` flag overrides
+  `SASK_LOCALE`.
+- Fifth command: prints the same Spanish `getting-started` text TC-035-03
+  showed on the web.
+
+---
+
+#### TC-035-05 — Operator-facing content stays unlocalized
+
+**Action:**
+
+```bash
+poetry run sask --lang es-ES logs query -n 5
+```
+
+(Requires the SPEC-033 dev journal — start it first if needed:
+`bash tools/dev/sask-dev-service.sh start`.)
+
+**Pass criteria:**
+
+- Output is raw journal content (structured JSON log records, gunicorn's
+  own lines) — in whatever language/form the underlying log records
+  actually are, **not** translated or altered by `--lang` in any way. Per
+  DD-0022's origin-based scope, relayed operator content is explicitly
+  never localized.
+
+---
+
+#### TC-035-06 — Strict-mode validator blocks an incomplete locale
+
+**Action:**
+
+```bash
+python3 tools/dev/validate_i18n.py --strict   # should pass, exit 0
+cp config/i18n/es-ES.toml /tmp/es-ES.toml.bak
+# temporarily remove one line, e.g. the "nav.sky" entry, from
+# config/i18n/es-ES.toml, then:
+python3 tools/dev/validate_i18n.py            # permissive: warns, exit 0
+python3 tools/dev/validate_i18n.py --strict   # strict: fails, exit 1
+cp /tmp/es-ES.toml.bak config/i18n/es-ES.toml # restore
+python3 tools/dev/validate_i18n.py --strict   # should pass again, exit 0
+```
+
+**Pass criteria:**
+
+- The real, unmodified catalog passes `--strict` cleanly (this is what
+  `deploy.sh` runs before every deploy).
+- With one tag removed: permissive mode prints a `WARNING` and exits 0;
+  strict mode prints an `ERROR` for that tag and exits 1.
+- After restoring the file, strict mode passes again.
+
+---
+
+#### TC-035-07 — [after deploy] Production behaves identically
+
+**Precondition:** the i18n machinery has been deployed (the deploy/redeploy
+round following this UAT — `deploy.sh` itself runs `validate_i18n.py
+--strict` as a pre-deploy gate, so a broken catalog would never reach this
+point).
+
+**Action:** Visit `https://sask.davidstitt.net/`, toggle to ES, repeat
+TC-035-01/02/03's checks in the real browser. Then:
+
+```bash
+bash tools/ops/connect.sh
+sask --lang es-ES season --pulse 0
+```
+
+**Pass criteria:**
+
+- The live site's toggle, season name, and help fallback behave exactly
+  as they did in dev.
+- `sask season` on the droplet shows the same Spanish output as dev, for
+  the same pulse.
+
+---
+
+### SPEC-035 Results — 2026-07-10
+
+TC-035-01 through TC-035-06 tested on the dev host. All pass, no notes
+requiring fixes. TC-035-07 pending the deploy/redeploy round.
+
+| TC | Result | Notes |
+|---|---|---|
+| TC-035-01 | PASS | |
+| TC-035-02 | PASS | |
+| TC-035-03 | PASS | |
+| TC-035-04 | PASS | |
+| TC-035-05 | PASS | |
+| TC-035-06 | PASS | |
+| TC-035-07 | PENDING | requires deploy first |
+
+---
+
+### SPEC-035 Teardown
+
+Stop the Flask dev server (`Ctrl+C`). If you started the SPEC-033 dev
+service for TC-035-05, stop it with `bash tools/dev/sask-dev-service.sh
+stop` if you don't want it running continuously. Confirm
+`config/i18n/es-ES.toml` was restored if TC-035-06's backup/restore steps
+were interrupted (`git status` should show it unmodified).

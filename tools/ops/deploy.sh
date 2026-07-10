@@ -21,6 +21,16 @@ if [[ ! -f "$INFRA_ENV" ]]; then
     exit 1
 fi
 
+# Strict-mode i18n completeness gate (DD-0022, REQ-OPS-021): a declared
+# locale missing translations for tags the base locale defines blocks
+# deploy. Pre-deploy correctness check, same fail-fast-before-touching-
+# infrastructure spirit as the INFRA_ENV check above — not a live-HTTP
+# probe like acceptance-test.sh.
+if ! python3 tools/dev/validate_i18n.py --strict; then
+    printf '[FAIL] i18n validation failed (strict mode) — fix before deploying.\n' >&2
+    exit 1
+fi
+
 bash tools/ops/export-requirements.sh
 
 # Wait for the droplet's SSH daemon to come up before Ansible connects.

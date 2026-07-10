@@ -4,7 +4,7 @@ The config directory must contain:
   time_constants.toml, calendars.toml, seasons.toml, timeline.toml,
   body_data.toml, observation_data.toml,
   star_data.toml, house_data.toml, ephemeris_data.toml,
-  asset_catalog_data.toml
+  asset_catalog_data.toml, i18n/en-US.toml (+ other locale files, DD-0022/SPEC-035)
 
 All validation is done at load time; callers receive a typed AppConfig or
 a ConfigError is raised.
@@ -12,6 +12,7 @@ a ConfigError is raised.
 
 from __future__ import annotations
 
+import re
 import tomllib
 from dataclasses import dataclass
 from pathlib import Path
@@ -367,6 +368,21 @@ class AssetCatalogConfig:
 
 
 @dataclass(frozen=True)
+class I18nCatalog:
+    """Localization catalog: per-locale {tag: text} tables (DD-0022, SPEC-035).
+
+    base_locale is always present in entries and is the terminal fallback
+    (locale -> base -> raw tag). locales is the full declared set,
+    including the base. Loaded once at config-load time like every other
+    config concern; no separate cache layer is needed.
+    """
+
+    base_locale: str
+    locales: tuple[str, ...]
+    entries: dict[str, dict[str, str]]
+
+
+@dataclass(frozen=True)
 class AppConfig:
     time_constants: TimeConstants
     astro: CalendarConfig
@@ -392,6 +408,7 @@ class AppConfig:
         CalendarLoreConfig, ...
     ]  # 6 calendar lore overlays (SPEC-017)
     asset_catalog: AssetCatalogConfig  # asset retrieval catalog (DD-0016, SPEC-026)
+    i18n: I18nCatalog  # localization catalog (DD-0022, SPEC-035)
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
@@ -768,6 +785,59 @@ def _load_asset_catalog(raw: dict, src: str, assets_dir: Path) -> AssetCatalogCo
     return AssetCatalogConfig(entries=entries)
 
 
+# DD-0022/SPEC-035: dotted-lowercase tag naming, e.g. "nav.pulse", "season.greening".
+_I18N_TAG_RE = re.compile(r"^[a-z][a-z0-9_]*(\.[a-z][a-z0-9_]*)+$")
+_I18N_BASE_LOCALE = "en-US"
+
+
+def _load_i18n_catalog(i18n_dir: Path) -> I18nCatalog:
+    """Load config/i18n/*.toml (DD-0022, SPEC-035).
+
+    en-US.toml (the base locale) is required and is the completeness
+    floor: any tag present in another locale but absent from base is a
+    hard error (a defect, not an incomplete-translation state — that
+    completeness direction is checked here, at load time, everywhere). A
+    tag present in base but missing from a non-base locale is NOT checked
+    here — that's REQ-OPS-021's permissive/strict validator's job
+    (tools/dev/validate_i18n.py), since it's a warn-vs-hard-fail-by-mode
+    policy, not a load-time defect.
+    """
+    base_path = i18n_dir / f"{_I18N_BASE_LOCALE}.toml"
+    if not base_path.is_file():
+        raise ConfigError(f"i18n: base locale file not found: {base_path}")
+
+    entries: dict[str, dict[str, str]] = {}
+    for path in sorted(i18n_dir.glob("*.toml")):
+        locale = path.stem
+        raw = _load_toml(path)
+        tags = raw.get("tags", {})
+        if not isinstance(tags, dict):
+            raise ConfigError(f"{path.name}: [tags] must be a table")
+        for tag, text in tags.items():
+            if not _I18N_TAG_RE.match(tag):
+                raise ConfigError(f"{path.name}: malformed tag {tag!r}")
+            if not isinstance(text, str):
+                raise ConfigError(f"{path.name}: tag {tag!r} value must be a string")
+        entries[locale] = dict(tags)
+
+    base_tags = entries.get(_I18N_BASE_LOCALE, {})
+    for locale, tags in entries.items():
+        if locale == _I18N_BASE_LOCALE:
+            continue
+        orphans = set(tags) - set(base_tags)
+        if orphans:
+            raise ConfigError(
+                f"{locale}.toml: tag(s) {sorted(orphans)} not present in "
+                f"{_I18N_BASE_LOCALE}.toml (base is missing content for them)"
+            )
+
+    return I18nCatalog(
+        base_locale=_I18N_BASE_LOCALE,
+        locales=tuple(sorted(entries)),
+        entries=entries,
+    )
+
+
 def _load_spark(raw: dict, src: str) -> SparkConfig:
     s = _require(raw, "spark", src)
     if not isinstance(s, dict):
@@ -1086,6 +1156,7 @@ def load_config(config_dir: Path, assets_dir: Path | None = None) -> AppConfig:
         "asset_catalog_data.toml",
         assets_dir,
     )
+    i18n = _load_i18n_catalog(config_dir / "i18n")
     cfg = AppConfig(
         time_constants=tc,
         astro=astro,
@@ -1109,6 +1180,7 @@ def load_config(config_dir: Path, assets_dir: Path | None = None) -> AppConfig:
         lore_time=lore_time,
         lore_calendars=lore_calendars,
         asset_catalog=asset_catalog,
+        i18n=i18n,
     )
     logger.info(
         "config loaded",
@@ -1121,6 +1193,7 @@ def load_config(config_dir: Path, assets_dir: Path | None = None) -> AppConfig:
             "sky_styles": len(cfg.sky_styles),
             "lore_calendars": len(cfg.lore_calendars),
             "assets": len(cfg.asset_catalog.entries),
+            "i18n_locales": len(cfg.i18n.locales),
         },
     )
     return cfg

@@ -5,11 +5,14 @@
 {% block content %}
 <h1>Saskan Calendar — Pulse Lookup</h1>
 
+<p class="meta">{{ t("pulse.intro.statement") }}</p>
+<p>{{ t("pulse.hint.sentence") }}</p>
+
 <form method="get" action="/">
   <label for="pulse">Pulse</label>
   <input type="number" id="pulse" name="pulse" step="any"
          value="{{ view.pulse if view else default_pulse }}">
-  <button type="submit">Query</button>
+  <button type="submit">{{ t("label.query_button") }}</button>
 </form>
 
 {% if error %}

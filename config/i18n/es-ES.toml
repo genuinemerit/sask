@@ -1,0 +1,24 @@
+# Localization catalog: es-ES (DD-0022, SPEC-035).
+#
+# Every tag here must also exist in en-US.toml (enforced at config-load
+# time). This locale is intentionally NOT complete relative to en-US yet —
+# missing-non-base tags are a warning in permissive mode
+# (tools/dev/validate_i18n.py) and would hard-fail only at the deploy gate
+# (--strict), once every canary tag below is genuinely present.
+
+[tags]
+"nav.pulse" = "Pulso"
+"nav.moons" = "Lunas"
+"nav.planets" = "Planetas"
+"nav.sky" = "Cielo"
+"nav.ephemeris" = "Efemérides"
+"nav.help" = "Ayuda"
+
+"season.greening" = "Reverdecer"
+"season.blazing" = "Ardor"
+"season.withering" = "Marchitez"
+"season.stillness" = "Quietud"
+
+"label.query_button" = "Consultar"
+"pulse.hint.sentence" = "Introduce un pulso a continuación para ver su día Astro, hora del día y posición orbital."
+"pulse.intro.statement" = "Cada página de sask está guiada por un pulso: un recuento de segundos desde la época Astro. Introduce un pulso, un día Astro, o una fecha en uno de los dos calendarios civiles, y los demás campos se completan automáticamente."

@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en">
+<html lang="{{ g.sask_locale }}">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -15,6 +15,8 @@
     nav { margin-bottom: 1.5rem; font-size: .95rem; }
     nav a { margin-right: 1.2rem; color: #36b; text-decoration: none; }
     nav a:hover { text-decoration: underline; }
+    .locale-toggle { float: right; font-size: .85rem; }
+    .locale-toggle a { margin-right: .3rem; }
     h1 { font-size: 1.4rem; margin-bottom: 1rem; }
     h2 { font-size: 1.1rem; margin: 1.2rem 0 .5rem; }
     fieldset { border: 1px solid #ccc; border-radius: 4px; padding: .5rem 1rem .8rem; margin-bottom: .8rem; }
@@ -46,12 +48,15 @@
 </head>
 <body>
 <nav>
-  <a href="/">Pulse</a>
-  <a href="/moons">Moons</a>
-  <a href="/planets">Planets</a>
-  <a href="/sky">Sky</a>
-  <a href="/ephemeris">Ephemeris</a>
-  <a href="/help">Help</a>
+  <a href="/">{{ t("nav.pulse") }}</a>
+  <a href="/moons">{{ t("nav.moons") }}</a>
+  <a href="/planets">{{ t("nav.planets") }}</a>
+  <a href="/sky">{{ t("nav.sky") }}</a>
+  <a href="/ephemeris">{{ t("nav.ephemeris") }}</a>
+  <a href="/help">{{ t("nav.help") }}</a>
+  <span class="locale-toggle">
+    {% for loc in sask_locales %}<a href="{{ locale_url(loc) }}">{{ loc }}</a>{% if not loop.last %} · {% endif %}{% endfor %}
+  </span>
 </nav>
 {% block content %}{% endblock %}
 </body>

@@ -12,6 +12,7 @@ from flask import (
     Blueprint,
     Response,
     current_app,
+    g,
     make_response,
     render_template,
     request,
@@ -37,6 +38,8 @@ from sask.calendar.scene import get_sky_scene, render_image_prompt, render_night
 from sask.calendar.season import season_info
 from sask.calendar.sky import all_sky_positions, fatune_sky_position
 from sask.help.loader import render_markdown
+from sask.i18n.catalog import resolve as resolve_i18n
+from sask.i18n.tags import season_tag
 
 from ..config_loader import AppConfig
 from ..message import CalendarDate, PulseInfo
@@ -286,6 +289,7 @@ def sky() -> str:
     scene = None
     lunar_entries = None
     si = None
+    season_name = None
     moons_up: list = []
     planets_up: list = []
     apparitions_up: list = []
@@ -323,6 +327,11 @@ def sky() -> str:
             ]
 
         si = season_info(pulse, cfg)
+        # DD-0022/SPEC-035 canary: si.season_id is a locale-neutral domain
+        # identifier; the display name is resolved at the adapter boundary
+        # for the bound request locale, the same catalog the CLI's `season`
+        # command draws from.
+        season_name = resolve_i18n(season_tag(si.season_id), g.sask_locale, cfg.i18n)
         scene = get_sky_scene(pulse, cfg)
         night_summary = render_night_summary(scene, cfg)
         image_prompt = render_image_prompt(scene, cfg)
@@ -346,6 +355,7 @@ def sky() -> str:
         time_of_day=time_of_day,
         lunar_entries=lunar_entries,
         si=si,
+        season_name=season_name,
         scene=scene,
         moons_up=moons_up,
         planets_up=planets_up,
@@ -585,7 +595,11 @@ def get_help_index() -> str:
 @bp.route("/help/<topic>")
 def get_help_topic(topic: str) -> Response:
     topic_map = current_app.config["SASK_HELP_TOPICS"]
-    path = topic_map.get(topic)
+    # DD-0022/REQ-SEC-005: locale-specific parallel doc first, base doc on a
+    # miss -- (topic, locale) is used only as a dict key against the
+    # known set built at startup, never path-joined.
+    parallel_docs = current_app.config["SASK_HELP_PARALLEL_DOCS"]
+    path = parallel_docs.get((topic, g.sask_locale)) or topic_map.get(topic)
     if path is None:
         resp = make_response(
             render_template("help_topic.html", topic=topic, content_html=None), 404

@@ -5,11 +5,13 @@ from __future__ import annotations
 import time
 import uuid
 from pathlib import Path
+from urllib.parse import urlencode
 
 from flask import Flask, g, request
 
 from sask import logsetup
-from sask.help.loader import discover_topics, index_path
+from sask.help.loader import discover_parallel_docs, discover_topics, index_path
+from sask.i18n.catalog import best_locale, resolve
 
 from ..config_loader import ConfigError, load_config
 
@@ -56,6 +58,7 @@ def create_app(
     app.config["SASK_CONFIG"] = cfg
     app.config["SASK_HELP_TOPICS"] = discover_topics(help_dir)
     app.config["SASK_HELP_INDEX_PATH"] = index_path(help_dir)
+    app.config["SASK_HELP_PARALLEL_DOCS"] = discover_parallel_docs(help_dir)
 
     @app.before_request
     def _bind_request_context() -> None:
@@ -65,6 +68,45 @@ def create_app(
             method=request.method,
             path=request.path,
         )
+
+    # DD-0022/SPEC-035: locale binding. A ?locale= query param (the toggle
+    # link) always wins and is persisted to a plain, unsigned cookie for
+    # subsequent requests -- no Flask session/SECRET_KEY needed, since the
+    # only value ever carried is a locale string, always re-validated
+    # against cfg.i18n.locales on every read (a tampered/unknown value just
+    # falls through to the Accept-Language/base-locale default, never a
+    # security concern). Otherwise: existing cookie, then Accept-Language,
+    # then the catalog's base locale (best_locale(), sask.i18n.catalog --
+    # Flask-free, takes locale as an explicit argument, never global state).
+    @app.before_request
+    def _bind_locale() -> None:
+        requested = request.args.get("locale")
+        toggled = requested if requested in cfg.i18n.locales else None
+        g.sask_locale = best_locale(
+            toggled or request.cookies.get("locale"),
+            request.headers.get("Accept-Language"),
+            cfg.i18n,
+        )
+        g.sask_locale_to_persist = toggled
+
+    @app.context_processor
+    def _inject_i18n():
+        def t(tag: str) -> str:
+            return resolve(tag, g.sask_locale, cfg.i18n)
+
+        def locale_url(locale: str) -> str:
+            args = request.args.to_dict(flat=True)
+            args["locale"] = locale
+            return f"{request.path}?{urlencode(args)}"
+
+        return {"t": t, "locale_url": locale_url, "sask_locales": cfg.i18n.locales}
+
+    @app.after_request
+    def _persist_locale_cookie(response):
+        toggled = getattr(g, "sask_locale_to_persist", None)
+        if toggled is not None:
+            response.set_cookie("locale", toggled, max_age=60 * 60 * 24 * 365)
+        return response
 
     @app.after_request
     def _log_request_finished(response):
