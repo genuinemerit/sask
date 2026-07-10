@@ -1,0 +1,50 @@
+[_meta]
+type        = "debt"
+description = "Technical-debt register schema: consciously deferred work"
+collection  = "debt"
+note        = """
+Unlike dd/req/spec schemas (one entity per file), the debt register is a single
+file containing many [[debt]] array-of-tables entries. This schema describes the
+contract for EACH entry. validate_specs.py iterates the [[debt]] array and
+validates every entry against [fields] below. Distinct from port-open-questions
+(undecided) and DDs (decisions): debt entries are decided-but-deferred.
+"""
+
+[fields.id]
+required = true
+pattern  = "^DEBT-\\d{4}$"
+
+[fields.title]
+required = true
+
+[fields.status]
+required = true
+allowed  = ["open", "resolved", "wontfix"]
+
+[fields.raised]
+required = true
+note     = "ISO date the debt was recorded"
+
+[fields.source]
+required = true
+note     = "Originating artifact (analysis file, DD, devlog entry) for traceability"
+
+[fields.area]
+required = true
+note     = "Functional area, e.g. cli, ops, i18n, engine, deploy, web"
+
+[fields.summary]
+required = true
+note     = "What the deferred work is"
+
+[fields.trigger]
+required = true
+note     = "The condition under which this should be done — prevents both forgetting and premature chasing"
+
+[fields.open_subquestion]
+required = false
+note     = "An undecided sub-question within an otherwise-decided debt item"
+
+[fields.resolved_by]
+required = false
+note     = "For status=resolved/wontfix: the DD/SPEC/devlog entry that closed it"

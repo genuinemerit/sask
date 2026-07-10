@@ -1,0 +1,168 @@
+id     = "SPEC-035"
+title  = "i18n machinery, dual-mechanism canary, validator, and locale selection"
+status = "proposed"
+
+[implements]
+requirements = ["REQ-FUN-015", "REQ-OPS-021", "REQ-SEC-005"]
+decisions    = ["DD-0022"]
+notes = """
+Fourth functional area of the saskan-app-alt port (after logging and CLI).
+Builds the i18n machinery and proves it on a deliberately tiny canary before
+any bulk translation. Two analyses precede code (legacy-i18n deepening; content
+inventory), both to /analysis, recommend-only. Bulk translation of existing
+content is a follow-on SPEC once the canary proves the machinery.
+"""
+
+[scope]
+in = """
+The i18n machinery (TOML catalogs, tag resolution + fallback chain, parallel-
+document selection with path-safe locale lookup, adapter-render localization for
+web and CLI); the three-severity validator with permissive/strict modes and the
+deploy-gate hook; web and CLI locale selection (toggle / flag / env var); a
+dual-mechanism canary proving both tag and parallel-doc localization including a
+localized engine result across both adapters; tests; and two pre-implementation
+analyses to /analysis.
+"""
+
+out = """
+- Bulk translation of all existing web content (follow-on SPEC after the canary
+  proves the machinery). The canary translates only its small slice.
+- Localizing operator-facing text (logs, journal, diagnostics, relayed content).
+- Wholesale port of legacy i18n code (mechanics reference only).
+- Locales beyond en-US and es-ES.
+- Resolving the engine-emits-tag vs. engine-emits-identifier hop before the
+  content inventory informs it (the inventory is a deliverable here; the hop is
+  then confirmed and implemented for the canary slice).
+- Proper-noun respelling beyond the canary's terms (a deferred, human-reviewed,
+  per-term activity).
+"""
+
+[deliverables]
+legacy_i18n_analysis = """
+FIRST, before code: deepen the port first-pass for i18n specifically, through
+sask's conventions. Write analysis/legacy-i18n-deepening.md separating reusable
+MECHANICS (fallback-chain shape, catalog-lookup approach) from do-not-port
+specifics; explicitly resolve the legacy format inconsistency (guide says JSON,
+files are YAML) in favor of TOML. Recommend-only; ports no code.
+"""
+
+content_inventory = """
+Also before/alongside: inventory all USER-FACING strings across the existing web
+endpoints, tiered (label / sentence / statement / help-page), producing the
+target list for the later bulk translation. Crucially, flag any engine/app
+output that is COMPOSED PROSE (a pre-built sentence) rather than structured data
+- these must be decomposed into localizable templates + data before they can be
+localized, and they determine the engine-emits-tag vs. engine-emits-identifier
+sub-decision (DD-0022): report whether the domain-id -> tag mapping is uniformly
+1:1 (engine may emit tags) or ever context-dependent (render-layer mapping
+needed). Exclude logs and operator-facing text. Write to
+analysis/i18n-content-inventory.md. Recommend-only.
+"""
+
+catalog_and_resolver = """
+A shared-spine i18n facility: per-locale TOML catalogs (config/i18n/en-US.toml,
+es-ES.toml or similar) and a resolver providing tag lookup with the fallback
+chain (locale -> base en-US -> raw key). The resolver is locale-parameterized
+(the caller/adapter passes the bound locale); it imports no Flask and no engine
+domain code. Confirm the engine emits locale-neutral output per the inventory's
+resolution of the tag-vs-identifier hop; if a render-layer id->tag mapping is
+needed, it lives at the adapter/spine boundary, not in the engine.
+"""
+
+parallel_docs = """
+Parallel per-locale document selection for the DD-0018 help pages: discover
+available (topic, locale) documents at startup into a known set with pre-
+resolved paths (REQ-SEC-005); the help route selects by bound locale and falls
+back to the base document. The locale value is never path-joined raw. Provide
+one es-ES help document for the canary (a translation of one existing page).
+"""
+
+adapter_localization = """
+Web adapter: bind locale at render (session/cookie, default from Accept-
+Language), resolve tags for template strings, select help documents by locale.
+CLI adapter: bind locale from --lang/SASK_LOCALE, resolve tags for interface
+text and for localized engine/app results. Both draw from the ONE shared
+catalog. Operator-facing/relayed content is left un-localized.
+"""
+
+locale_selection = """
+Web: a language toggle (nav/header) setting the session/cookie locale, default
+from Accept-Language, toggle overriding. CLI: a --lang/--locale option and
+SASK_LOCALE env var (mirroring SASK_LOG_LEVEL), fixed base default, flag
+overriding.
+"""
+
+validator = """
+Extend the design/validation tooling (or add an i18n validator invoked by
+pre-commit and the deploy harness) implementing the three checks: malformed tag
+(hard error, everywhere); missing base content (hard error, everywhere); missing
+non-base translation (warn in permissive mode, hard-fail in strict/deploy mode).
+One completeness comparison + policy-by-locale + one syntax pass. The deploy
+harness invokes strict mode so an incomplete declared locale blocks deploy.
+"""
+
+canary = """
+The dual-mechanism proof on minimal content:
+- TAGS at three chunk sizes on the /pulse endpoint: a label, one sentence, one
+  statement-paragraph - localized en-US and es-ES.
+- A localized ENGINE RESULT: one astronomy/asset result (e.g. a season or body
+  name) rendered localized through BOTH the web and CLI adapters from the SAME
+  locale-agnostic message unit - the case that validates engine-purity +
+  shared-catalog + adapter-render + one-unit-many-locales.
+- PARALLEL DOC: one help page with an es-ES parallel document, proving locale
+  selection and fallback to base.
+- Any canary proper-noun respelling (if a Saskan term appears) is human-reviewed
+  per DD-0022, demonstrating the respelling-as-catalog-value mechanism.
+"""
+
+tests = """
+tests/test_spec_035.py:
+- Tag resolution and the full fallback chain (locale hit; base fallback; raw-key
+  fallback); silent (non-raising) on miss.
+- The same message unit renders localized differently per bound locale, on both
+  web and CLI paths (one unit, many locales, many adapters).
+- Parallel-doc selection by locale with base fallback; and REQ-SEC-005: a
+  crafted/traversal locale value reads nothing outside the known document set.
+- Validator: malformed -> hard error; missing base -> hard error; missing
+  non-base -> warn (permissive) and hard-fail (strict).
+- Locale selection: web session/Accept-Language default + toggle override; CLI
+  flag/env var.
+Full suite passes at the new count; pre-commit and validate_specs clean.
+"""
+
+design_doc_status = """
+On acceptance set DD-0022, SPEC-035 to "accepted" and add a devlog entry (the
+i18n machinery, the dual canary result, the two /analysis artifacts and their
+recommendations - including the tag-vs-identifier resolution - and the bulk-
+translation follow-on left to a later SPEC).
+"""
+
+[acceptance]
+criteria = """
+1. analysis/legacy-i18n-deepening.md and analysis/i18n-content-inventory.md
+   exist; the former resolves format -> TOML, the latter tiers the strings,
+   flags composed-prose engine output, and resolves the tag-vs-identifier hop.
+2. Per-locale TOML catalogs and a locale-parameterized resolver with the
+   fallback chain exist; the resolver imports no Flask/engine-domain code.
+3. Tag localization works on web AND CLI from one shared catalog, including a
+   localized engine result rendered from one locale-agnostic message unit.
+4. Parallel-doc help selection works with base fallback; locale selection is
+   path-safe (REQ-SEC-005 test passes).
+5. Web toggle (Accept-Language default, override) and CLI flag/env var select
+   locale.
+6. The three-severity validator works in permissive and strict modes; the
+   deploy harness invokes strict mode.
+7. The canary (/pulse tags at three sizes + a dual-adapter localized engine
+   result + one es-ES help doc) passes; operator content is not localized.
+8. Full suite passes at the new count; pre-commit and validate_specs clean.
+"""
+
+uat = """
+[manual] Web: toggle to es-ES, confirm /pulse label/sentence/paragraph render
+Spanish, an astronomy/asset result renders localized, and the canary help page
+shows its Spanish parallel doc (and falls back to English for a page without
+one). CLI: run with --lang es-ES, confirm interface text and the same engine
+result render Spanish; confirm logs/journal output remain un-localized. Confirm
+the deploy-mode validator blocks on a deliberately-incomplete es-ES entry, and
+passes when completed.
+"""

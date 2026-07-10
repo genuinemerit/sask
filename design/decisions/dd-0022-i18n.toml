@@ -1,0 +1,246 @@
+id     = "DD-0022"
+title  = "Internationalization: tag-and-catalog localization at the adapter boundary"
+status = "proposed"
+date   = "2026-07-09"
+
+[context]
+summary = """
+The saskan-app-alt port brings a working bespoke i18n system (proven
+en-US -> es-ES). This DD decides how sask localizes user-facing content across
+its adapters (web now, CLI now, api later), re-centered on sask's conventions
+(TOML config, engine/adapter/spine layers, message-unit seam) rather than
+ported wholesale. Fourth functional area of the port (after logging and CLI);
+precedes auth. The existing web content (labels, sentences, verbose help pages)
+is translated as part of this work, after the machinery is proven on a small
+canary.
+"""
+
+prior_art = """
+The legacy i18n system uses a silent multi-level fallback chain and ships
+locale files - but inconsistently (its authoring guide says JSON, its shipped
+files are YAML). sask does not import that inconsistency. Legacy is a
+MECHANICS reference only (fallback-chain implementation, catalog lookup); a
+deepening analysis (analysis/legacy-i18n-deepening.md, per SPEC-035) separates
+reusable pattern from do-not-port, and resolves the format question in favor of
+TOML.
+"""
+
+problem = """
+Localization is a cross-cutting concern and must thread through sask's layers
+without violating them - specifically, the engine must stay locale-free the
+same way it is Flask-free and logging-context-free. Two content shapes need
+different mechanisms (short UI strings vs. long-form prose). A missing
+translation must degrade gracefully rather than crash a page, which is a
+deliberate exception to sask's otherwise fail-fast config discipline. And
+locale-driven file selection must not become a path-traversal vector.
+"""
+
+[decision]
+summary = """
+Localize user-facing content at the ADAPTER render boundary, from a shared TOML
+catalog, over locale-agnostic engine output. Two mechanisms sharing one
+fallback principle: tag substitution for short strings, parallel per-locale
+documents for long-form prose. The engine stays locale-free. Operator-facing
+text (logs, diagnostics) is not localized.
+"""
+
+three_layer_model = """
+Localizable content passes through three distinct layers:
+1. DOMAIN IDENTIFIER - what the engine emits (e.g. a season as HARVEST, a body
+   as a stable id). The engine knows only its own domain.
+2. i18n TAG - the catalog key (e.g. season.harvest). The bridge between domain
+   and text.
+3. LOCALIZED TEXT - what the user sees (Harvest / Cosecha). Produced by the
+   adapter.
+Localization (2 -> 3) happens at the ADAPTER render boundary, resolving the tag
+against the locale's catalog. The engine never knows the locale; message units
+carry locale-neutral references (identifiers/tags), never pre-localized prose.
+This preserves engine purity exactly as the Flask-free and context-free-logging
+rules do: locale is bound at the adapter (like request context for logging),
+the engine is locale-free (like it is transport-free), and the catalog is a
+shared-spine resource (like message.py and the logging facility). It is the
+lore-overlay pattern (DD-0002/SPEC-017: technical id in, human name out at the
+output boundary) generalized to locales.
+
+SUB-DECISION, deferred to the content inventory (SPEC-035): whether the engine
+emits i18n TAGS directly (simplest adapter; engine is i18n-scheme-aware) or
+emits DOMAIN IDENTIFIERS that a thin render-layer maps to tags (purest engine;
+engine i18n-unaware). Lean: engine emits domain identifiers, render-layer maps
+id -> tag, IF the mapping is ever context-dependent (same concept, different
+tag by usage); if the mapping is uniformly 1:1, the engine may as well emit
+tags. The content inventory reveals which, so the choice is confirmed against
+data, not guessed.
+"""
+
+two_mechanisms_one_fallback = """
+Content shape dictates mechanism; both share one fallback discipline:
+- TAG SUBSTITUTION for short strings (labels, buttons, sentences, statements,
+  CLI interface text, and localized engine/app message results). A tag resolves
+  through the fallback chain against the locale's TOML catalog. Structure
+  (template/page) is shared; only strings swap.
+- PARALLEL PER-LOCALE DOCUMENTS for long-form prose (the DD-0018 help Markdown
+  pages). Instead of tagging prose fragment-by-fragment (which destroys
+  coherence), maintain a whole per-locale document (e.g.
+  getting-started.es-ES.md beside getting-started.md); the help route selects
+  by locale and falls back to the base document. The whole document swaps.
+Unifying principle: ONE fallback discipline at TWO granularities - tags fall
+back tag-by-tag (locale tag -> base tag -> raw key), documents fall back
+document-by-document (locale doc -> base doc). Same "degrade to base, never
+break" philosophy, matched to each content shape.
+"""
+
+fallback_is_deliberate_exception = """
+i18n display text uses SILENT fallback: a missing localized string/document
+falls back (ultimately to en-US, then for tags to the raw key) rather than
+raising. This is a DELIBERATE exception to sask's otherwise fail-fast config
+discipline (ConfigError on any missing/malformed config), justified because a
+missing translation must not crash a user-facing page - graceful degradation
+is correct for display text. Recorded as an intentional exception, not an
+oversight. (Completeness is enforced separately, at deploy - see validation.)
+"""
+
+origin_based_boundary = """
+What gets localized is decided by ORIGIN/AUDIENCE, consistently across all
+adapters:
+- LOCALIZED (sask-generated, user-facing): prompts, labels, hints, help
+  documents, and engine/app message RESULTS (astronomy engine output, asset
+  inventory) - on both the web and CLI surfaces. The CLI's own interface text
+  (command help, descriptions, results, usage) is localized.
+- NOT LOCALIZED (operator-facing): logs, the journal, stack traces, internal
+  diagnostics, and operator content the CLI merely RELAYS (raw journalctl lines
+  from a log-query command stay their source language). Operator-facing text
+  stays one stable language for searchability/correlation.
+One rule across web, CLI, and future api: localize what the end USER reads, not
+what the OPERATOR reads. Because the engine's user-facing results are message
+units flowing to every adapter, the catalog is a SHARED-SPINE resource both web
+and CLI draw from (one catalog, many adapters).
+"""
+
+validation_severities = """
+Three checks, severities derived from principle (not taste), matching the
+logging-rubric discipline of severity-by-impact:
+- MALFORMED tag (violates naming/syntax) -> HARD ERROR, everywhere. A defect
+  with no valid reason to exist.
+- Missing BASE (en-US) content -> HARD ERROR, everywhere. The base is the
+  terminal fallback (the floor everything degrades to); a tag with no base
+  content has no floor and is genuinely broken. The base language is therefore
+  held to complete-always.
+- Missing NON-BASE translation (present in base, absent in a declared locale)
+  -> WARNING during authoring, HARD FAIL at the DEPLOY gate. Recoverable via
+  fallback and normal mid-work; unacceptable only when shipping a language that
+  claims support.
+Mechanism vs. policy: checks for missing-base and missing-non-base are the same
+completeness comparison ("which tags lack content in language L"); the severity
+is set by whether L is the base language. Malformed is a separate syntactic
+pass. So the validator is one completeness comparison + one policy rule + one
+syntax pass, not scattered special cases.
+"""
+
+invariance_presence_not_absence = """
+Every user-facing term has a tag, and every declared locale's catalog contains
+every tag. A term whose spelling is intentionally invariant across locales
+appears in each locale's catalog with the SAME value - invariance is expressed
+by PRESENCE WITH IDENTICAL VALUE, never by absence. Absence always means
+"incomplete" and fails the deploy gate. This makes "deliberately same" a
+recorded decision distinct from "not yet translated," and it forces a conscious
+per-term choice when populating a locale (you must type either the respelling
+or the same spelling; nothing defaults to anglocentric-by-omission).
+Deliberately-declined refinement (recorded as a non-decision): distinguishing
+"deliberately invariant" from "coincidentally still base-language" in the
+catalog. Presence-with-value is sufficient; a marker for "consciously
+invariant" is not built now.
+"""
+
+proper_noun_respelling = """
+Invented Saskan proper nouns DEFAULT to invariant spelling across locales, but a
+locale's catalog MAY respell a term where the source-language spelling would
+mislead the intended pronunciation under the target language's orthographic
+rules. Worked example (tag body.fatune): en-US value "Fatune"; es-ES value
+"Fatun" with an acute accent on the final u. Rationale: English "Fatune" reads
+fa-TOON (final e silent, two syllables); the identical spelling read by a
+Spanish speaker becomes fa-TOO-neh (final e voiced, three syllables), which is
+NOT the intended sound; the accented Spanish spelling (final-syllable stress,
+dropped mute e) directs a Spanish reader to the intended two-syllable fa-TUN.
+Trigger for respelling: the source spelling would mislead the intended sound,
+not mere anglocentric appearance. This is FREE mechanically (one tag's differing per-locale value)
+and is a HUMAN-REVIEWED step (a translator/AI may propose, but the maintainer
+arbitrates the intended sound), flagged distinctly from ordinary string
+translation. Most respelling is DEFERRED and done per-term as terms are
+identified (ideally with a native-speaker read-aloud check), not resolved up
+front.
+"""
+
+locale_selection = """
+Users select language via an explicit control, per adapter:
+- WEB: a language toggle (nav/header) sets a session/cookie locale the web
+  adapter binds at render. Default locale derives from the request's
+  Accept-Language (a Spanish-system user gets Spanish without toggling); the
+  explicit toggle always overrides.
+- CLI: a --lang/--locale flag (one-off) and/or a SASK_LOCALE environment
+  variable (persistent default), mirroring SASK_LOG_LEVEL. Default is a fixed
+  base locale; the flag overrides.
+Locale selection is an adapter concern (like request-context binding); it sets
+which locale the adapter binds, and the shared machinery renders accordingly.
+"""
+
+path_safety = """
+The parallel-document mechanism selects a file by locale (getting-started.
+<locale>.md). The locale value MUST NOT be path-joined raw into a filesystem
+read; document selection resolves by membership against a known set of
+available (topic, locale) documents discovered at startup, mirroring the
+DD-0016 asset and DD-0018 help known-set/resolved-path safety. This is a
+security requirement (REQ-SEC-005): no path traversal via a crafted locale.
+"""
+
+[consequences]
+positive = """
+- i18n is the same engine/adapter/spine discipline as logging: spine catalog,
+  adapter binds locale, engine stays pure. Third cross-cutting concern threaded
+  the same way; the architecture holds.
+- One shared catalog serves web and CLI (and future api) from one source.
+- Tag-and-catalog makes respelling Saskan names for a locale essentially free
+  (a per-locale catalog value), honoring the sound-first naming philosophy.
+- Two mechanisms match two content shapes without forcing prose through tags.
+- Graceful silent fallback keeps pages working mid-translation; the deploy gate
+  keeps incomplete languages from shipping as complete.
+- Presence-not-absence makes "deliberately invariant" a recorded, checkable
+  decision and forces a conscious choice on every term.
+- Validation severities are principle-derived and mechanically checkable.
+"""
+
+negative_or_deferred = """
+- The engine-emits-tag vs. engine-emits-identifier hop is left open pending the
+  content inventory (the one genuinely data-dependent choice).
+- Composed-prose engine output (if any) must be DECOMPOSED into localizable
+  templates + data; the inventory finds these, and they are the fiddly part.
+- Bulk translation of existing content is a large follow-on after the canary
+  proves the machinery; not all done in SPEC-035.
+- Proper-noun respelling is a deferred, human-reviewed, per-term activity.
+- The "deliberately invariant" marker is declined for now.
+- The fallback silence is a deliberate deviation from fail-fast; acceptable for
+  display text only (not for engine/config correctness).
+"""
+
+out_of_scope = """
+- Localizing operator-facing text (logs, journal, diagnostics, relayed journal
+  content). Not localized, by the origin principle.
+- Wholesale port of legacy i18n code (mechanics reference only).
+- Retroactively i18n-gating existing non-user-facing surfaces (i18n blocks only
+  new user-facing surfaces; existing content is translated but its absence does
+  not block unrelated work).
+- The full bulk translation (follow-on SPEC after the canary).
+- Additional locales beyond en-US and es-ES (the mechanism supports more; only
+  these two are populated now).
+"""
+
+[links]
+depends_on = ["DD-0002", "DD-0003", "DD-0016", "DD-0017", "DD-0018", "DD-0021"]
+relates_to = ["DD-0020", "SPEC-017"]
+implemented_by = ["REQ-FUN-015", "REQ-OPS-021", "REQ-SEC-005", "SPEC-035"]
+notes = """
+DD-0002 (no hardcoded domain strings) and SPEC-017 (lore overlays: id-in /
+name-out at output) are the precedent the tag model generalizes. DD-0016/DD-0018
+supply the known-set path-safety pattern REQ-SEC-005 reuses. DD-0021's adapters
+(web, cli) are the render boundaries where locale is bound. Legacy i18n is a
+mechanics reference only, deepened in analysis/legacy-i18n-deepening.md.
+"""

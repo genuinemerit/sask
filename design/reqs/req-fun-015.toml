@@ -1,0 +1,55 @@
+id        = "REQ-FUN-015"
+title     = "Localization of user-facing content"
+category  = "FUN"
+priority  = "should"
+
+statement = """
+sask shall localize user-facing content at the adapter render boundary from a
+shared TOML catalog, over locale-agnostic engine output. Short strings (labels,
+sentences, statements, CLI interface text, and engine/app message results)
+shall be localized by tag substitution: a tag resolves through a fallback chain
+(locale -> base en-US -> raw key) against the locale's catalog. Long-form prose
+(help documents) shall be localized by parallel per-locale documents selected by
+locale with fallback to the base document. Missing localized content shall
+degrade silently via fallback rather than raise (a deliberate exception to
+sask's fail-fast config discipline, for display text only). The engine shall
+remain locale-free. Users shall select locale via a web toggle (session/cookie,
+defaulting from Accept-Language) and a CLI --lang flag / SASK_LOCALE env var.
+Operator-facing text (logs, diagnostics, relayed journal content) shall NOT be
+localized. en-US and es-ES are the initial locales.
+"""
+
+rationale = """
+sask should serve its user-facing surfaces (web and CLI) in the user's
+language, honoring in particular a sound-first invented-name philosophy that
+benefits from per-locale respelling. Localizing at the adapter over locale-
+agnostic engine output preserves engine purity (DD-0022, parallel to Flask-free
+and context-free-logging) and lets one shared catalog serve all adapters. Tag
+substitution suits short strings; parallel documents suit prose (tagging prose
+fragment-by-fragment destroys coherence). Silent fallback keeps pages working
+mid-translation; completeness is enforced separately at deploy (REQ-OPS-021).
+Origin-based scoping (localize what the user reads, not what the operator reads)
+keeps logs stably searchable.
+"""
+
+acceptance = """
+1. A shared TOML catalog per locale (en-US, es-ES) exists; tags resolve through
+   the fallback chain locale -> base -> raw key.
+2. Tag substitution localizes short strings on BOTH the web and CLI adapters
+   from the same catalog, including a localized engine/app message result (an
+   astronomy or asset result) rendered from one locale-agnostic message unit.
+3. Parallel per-locale help documents are selected by locale, falling back to
+   the base document when a locale version is absent.
+4. Missing localized content degrades via fallback without raising.
+5. The engine emits locale-neutral output (identifiers/tags), not pre-localized
+   prose; it takes no locale input.
+6. A web language toggle sets the session locale (default from Accept-Language,
+   toggle overrides); a CLI --lang flag / SASK_LOCALE env var sets CLI locale.
+7. Logs and relayed operator content are not localized.
+8. Full suite passes at the new count; pre-commit and validate_specs clean.
+"""
+
+[links]
+implements   = ["DD-0022"]
+relates_to   = ["DD-0002", "DD-0016", "DD-0017", "DD-0018", "DD-0021", "REQ-OPS-021", "REQ-SEC-005"]
+specified_by = ["SPEC-035"]

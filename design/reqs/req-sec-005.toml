@@ -1,0 +1,41 @@
+id        = "REQ-SEC-005"
+title     = "Locale-driven document selection is path-safe"
+category  = "SEC"
+priority  = "must"
+
+statement = """
+Locale-driven selection of a parallel per-locale document shall never construct
+a filesystem path by raw-joining a locale value from a request or argument. The
+requested (topic, locale) shall be resolved by membership lookup against a known
+set of available documents discovered at startup, returning a pre-resolved path;
+an unknown (topic, locale) is a miss that falls back to the base document. A
+crafted locale value (e.g. containing path separators or traversal sequences)
+shall not read any file outside the known document set.
+"""
+
+rationale = """
+The parallel-document mechanism (DD-0022) selects files by locale
+(getting-started.<locale>.md). A locale value derived from a URL, cookie, or CLI
+argument is untrusted input; path-joining it raw would enable traversal
+(../../secret). Resolving by membership lookup against a startup-discovered set,
+and reading only pre-resolved paths, makes traversal structurally impossible -
+the same safety pattern already used for assets (DD-0016) and help topics
+(DD-0018). Enforced as a security MUST because it is an untrusted-input-to-
+filesystem path.
+"""
+
+acceptance = """
+1. Available parallel documents are discovered at startup into a known set keyed
+   by (topic, locale) with pre-resolved paths.
+2. Document selection resolves the requested locale by membership lookup only;
+   the locale value is never path-joined into a read.
+3. An unknown locale falls back to the base document; a crafted/traversal locale
+   value reads nothing outside the known set (test asserts this).
+4. The same discipline applies wherever a locale value influences file or
+   resource selection.
+"""
+
+[links]
+implements   = ["DD-0022"]
+relates_to   = ["DD-0016", "DD-0018", "REQ-FUN-015"]
+specified_by = ["SPEC-035"]

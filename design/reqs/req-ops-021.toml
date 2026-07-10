@@ -1,0 +1,51 @@
+id        = "REQ-OPS-021"
+title     = "Localization validation and deploy-completeness gate"
+category  = "OPS"
+priority  = "should"
+
+statement = """
+sask shall validate localization catalogs with three checks whose severities
+follow from principle: (1) a malformed tag (violating naming/syntax) is a hard
+error everywhere; (2) missing base-language (en-US) content for a tag is a hard
+error everywhere (the base is the fallback floor); (3) a tag present in the base
+but missing in a declared non-base locale is a WARNING during authoring and a
+HARD FAILURE at the deploy gate. The base language shall be held to
+complete-always. The validator shall run in a permissive mode for everyday/CI
+use (structure hard-fails, completeness warns) and a strict mode at the deploy
+gate (completeness also hard-fails), the mode selected by where in the pipeline
+it is invoked. Catalog files shall be TOML, consistent with all other sask
+config.
+"""
+
+rationale = """
+Localization needs rigor without hostility to the incremental nature of
+translation. Severity by principle (malformed = defect; missing-base = no
+fallback floor = broken; missing-non-base = recoverable-via-fallback and normal
+mid-work) keeps the rules legible and self-answering, mirroring the logging-
+level rubric. Gating completeness at DEPLOY (not commit) matches the cost curve:
+incomplete translation is a legitimate workbench state, but shipping a language
+that claims support while full of holes is a real user-facing defect. Placing
+the strict gate in the existing deploy verification family (alongside acceptance
+tests) puts it where production-readiness checks already live.
+"""
+
+acceptance = """
+1. A validator checks catalogs for: malformed tags (hard error, everywhere);
+   missing base content (hard error, everywhere); missing non-base translations
+   (warn in permissive mode, hard-fail in strict/deploy mode).
+2. The base-language catalog is required complete; a base gap is a hard error.
+3. Permissive mode (everyday/CI) hard-fails structure and missing-base, warns on
+   missing non-base translations; strict mode (deploy) also hard-fails missing
+   non-base translations. Mode is selected by invocation point.
+4. The deploy harness invokes strict mode; a declared locale with missing
+   translations blocks deploy.
+5. Catalogs are TOML.
+6. The missing-base and missing-non-base checks share one completeness
+   comparison with severity set by whether the locale is the base; malformed is
+   a separate syntactic pass.
+"""
+
+[links]
+implements   = ["DD-0022"]
+relates_to   = ["DD-0014", "REQ-FUN-015", "REQ-SEC-005"]
+specified_by = ["SPEC-035"]

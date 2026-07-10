@@ -1,0 +1,42 @@
+# Technical-debt register — consciously deferred work (decided, not yet done).
+# Distinct from port-open-questions.md (undecided) and DDs (decisions).
+# Append entries; mark status resolved/wontfix rather than deleting (history).
+# Each [[debt]] entry validated against design/debt/_schema.toml.
+
+[[debt]]
+id               = "DEBT-0001"
+title            = "logs verify CLI command"
+status           = "open"
+raised           = "2026-07-09"
+source           = "analysis/tools-ops-vs-cli.md"
+area             = "cli"
+summary          = """
+verify-logging.sh's app-output half (JSON-well-formed + no-secrets check on the
+sask log stream) should become a `logs verify` CLI admin command, reusing the
+logs query journalctl-wrapping machinery from SPEC-034. It acts on the app's own
+log stream (CLI-nature per DD-0021), and unlike the current script would run
+against whichever environment the CLI is invoked in (dev journal locally, prod
+journal on the droplet) rather than being SSH-only.
+"""
+trigger          = "Next CLI round, once logs query has proven out in real use."
+open_subquestion = """
+verify-logging.sh's infra-config half (journald drop-in presence + SystemMaxUse/
+MaxRetentionSec caps) has no natural CLI home — decide then whether it stays ops
+bash or becomes an Ansible post-deploy assertion (so a deploy fails if the
+journald config is wrong).
+"""
+
+[[debt]]
+id               = "DEBT-0002"
+title            = "set-log-level.sh stale comment"
+status           = "open"
+raised           = "2026-07-09"
+source           = "analysis/tools-ops-vs-cli.md"
+area             = "ops"
+summary          = """
+The header comment still says the log-level change will "later [be driven] from
+the CLI's log-level-change command." DD-0021 settled that service-mutating
+operations stay ops-side (to preserve Ansible as source of truth); the CLI
+aspiration is superseded and the comment is misleading.
+"""
+trigger          = "Next time set-log-level.sh is edited for any unrelated reason (not worth a dedicated edit)."
