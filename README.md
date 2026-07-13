@@ -59,6 +59,10 @@ Fatunik date, or Terpin date. After any query all four input fields are
 cross-populated with the resolved equivalents. The `/ephemeris` page also
 accepts a Duration (Days) field for date-mode ranges.
 
+A language toggle sets the locale (en-US/es-ES) for tagged interface text,
+localized engine results (e.g. season names), and parallel-translated help
+pages, defaulting from the browser's `Accept-Language` (see DD-0022).
+
 **Start the server:**
 
 ```bash
@@ -76,6 +80,28 @@ Or with gunicorn:
 ```bash
 PYTHONPATH=src poetry run gunicorn wsgi:app
 ```
+
+## CLI
+
+A `sask` console-script (DD-0021) wraps the same engine/spine functions the
+web adapter uses:
+
+```bash
+poetry run sask --help
+```
+
+| Command | Description |
+|---|---|
+| `sask convert --pulse N` | Astro day, day-pulse offset, orbital position for a pulse |
+| `sask season --pulse N` | Astronomical season (and near-event) for a pulse, localized |
+| `sask help [topic]` | Renders the same Markdown help content as the web `/help` route |
+| `sask asset list` / `sask asset info <kind> <id>` | Asset catalog descriptor fields (no payload reads) |
+| `sask config check` | Read-only config validation |
+| `sask logs query` | Query the app's structured journald logs |
+
+`--lang <locale>` / `SASK_LOCALE` selects the locale for interface text and
+localized results (mirrors `SASK_LOG_LEVEL`'s flag/env-var precedence); logs
+and other operator-facing output are never localized.
 
 ## Pre-commit checks
 

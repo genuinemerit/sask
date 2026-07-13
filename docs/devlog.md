@@ -1,5 +1,59 @@
 # Dev log
 
+## 2026-07-13 — SPEC-035 accepted: prod deploy + redeploy verified, DD-0022/SPEC-035 → accepted
+
+Deployed the i18n port to the live droplet via `tools/ops/deploy.sh`
+(in-place converge, not a rebuild): `pre-commit-check.sh` clean beforehand
+(including the new `validate_i18n` permissive-mode step), Ansible run
+`ok=40 changed=6 failed=0`, `acceptance-test.sh` 5/5 pass.
+
+TC-035-07 then confirmed manually by the user directly against
+`https://sask.davidstitt.net`: locale toggle changes nav/`/pulse`
+label-sentence-paragraph copy, `/sky` season name renders localized,
+help page falls back/serves its es-ES parallel doc correctly — all
+matching dev behavior exactly. `sask --lang es-ES season --pulse N` over
+SSH on the droplet matched the web adapter's result for the same pulse,
+confirming the one-message-unit/two-adapters canary holds in production,
+not just under the test client. All 7 SPEC-035 UAT cases now PASS
+(`docs/user_testing.md`).
+
+Per SPEC-035's own `design_doc_status` deliverable: `DD-0022` and
+`SPEC-035` set to `status = "accepted"`. Recap of what shipped (full
+detail in the 2026-07-10 entries below): shared TOML i18n catalog +
+locale-parameterized resolver (`src/sask/i18n/{catalog,tags}.py`),
+parallel-document help localization (REQ-SEC-005 path-safe), web
+(cookie/Accept-Language toggle) and CLI (`--lang`/`SASK_LOCALE`)
+adapters drawing from one shared catalog, the three-severity validator
+wired into both `pre-commit-check.sh` (permissive) and `deploy.sh`
+(`--strict`, pre-deploy gate), and the dual-mechanism canary (tags at
+three sizes, one localized engine result on both adapters, one es-ES
+help doc). Two pre-implementation analyses resolved the format
+question (TOML, not the legacy JSON/YAML inconsistency) and the
+tag-vs-identifier hop (engine emits tags directly; the inventory found
+the mapping is uniformly 1:1). Bulk translation of existing content
+beyond the canary remains an explicit follow-on SPEC, not done here.
+
+Immediately followed by `tools/ops/redeploy.sh -y` (full destroy/
+recreate/deploy/acceptance-test cycle, not just a converge) to confirm
+the i18n port survives a from-scratch droplet build the same way
+SPEC-032's logging port did: OpenTofu recreated the droplet, the full
+`site.yml` play ran `ok=45 changed=39 failed=0`, and `acceptance-test.sh`
+(run automatically at the end of `redeploy.sh`) passed 5/5.
+
+Spot-checked i18n specifically on the freshly recreated droplet
+(the generic acceptance suite doesn't exercise it): `config/i18n/
+{en-US,es-ES}.toml` present, and `sask --lang es-ES season --pulse 0`
+returned the localized Spanish result (`Reverdecer`) with `locale:
+es-ES` threaded through correctly — confirming the catalog and CLI
+adapter survive a clean rebuild, not just the box they were first
+verified on. The structured log line emitted alongside it stayed
+English/JSON, confirming operator-facing output remains unlocalized on
+the rebuilt host too.
+
+Both the in-place `deploy.sh` path and the full `redeploy.sh` path are
+now verified against a live droplet, matching the discipline of every
+prior port round (SPEC-031, SPEC-032, SPEC-034).
+
 ## 2026-07-10 — SPEC-035: local UAT passed (TC-035-01–06); droplet check pending deploy
 
 Formal UAT recorded in `docs/user_testing.md` (SPEC-035 section,

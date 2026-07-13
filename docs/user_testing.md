@@ -2389,10 +2389,14 @@ sask --lang es-ES season --pulse 0
 
 ---
 
-### SPEC-035 Results — 2026-07-10
+### SPEC-035 Results — 2026-07-10 (dev), 2026-07-13 (prod)
 
 TC-035-01 through TC-035-06 tested on the dev host. All pass, no notes
-requiring fixes. TC-035-07 pending the deploy/redeploy round.
+requiring fixes. TC-035-07 confirmed manually on the live production
+droplet (`sask.davidstitt.net`) after `deploy.sh` — locale toggle,
+`/pulse` tag localization, `/sky` season name, and the help parallel-doc
+fallback all matched dev behavior; `sask --lang es-ES season --pulse N`
+over SSH matched the web result for the same pulse.
 
 | TC | Result | Notes |
 |---|---|---|
@@ -2402,7 +2406,7 @@ requiring fixes. TC-035-07 pending the deploy/redeploy round.
 | TC-035-04 | PASS | |
 | TC-035-05 | PASS | |
 | TC-035-06 | PASS | |
-| TC-035-07 | PENDING | requires deploy first |
+| TC-035-07 | PASS | verified on prod after `deploy.sh` |
 
 ---
 
