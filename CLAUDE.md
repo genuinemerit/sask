@@ -33,6 +33,14 @@ poetry run pytest tests/test_validate_specs.py -q
 Design documents live under `design/` as TOML. After any change to a design
 doc or its schema, run `python3 tools/dev/validate_specs.py` and confirm exit 0.
 
+## Technical debt
+
+`design/debt/tech-debt.toml` tracks consciously deferred work. Near the
+conclusion of each development iteration (spec/feature round), review open
+entries to see whether their `trigger` condition has now been met — close
+those with `status = "resolved"` and a `resolved_by` citing the DD/SPEC/devlog
+entry that closed them, rather than leaving them to accumulate unreviewed.
+
 ## Infrastructure split
 
 - `tools/dev/init-dev-host.sh` — dev-host bootstrap (apt prereqs, pyenv, Python
