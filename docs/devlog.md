@@ -1,5 +1,42 @@
 # Dev log
 
+## 2026-07-21 — SPEC-036/DD-0023 in progress: completeness gate wired for full content set
+
+Fifth implementation round of SPEC-036, following scholar-description
+decomposition. All content tiers are now complete; this closes the last
+implementation deliverable (the deploy-time completeness gate) before
+prod UAT and acceptance.
+
+`validate_i18n.py --strict` (already wired into `deploy.sh` from
+SPEC-035) re-confirmed passing clean against the much larger catalog this
+round built up (~145 proper nouns + ~130 LABEL + ~40 SENTENCE/STATEMENT +
+full-text-page + scholar-description tags).
+
+Added the second half of SPEC-036's own `completeness_gate` deliverable
+text, which explicitly requires it, not left as an open call: "a base
+page whose es-ES rendered page is stale/missing, blocks deploy" — wired
+`check_page_staleness.py` into `deploy.sh` as a second strict pre-deploy
+gate alongside `validate_i18n.py --strict`, before `export-requirements.sh`
+and any infrastructure is touched. Runs via `poetry run` (the deploy
+script executes on the dev host, which has the venv) rather than the
+bare-`python3` convention `validate_i18n.py`/`validate_specs.py` use,
+since `check_page_staleness.py` already depends on importing
+`build_i18n_pages.py` and the `sask` package itself (documented in its
+own module docstring from the full-text-pages round).
+
+Added a lightweight regression test asserting both gate invocations are
+actually present in `deploy.sh`'s text, so a future edit can't silently
+drop either one.
+
+**Tests**: `tests/test_spec_036.py` grew by 1 (819 total in the full
+suite). Pre-commit clean, including both `validate_i18n` and
+`check_page_staleness` steps.
+
+**Remaining before acceptance**: live prod UAT (deploy, then confirm
+both languages — toggle, fallback, full-text pages, the scholar
+description — render correctly on the real droplet, matching every prior
+port round's discipline), then flip `DD-0023`/`SPEC-036` to `"accepted"`.
+
 ## 2026-07-21 — SPEC-036/DD-0023 in progress: scholar-description decomposition
 
 Fourth implementation round of SPEC-036, following full-text pages.

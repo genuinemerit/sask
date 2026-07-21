@@ -574,3 +574,18 @@ def test_sky_page_night_summary_es_es_via_flask(client):
     html = resp.data.decode()
     assert "Una noche de quietud" in html
     assert "El polinizador alado" in html
+
+
+# ── Completeness gate (REQ-OPS-021, DD-0023) ────────────────────────────────────
+
+
+def test_deploy_gates_on_both_i18n_strict_and_page_staleness():
+    """SPEC-036's completeness_gate deliverable: a base page whose es-ES
+    rendered page is stale/missing blocks deploy, same as a missing tag
+    translation -- not just checked at pre-commit. Regression guard: a
+    future deploy.sh edit can't silently drop either gate."""
+    deploy_sh = (PROJECT_ROOT / "tools" / "ops" / "deploy.sh").read_text(
+        encoding="utf-8"
+    )
+    assert "validate_i18n.py --strict" in deploy_sh
+    assert "check_page_staleness.py" in deploy_sh

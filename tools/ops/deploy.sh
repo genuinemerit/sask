@@ -31,6 +31,18 @@ if ! python3 tools/dev/validate_i18n.py --strict; then
     exit 1
 fi
 
+# Full-text page staleness gate (DD-0023, SPEC-036's completeness_gate
+# deliverable): a base page whose es-ES rendered page is stale or missing
+# blocks deploy, same as a missing tag translation above. Deploy runs on
+# the dev host, which has the poetry venv, so this can use the same
+# non-bare invocation build_i18n_pages.py/check_page_staleness.py already
+# require (see check_page_staleness.py's own docstring for why it isn't
+# bare-python3-compatible like validate_i18n.py).
+if ! poetry run python3 tools/dev/check_page_staleness.py; then
+    printf '[FAIL] page staleness check failed — rebuild/re-review before deploying.\n' >&2
+    exit 1
+fi
+
 bash tools/ops/export-requirements.sh
 
 # Wait for the droplet's SSH daemon to come up before Ansible connects.
