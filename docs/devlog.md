@@ -1,5 +1,74 @@
 # Dev log
 
+## 2026-07-21 — SPEC-036/DD-0023 in progress: full-text pages tier
+
+Third implementation round of SPEC-036, following LABEL and SENTENCE/
+STATEMENT. DD-0023/SPEC-036 stay `"proposed"` — dynamic-content
+decomposition, the deploy gate, and prod UAT are still ahead.
+
+Wrote tagged base sources for the two remaining help docs
+(`docs/help_src/{index,calendar-lore}.md`) — `calendar-lore.md` is by far
+the densest page in the app, and reused essentially every lore-vocabulary
+tag already in the catalog (every month/day/era/age/festival/round/turn/
+moon-word term across all 5 calendars) rather than needing new ones.
+Found 4 small gaps while tagging (`place.saskan`, `place.saskantinon`,
+`lore.time.unit.satava`, `lore.time.unit.wayt` — the last two named in
+this page's prose but never previously needed by any rendered string) and
+added them, flagged per the established pattern. Restructured a few
+sentences in the base to avoid double-article bugs when a tag's value
+already carries its own article (e.g. "the current Bright Age" →
+"currently the Bright Age", since `lore.fatunik_solar.age.n3` already
+resolves to "the Bright Age").
+
+Ran the builder: en-US regenerated pages matched the originals exactly
+except for the deliberate rephrasing above. Translated both es-ES drafts
+by hand (no translation-API integration exists in this codebase; this
+step is done by the agent directly, per DD-0023's "manual paste is a
+valid implementation choice"). For `calendar-lore.md`'s six illustrative
+"real date" code blocks and two watch-time examples, used the actual
+verified `render_lore_date`/`render_lore_time` Spanish output from
+earlier SPEC-036 testing rather than inventing placeholder text.
+
+**Follow-up fixes requested after the first draft review**: 9 catalog
+respellings (Harven→Jarven, Hálvet→Jálabet, kell→kel, Hesk→Jesek,
+Hóvat→Jóvat, Húrnet→Júrnet, Skel→Esaquel, Drum→Darum, Hásek→Jásek) and 5
+terminology translations for previously-untagged bare calendar/culture
+words used only in this page's prose (Untamed→Indomado,
+Warren→Madriguera, Round→Ronda — with the feminine-agreement fix that
+implies elsewhere in the sentence, Hearth→Hogar, sint→sensiente).
+Applied across the catalog, the affected test assertion, the proper-noun
+review-table record, and the full hand-translated page.
+
+**A real bug found and fixed while promoting, not just a translation
+gap**: `get_help_index()` (the `/help` index route) never consulted
+`SASK_HELP_PARALLEL_DOCS` at all — only `get_help_topic()` did. The
+newly-created `index.es-ES.md` existed and was correctly discovered by
+`discover_parallel_docs()`, but nothing in the route ever looked it up,
+so the index page's intro stayed English regardless of locale. This
+predates SPEC-036 entirely (part of DD-0018/SPEC-030's original help
+system) — just never surfaced before because no real `index.es-ES.md`
+existed until now. Fixed by giving `get_help_index()` the same
+locale-specific-first, base-doc-fallback lookup `get_help_topic()`
+already had.
+
+Also fixed a SPEC-035 test whose premise broke: `test_parallel_doc_
+falls_back_to_base_when_locale_doc_absent` used `calendar-lore` as its
+"topic with no es-ES translation" example — no longer true. Replaced
+with an isolated synthetic `tmp_path` help dir so the fallback-mechanism
+test no longer depends on which real pages happen to lack a translation
+on any given day.
+
+Both pages promoted from `docs/help_src/.drafts/` to
+`docs/help/{index,calendar-lore}.es-ES.md` and acknowledged in
+`docs/help_src/translation-status.toml`.
+
+**Tests**: `tests/test_spec_036.py` grew to 33 (5 new — base-to-served
+determinism for both new pages, es-ES serving with all the respelled/
+translated terms present and old English terms absent, en-US unaffected,
+plus the two help-index-locale regression tests). `tests/test_spec_035.
+py`'s fallback test rewritten for isolation. Full suite: 809 passed.
+Pre-commit clean, including `check_page_staleness`.
+
 ## 2026-07-21 — SPEC-036/DD-0023 in progress: SENTENCE/STATEMENT tier
 
 Second implementation round of SPEC-036, following the LABEL tier.

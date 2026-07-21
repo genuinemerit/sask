@@ -4,5 +4,11 @@
 # `check_page_staleness.py --acknowledge <topic>` after reviewing
 # a fresh/updated translation -- never auto-updated by the builder.
 
+[calendar-lore]
+es-ES = "sha256:add75d7e6b945c27a94951de84bd60d19171e868f196a655fb6d0d1d746d2c68"
+
 [getting-started]
 es-ES = "sha256:6ffce758be82ff390e7c91dc71ad60a75680f190127dab8cb9b138021796aff5"
+
+[index]
+es-ES = "sha256:b67c52ec6dc2db3d20b2be40c8b1102a343e036c326f8c433890b3a55dc7872b"

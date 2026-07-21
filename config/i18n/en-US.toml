@@ -29,6 +29,18 @@
 "culture.fatunik" = "Fatunik"
 "culture.terpin" = "Terpin"
 
+# Found while tagging calendar-lore.md's base source (SPEC-036 full-text
+# page tier): the setting/landmass name and its adjectival form, not
+# previously needed by any tagged short string.
+"place.saskan" = "Saskan"
+"place.saskantinon" = "Saskantinon"
+
+# lore_time.toml defines these two units but no rendered format currently
+# uses them (only shur/keyt are interpolated); calendar-lore.md's prose
+# names them explicitly, so they need catalog entries too.
+"lore.time.unit.satava" = "satava"
+"lore.time.unit.wayt" = "wayt"
+
 "body.endor" = "Endor"
 "body.sella" = "Sella"
 "body.lelako" = "Lelako"

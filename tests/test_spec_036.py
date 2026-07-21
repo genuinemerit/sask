@@ -25,6 +25,10 @@ are covered yet. Currently covers:
     start_/end_ variants), the ephemeris instructional paragraph, co-
     fullness pluralization, house names, and lunar-calendar names all
     resolve correctly in es-ES via the live Flask test client
+  - full-text pages: index.md and calendar-lore.md's tagged bases render
+    deterministically; both es-ES translations (hand-authored, promoted
+    from the builder's proper-noun-substituted draft) serve correctly
+    through the /help routes
 """
 
 from __future__ import annotations
@@ -107,7 +111,7 @@ def test_render_lore_time_es_es_localized():
 def test_render_lore_date_solar_es_es_gender_and_preposition():
     fd = astro_to_fatunik(STORY_PULSE, CONFIG)
     result = render_lore_date(fd, "fatunik_solar", CONFIG, "es-ES")
-    assert result == "Velden, el 6.º kell de Tárnel, Año 1782 en la Era Brillante"
+    assert result == "Velden, el 6.º kel de Tárnel, Año 1782 en la Era Brillante"
     assert "de el " not in result
 
 
@@ -392,3 +396,66 @@ def test_sky_page_house_and_calendar_names_es_es(client):
     html = resp.data.decode()
     assert "El polinizador alado" in html  # active house
     assert "El c\xf3mputo salvaje" in html  # untamed calendar name
+
+
+# ── Full-text pages (DD-0023) ───────────────────────────────────────────────────
+
+
+def test_index_and_calendar_lore_bases_match_committed_en_us_pages():
+    for topic in ("index", "calendar-lore"):
+        base_path = PROJECT_ROOT / "docs" / "help_src" / f"{topic}.md"
+        served_path = PROJECT_ROOT / "docs" / "help" / f"{topic}.md"
+        rendered = build_i18n_pages.render_page(
+            base_path.read_text(encoding="utf-8"), "en-US", CONFIG.i18n
+        )
+        assert rendered == served_path.read_text(encoding="utf-8")
+        assert "{" not in rendered
+
+
+def test_help_index_serves_es_es_translation(client):
+    # Regression: get_help_index() previously ignored SASK_HELP_PARALLEL_DOCS
+    # entirely (only get_help_topic() consulted it), so index.es-ES.md was
+    # never served even after it existed -- found while promoting this tier.
+    resp = client.get("/help?locale=es-ES")
+    assert resp.status_code == 200
+    html = resp.data.decode()
+    assert "gu\xeda de ayuda" in html
+    assert "Welcome to the" not in html
+
+
+def test_help_index_en_us_unaffected_by_locale_fix(client):
+    resp = client.get("/help?locale=en-US")
+    assert resp.status_code == 200
+    html = resp.data.decode()
+    assert "Welcome to the" in html
+
+
+def test_calendar_lore_serves_es_es_translation_with_respellings(client):
+    resp = client.get("/help/calendar-lore?locale=es-ES")
+    assert resp.status_code == 200
+    html = resp.data.decode()
+    # Respelled catalog terms fixed after initial review must appear.
+    assert "Jarven" in html
+    assert "J\xe1labet" in html
+    assert ">kel<" in html or "kel," in html or "kel " in html
+    assert "Jesek" in html
+    assert "Esaquel" in html
+    assert "Darum" in html
+    assert "J\xe1sek" in html
+    # Terminology translations must appear; old English terms must not.
+    assert "Indomado" in html
+    assert "Madriguera" in html
+    assert "Ronda" in html
+    assert "Hogar" in html
+    assert "sensiente" in html
+    assert "Untamed" not in html
+    assert "Warren" not in html
+    assert ">Hearth<" not in html
+
+
+def test_calendar_lore_en_us_still_serves_original_english(client):
+    resp = client.get("/help/calendar-lore?locale=en-US")
+    assert resp.status_code == 200
+    html = resp.data.decode()
+    assert "Untamed" in html
+    assert "Harvenn" in html  # en-US month spelling unaffected by es-ES fix

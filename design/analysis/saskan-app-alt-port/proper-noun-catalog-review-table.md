@@ -43,14 +43,14 @@
 | the Age of the Open Hand (Fatunik age 2) | la Era de la Mano Abierta |
 | the Bright Age (Fatunik age 3) | la Era Brillante |
 | Gleaming (Fatunik festival_name) | el Brillando |
-| kell (Fatunik week_word) | kell |
+| kell (Fatunik week_word) | kel |
 | Solenne (Fatunik month 1) | Solén |
 | Maradd (Fatunik month 2) | Marad |
-| Harvenn (Fatunik month 3) | Harven |
+| Harvenn (Fatunik month 3) | Jarven |
 | Ombren (Fatunik month 4) | Ombren |
 | Frenna (Fatunik month 5) | Frena |
 | Vossul (Fatunik month 6) | Vósul |
-| Halveth (Fatunik month 7) | Hálvet |
+| Halveth (Fatunik month 7) | Jálabet |
 | Iskren (Fatunik month 8) | Iskren |
 | Tarnel (Fatunik month 9) | Tárnel |
 | Verel (Fatunik month 10) | Verel |
@@ -60,7 +60,7 @@
 | Aweth (Fatunik day 2) | Áhet |
 | Morrin (Fatunik day 3) | Morin |
 | Velden (Fatunik day 4) | Velden |
-| Hesk (Fatunik day 5) | Hesk |
+| Hesk (Fatunik day 5) | Jesek |
 | the Long Count of Terpa (Terpin era_name) | el Largo Cómputo de Terpa |
 | Year (Terpin turn_word) | Año |
 | the First Watching (Terpin age 1) | la Primera Vigilia |
@@ -73,7 +73,7 @@
 | Belunna (Terpin solar month 3) | Beluna |
 | Sorvath (Terpin solar month 4) | Sórvat |
 | Numael (Terpin solar month 5) | Númael |
-| Hovath (Terpin solar month 6) | Hóvat |
+| Hovath (Terpin solar month 6) | Jóvat |
 | Methsa (Terpin solar month 7) | Metsa |
 | Yumber (Terpin solar month 8) | Úmber |
 | Korreth (Terpin solar month 9) | Kóret |
@@ -87,7 +87,7 @@
 | Emarn (Terpin solar day 5) | Emaren |
 | Fells (Terpin solar day 6) | Fels |
 | Gessa (Terpin solar day 7) | Guesa |
-| Hurneth (Terpin solar day 8) | Húrnet |
+| Hurneth (Terpin solar day 8) | Júrnet |
 | Issal (Terpin solar day 9) | Ísal |
 | Lonn (Terpin solar day 10) | Lun |
 | the Mean Moon (Terpin lunar moon_word) | la Luna Media |
@@ -108,15 +108,15 @@
 | Selha (Untamed moon_word) | Sela |
 | Varro (Untamed month 1) | Varo |
 | Dakka (Untamed month 2) | Daka |
-| Skell (Untamed month 3) | Skel |
+| Skell (Untamed month 3) | Esaquel |
 | Brunt (Untamed month 4) | Brúnet |
 | Olvar (Untamed month 5) | Ólvar |
 | Threx (Untamed month 6) | Trex |
 | Maug (Untamed month 7) | Mauga |
 | Sarn (Untamed month 8) | Saren |
 | Vekk (Untamed month 9) | Vek |
-| Drumm (Untamed month 10) | Drum |
-| Hask (Untamed month 11) | Hásek |
+| Drumm (Untamed month 10) | Darum |
+| Hask (Untamed month 11) | Jásek |
 | Volkar (Untamed month 12) | Vólkar |
 | Wend (Warren round_word) | Güened |
 | Litter (Warren turn_word) | Camada |

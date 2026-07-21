@@ -666,7 +666,14 @@ def get_asset(kind: str, id: str) -> Response:
 @bp.route("/help")
 def get_help_index() -> str:
     topics = sorted(current_app.config["SASK_HELP_TOPICS"])
-    index_path = current_app.config["SASK_HELP_INDEX_PATH"]
+    # DD-0022/REQ-SEC-005: same locale-specific-parallel-doc-first, base-doc-
+    # on-a-miss pattern as get_help_topic() -- "index" is a valid parallel-doc
+    # topic key (SPEC-036), just excluded from the selectable topic list.
+    parallel_docs = current_app.config["SASK_HELP_PARALLEL_DOCS"]
+    index_path = (
+        parallel_docs.get(("index", g.sask_locale))
+        or current_app.config["SASK_HELP_INDEX_PATH"]
+    )
     intro_html = render_markdown(index_path) if index_path else None
     return render_template("help_index.html", topics=topics, intro_html=intro_html)
 

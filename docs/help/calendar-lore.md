@@ -37,8 +37,8 @@ into five-day weeks called a **kell**, with each day individually named
 (Sune, Aweth, Morrin, Velden, Hesk). The Fatunik day begins at sunrise.
 
 Years aren't just numbered — they're placed within a named **Age**.
-Three Ages are recorded so far: the Age of Embers, the Age of the Open
-Hand, and the current Bright Age. A full Fatunik date reads like this
+Three Ages are recorded so far: the Age of Embers, the Age of the Open Hand, and
+currently the Bright Age. A full Fatunik date reads like this
 (a real date, for the story's present moment):
 
 ```text
@@ -49,20 +49,19 @@ Velden, the 6th kell of Tarnel, Year 1782 of the Bright Age
 to keep pace with the true solar year — except on a century year, which
 skips the extra day, except again on every fourth century, which
 restores it. (Saskan readers will recognize this as the same shape of
-rule our own world uses for leap years, just renamed for the Reckoning
-of Fatune.)
+rule our own world uses for leap years, just renamed for the Reckoning of Fatune.)
 
 ### Terpin — the Long Count of Terpa
 
 Terpin is an older culture (long-lived sentient tortoises) with its own
 solar calendar, structured the same way as Fatunik's — twelve thirty-day
-months (Omarra, Tessith, Belunna, Sorvath, Numael, Hovath, Methsa,
-Yumber, Korreth, Vannath, Esoph, Tulmarr) plus an intercalary month
+months (Omarra, Tessith, Belunna, Sorvath, Numael, Hovath,
+Methsa, Yumber, Korreth, Vannath, Esoph, Tulmarr) plus an intercalary month
 called **Brennald** — but counted differently. Weeks are ten days long,
-called a **deshan** (Adda, Bessen, Corwen, Dovan, Emarn, Fells, Gessa,
-Hurneth, Issal, Lonn), and the day begins at midnight rather than
-sunrise. Terpin also reckons its years by Age (the First Watching, the
-Age of Stone, and the current Deepening). A real Terpin date for the
+called a **deshan** (Adda, Bessen, Corwen, Dovan, Emarn, Fells,
+Gessa, Hurneth, Issal, Lonn), and the day begins at midnight rather than
+sunrise. Terpin also reckons its years by Age (the First Watching, the Age of Stone,
+and currently the Deepening). A real Terpin date for the
 same moment as above:
 
 ```text
@@ -87,8 +86,8 @@ the four don't structurally agree with each other, let alone with the
 solar calendars:
 
 - **Untamed** and **Warren** reckon in cycles that reset: a long **Round**
-  (called a Reave for Untamed, a Wend for Warren) that periodically
-  starts over to stay roughly aligned with the true year, with a turn
+  (called a Reave for Untamed, a Wend for Warren)
+  that periodically starts over to stay roughly aligned with the true year, with a turn
   number counted within the current Round.
 - **Hearth** keeps no years, turns, or months at all — just an
   ever-rising count of how many times its moon has completed a full
@@ -128,8 +127,8 @@ fertile moon whose 21-month year runs close enough to a solar year that
 it drifts only slowly). Months: Tum, Fenn, Lilla, Pripp, Sennel, Mossa,
 Dell, Brackel, Hopsel, Clovel, Nibb, Sprigg, Bramm, Quill, Furze, Loma,
 Vetch, Sedda, Gorra, Pell, Mirn — twenty-one in all, a year ("Litter")
-longer than any other calendar's. Phases: the Dark, the Swelling, the
-Full, the Fading. A real Warren date for the same moment as above:
+longer than any other calendar's. Phases: the Dark, the Swelling,
+the Full, the Fading. A real Warren date for the same moment as above:
 
 ```text
 the Dark, day 4 of Hopsel, Litter 24 of the Wend 18
@@ -140,7 +139,7 @@ the Dark, day 4 of Hopsel, Litter 24 of the Wend 18
 Kept by the Dog-sints around the moon **Jembor** ("Old Jem," linked in
 their lore to omens and fate). The simplest calendar of all: no months,
 no turns, no Age, not even a week — just which of three visible phases
-the moon is in (waxing, full, waning) and an ever-rising count of how
+the moon is in (the waxing, the full, the waning) and an ever-rising count of how
 many times Old Jem has completed a full "turning." A real Hearth date
 for the same moment as above:
 
@@ -151,11 +150,11 @@ the full, the 29th day of Old Jem's 10204th turning
 ### The Terpin Lunar Count
 
 Kept by the Terpin culture alongside their solar calendar, but tracking
-an imaginary **Mean Moon** — the mathematical average of all eight real
+an imaginary moon they call **the Mean Moon** — the mathematical average of all eight real
 moons' cycles, "an idealized moon belonging to none." Twelve months
 (Praal, Suneth, Olreth, Mehven, Corsa, Druin, Lasseth, Ombrul, Tevan,
-Nurra, Esseth, Volmarr), four computed quarters (First through Fourth
-Quarter — computed rather than observed, since no real moon moves this
+Nurra, Esseth, Volmarr), four computed quarters (First Quarter through Fourth Quarter —
+computed rather than observed, since no real moon moves this
 way), and — uniquely among the lunar calendars — the same continuous
 Age-based year count as Terpin's solar calendar. A real Terpin Lunar
 date for the same moment as above:

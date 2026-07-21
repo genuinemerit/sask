@@ -135,14 +135,19 @@ def test_parallel_doc_selected_for_declared_locale():
     assert "Primeros pasos" in text
 
 
-def test_parallel_doc_falls_back_to_base_when_locale_doc_absent():
-    app = create_app(config_dir=REAL_CONFIG)
+def test_parallel_doc_falls_back_to_base_when_locale_doc_absent(tmp_path):
+    # Isolated synthetic help dir (not real content, which -- as of SPEC-036
+    # -- now has es-ES translations for every real topic): one topic with a
+    # base doc only, no es-ES parallel doc, to exercise the fallback path
+    # itself rather than depend on which real pages happen to lack a
+    # translation on any given day.
+    (tmp_path / "no-translation-yet.md").write_text("# Base only\n")
+    app = create_app(config_dir=REAL_CONFIG, help_dir=tmp_path)
     client = app.test_client()
     client.set_cookie("locale", "es-ES")
-    # calendar-lore has no es-ES parallel doc -- must serve the base (English)
-    resp = client.get("/help/calendar-lore")
+    resp = client.get("/help/no-translation-yet")
     assert resp.status_code == 200
-    assert b"Calendar lore" in resp.data
+    assert b"Base only" in resp.data
 
 
 def test_parallel_doc_selection_rejects_traversal_locale_value():
