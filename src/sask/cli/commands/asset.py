@@ -9,6 +9,8 @@ from __future__ import annotations
 import dataclasses
 
 import typer
+from rich.console import Console
+from rich.table import Table
 
 from sask.asset.retrieval import AssetNotFoundError, resolve_descriptor
 from sask.message import AssetDescriptor
@@ -17,6 +19,8 @@ from .._config import resolve_and_load_config
 from ..formatting import echo_dict
 
 app = typer.Typer(help="Asset catalog inspection (descriptor-only, no payload reads)")
+
+_console = Console()
 
 
 @app.command("list")
@@ -31,16 +35,28 @@ def list_assets() -> None:
     if not entries:
         typer.echo("No assets in the catalog.")
         return
-    for entry in sorted(entries.values(), key=lambda e: (e.kind, e.id)):
-        descriptor = AssetDescriptor(
+    descriptors = [
+        AssetDescriptor(
             kind=entry.kind,
             id=entry.id,
             content_type=entry.content_type,
             size=entry.size,
         )
-        typer.echo(
-            f"{descriptor.kind}/{descriptor.id}  ({descriptor.content_type}, {descriptor.size}B)"
-        )
+        for entry in sorted(entries.values(), key=lambda e: (e.kind, e.id))
+    ]
+
+    if not _console.is_terminal:
+        for d in descriptors:
+            typer.echo(f"{d.kind}/{d.id}  ({d.content_type}, {d.size}B)")
+        return
+
+    table = Table(title="Assets")
+    table.add_column("kind/id", style="bold cyan")
+    table.add_column("content type")
+    table.add_column("size", justify="right")
+    for d in descriptors:
+        table.add_row(f"{d.kind}/{d.id}", d.content_type, f"{d.size}B")
+    _console.print(table)
 
 
 @app.command("info")

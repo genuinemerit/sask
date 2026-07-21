@@ -1,0 +1,157 @@
+id     = "DD-0025"
+title  = "CLI Round Two: dev tier, expanded admin surface, rich presentation"
+status = "accepted"
+date   = "2026-07-20"
+
+[context]
+summary = """
+The first CLI round (DD-0021/SPEC-034) built an initial command set tagged by
+tier (player/admin), with tags as documentation and a future-auth seam - not
+enforced. This round COMPLETES the command surface (mainly admin and developer
+operations) so that the forthcoming auth round can enforce tier authorization
+against a STABLE surface rather than a growing one. It also adopts rich as the
+CLI presentation layer. This is CLI Round Two; it is distinct from auth (it
+BUILDS commands and tags them; auth ENFORCES who may run them) and precedes auth
+in the port sequence.
+"""
+
+problem = """
+Several useful operations currently live only as bash scripts (ops, dev,
+helpers). Some are clean app-consumers or verifications that belong in the CLI;
+some are infrastructure/service-mutating operations that DD-0021 deliberately
+kept in the ops harness; and some are developer tools that should exist only in
+a dev environment. The round must sort them correctly, add a developer tier that
+does not fit the role-based player/admin model, adopt richer terminal output
+without an external-binary dependency, and do all this without breaching
+DD-0021's ops-vs-CLI boundary.
+"""
+
+[decision]
+summary = """
+Add a DEV tier (environment-gated, dev-only) alongside player and admin; expand
+the admin surface with clean app-consuming commands; keep infrastructure/
+service-mutating operations in the ops harness (reaffirming DD-0021); and adopt
+rich as the CLI presentation layer, degrading to plain text when output is not a
+terminal.
+"""
+
+reaffirm_ops_boundary = """
+DD-0021's ops-vs-CLI boundary STANDS: operations that mutate the running service
+or infrastructure, or that run local->remote, remain in the ops harness
+(tools/ops/), NOT the CLI - so Ansible remains the source of truth and a later
+deploy cannot silently revert a CLI-made change. Specifically EXCLUDED from the
+CLI (they stay ops-only): deploy, redeploy, set-log-level. set-log-level is the
+canonical case - it drives ansible-playbook precisely so deploy will not revert
+it. The CLI remains a clean CONSUMER of the app that acts only on its own
+environment; it does not become a platform operator. (A unified-namespace
+launcher for ops was considered and declined, to keep the boundary crisp while
+the Ansible-source-of-truth discipline is still being habituated.)
+"""
+
+tier_model = """
+The tier model expands from {player, admin} to {player, admin, dev}:
+- PLAYER (user): read-only, safe, eventually guest/registered. Enforcement:
+  tagged now, enforced by auth later.
+- ADMIN (owner): diagnostics/verification that consume the app; no service
+  mutation. Enforcement: tagged now, enforced by auth later.
+- DEV (developer): development/build/verification tooling that only makes sense
+  in a development environment. Enforcement: ENVIRONMENT-GATED NOW, via a
+  SASK_ENV-style environment variable - dev commands are available/visible only
+  when the environment is dev, and error cleanly (not found / not-permitted-
+  here) otherwise.
+Key distinction: dev-gating is enforced IMMEDIATELY and does not need auth,
+because "is this a dev environment" is knowable from the environment (like
+SASK_LOG_LEVEL / SASK_LOCALE) without an identity system; the player/admin
+distinction stays tagged-but-unenforced until auth exists (auth cannot know
+"is this user an admin" yet). So this round delivers real dev-gating and
+completes the tags that auth will later activate.
+"""
+
+command_sorting = """
+- ADMIN (clean app-consumers): logs verify (DEBT-0001, the app-output-checking
+  half of verify-logging.sh, reusing logs query machinery); acceptance-test
+  (runs tests against the app); run_perf (benchmarks the app).
+- DEV (environment-gated): check_page_staleness, pre-commit-check, run-tests,
+  start_web, verify-clean-env, verify-do-secrets, validate_specs, validate_i18n.
+- PLAYER (user): host_info (scoped to NON-SENSITIVE host info); validate_json
+  (generic read-only utility).
+- EXCLUDED (ops-only, per reaffirm_ops_boundary): deploy, redeploy,
+  set-log-level.
+Each CLI command remains a thin adapter over a clean-room function (DD-0021):
+parse -> call the shared function -> format output. Where a command corresponds
+to an existing script, the underlying logic is invoked/shared, not reimplemented
+with new behavior.
+"""
+
+rich_presentation = """
+Adopt rich (already a transitive Typer dependency - no new dependency) as the
+CLI presentation layer (DEBT-0003, superseding open-question #9). rich renders
+help Markdown, styled tables (asset inventory, results), and structured output
+IN-PROCESS - replacing the earlier idea of piping to the external glow binary
+(rejected as an external-binary/PATH assumption). Styling is ADDITIVE and must
+DEGRADE TO PLAIN TEXT when output is piped/redirected (not a terminal),
+preserving the SPEC-034 stdout-clean-for-piping decision. rich auto-detects this
+by default.
+"""
+
+safety_constraints = """
+- verify-do-secrets checks the PRESENCE/validity of host secrets (DO token, SSH
+  key) but NEVER prints secret values - same discipline as REQ-SEC-004 log
+  redaction. (REQ-SEC-006)
+- host_info output is scoped to NON-SENSITIVE host information; it must not leak
+  internal addresses, security-relevant paths, or anything that would aid an
+  attacker, since as a player-tier command it is broadly accessible.
+  (REQ-SEC-006)
+"""
+
+debt_addressed = """
+- DEBT-0001: logs verify becomes a first-class admin command. Its open
+  sub-question (verify-logging.sh's INFRASTRUCTURE-checking half - journald
+  drop-in/caps - has no natural CLI home) is surfaced for decision: it stays ops
+  bash OR becomes an Ansible post-deploy assertion. Resolve during
+  implementation; do not silently drop it.
+- DEBT-0002: fix the stale "later from the CLI" comment in set-log-level.sh
+  (which stays ops-only) opportunistically as part of this round.
+- DEBT-0003: adopt rich (this DD's rich_presentation).
+"""
+
+[consequences]
+positive = """
+- A complete, tier-tagged command surface for auth to enforce against next,
+  rather than a moving target.
+- Real, immediate dev-command gating (via SASK_ENV) that needs no auth.
+- Ops-vs-CLI boundary held; Ansible-source-of-truth intact; discipline
+  reinforced while still being habituated.
+- Nicer terminal output (rich) with zero new dependency and clean-when-piped
+  behavior preserved.
+- Three debt items retired/advanced.
+"""
+
+negative_or_deferred = """
+- Player/admin enforcement remains deferred to auth (tags only); dev-gating is
+  the only tier enforced this round.
+- deploy/redeploy/set-log-level remain as ops scripts (no unified CLI
+  namespace); accepted to keep the boundary crisp.
+- logs verify's infrastructure-half disposition is an open sub-question resolved
+  at implementation.
+- The dev tier introduces environment detection (SASK_ENV) the CLI did not
+  previously need; small, consistent with existing env-var patterns.
+"""
+
+out_of_scope = """
+- Auth/authorization enforcement of player/admin tiers (the next round).
+- Wrapping deploy/redeploy/set-log-level or any service/infra-mutating op in the
+  CLI.
+- New behavior in the wrapped scripts (commands invoke/share existing logic; no
+  logic changes).
+"""
+
+[links]
+depends_on = ["DD-0021"]
+relates_to = ["DD-0014", "DD-0020"]
+implemented_by = ["REQ-FUN-017", "REQ-SEC-006", "SPEC-038"]
+notes = """
+Reaffirms DD-0021's ops-vs-CLI boundary and extends its tier model with a dev
+tier. Retires DEBT-0001/0002/0003. Numbering (DD-0025 / REQ-FUN-017 /
+REQ-SEC-006 / SPEC-038) to be confirmed against the live design/ tree.
+"""

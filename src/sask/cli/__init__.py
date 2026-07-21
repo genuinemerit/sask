@@ -1,4 +1,5 @@
-"""Typer CLI consumer adapter for sask (DD-0021, REQ-FUN-014, SPEC-034).
+"""Typer CLI consumer adapter for sask (DD-0021, REQ-FUN-014, SPEC-034,
+DD-0025, REQ-FUN-017, SPEC-038).
 
 Thin adapter: each command parses args, calls the same clean-room
 engine/spine functions the web adapter calls, and formats output. No domain
@@ -8,6 +9,15 @@ anti-pattern this deliberately avoids.
 
 cli/ may import the engine/spine (to call it); the engine/spine must never
 import cli/ (layer-purity test, tests/test_spec_034.py).
+
+Tier tagging (DD-0025): every command/group below is registered with
+rich_help_panel="Player"/"Admin"/"Dev" — doubling as visible grouping in
+--help and a structural tag tests can assert on
+(app.registered_commands/registered_groups), the auth seam DD-0021 named.
+Dev-tier commands are additionally hidden=not _IS_DEV, the one tier
+DD-0025 enforces now (player/admin stay tagged-but-unenforced until auth
+exists) — SASK_ENV is read once here, the same fresh-process-per-invocation
+model SASK_LOG_LEVEL/SASK_LOCALE already use.
 """
 
 from __future__ import annotations
@@ -17,9 +27,24 @@ import sys
 import typer
 
 from sask import logsetup
-from sask.cli.commands import asset, calendar, config, help as help_cmd, logs, season
+from sask.cli._env import is_dev_env
+from sask.cli.commands import (
+    acceptance_test,
+    asset,
+    calendar,
+    config,
+    dev_tools,
+    help as help_cmd,
+    host_info,
+    logs,
+    run_perf,
+    season,
+    validate_json,
+)
 
 app = typer.Typer(help="sask calendar-engine CLI", no_args_is_help=True)
+
+_IS_DEV = is_dev_env()
 
 
 @app.callback()
@@ -44,12 +69,47 @@ def _root(
     ctx.obj = {"lang": lang}
 
 
-app.command("help")(help_cmd.help_command)
-app.command("convert")(calendar.convert)
-app.command("season")(season.season)
-app.add_typer(asset.app, name="asset")
-app.add_typer(config.app, name="config")
-app.add_typer(logs.app, name="logs")
+# Player tier — read-only, safe, eventually guest/registered (tagged now,
+# enforced by auth later).
+app.command("help", rich_help_panel="Player")(help_cmd.help_command)
+app.command("convert", rich_help_panel="Player")(calendar.convert)
+app.command("season", rich_help_panel="Player")(season.season)
+app.command("host_info", rich_help_panel="Player")(host_info.host_info)
+app.command("validate_json", rich_help_panel="Player")(validate_json.validate_json)
+app.add_typer(asset.app, name="asset", rich_help_panel="Player")
+
+# Admin tier — owner diagnostics/verification that consume the app; no
+# service mutation (tagged now, enforced by auth later).
+app.add_typer(config.app, name="config", rich_help_panel="Admin")
+app.add_typer(logs.app, name="logs", rich_help_panel="Admin")
+app.command("acceptance-test", rich_help_panel="Admin")(acceptance_test.acceptance_test)
+app.command("run_perf", rich_help_panel="Admin")(run_perf.run_perf)
+
+# Dev tier — development/build/verification tooling, only meaningful in a
+# development environment. Enforced NOW via SASK_ENV (not auth): hidden from
+# --help outside dev, and each command body also refuses to run outside dev
+# (cli/_env.py::require_dev) as defense in depth.
+_dev_hidden = not _IS_DEV
+app.command("check_page_staleness", hidden=_dev_hidden, rich_help_panel="Dev")(
+    dev_tools.check_page_staleness
+)
+app.command("pre-commit-check", hidden=_dev_hidden, rich_help_panel="Dev")(
+    dev_tools.pre_commit_check
+)
+app.command("run-tests", hidden=_dev_hidden, rich_help_panel="Dev")(dev_tools.run_tests)
+app.command("start_web", hidden=_dev_hidden, rich_help_panel="Dev")(dev_tools.start_web)
+app.command("verify-clean-env", hidden=_dev_hidden, rich_help_panel="Dev")(
+    dev_tools.verify_clean_env
+)
+app.command("verify-do-secrets", hidden=_dev_hidden, rich_help_panel="Dev")(
+    dev_tools.verify_do_secrets
+)
+app.command("validate_specs", hidden=_dev_hidden, rich_help_panel="Dev")(
+    dev_tools.validate_specs
+)
+app.command("validate_i18n", hidden=_dev_hidden, rich_help_panel="Dev")(
+    dev_tools.validate_i18n
+)
 
 
 def main() -> None:

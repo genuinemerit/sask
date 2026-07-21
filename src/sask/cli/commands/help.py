@@ -1,10 +1,14 @@
-"""`sask help [topic]` (DD-0021, REQ-FUN-014, SPEC-034, DD-0022/SPEC-035).
+"""`sask help [topic]` (DD-0021, REQ-FUN-014, SPEC-034, DD-0022/SPEC-035, DD-0025).
 
 Renders help content from the SAME Markdown source the web /help route
 renders to HTML (sask.help.loader) — one source, two adapters. Locale-
 specific parallel documents (DD-0022) are selected the same way the web
 route does: (topic, bound locale) looked up against the known set built
 at startup, falling back to the base document on a miss.
+
+rich (DD-0025) renders the Markdown styled in a terminal; piped/redirected
+output stays the exact raw Markdown source (unchanged from SPEC-034), so
+scripting against `sask help` output is unaffected.
 """
 
 from __future__ import annotations
@@ -12,10 +16,14 @@ from __future__ import annotations
 from pathlib import Path
 
 import typer
+from rich.console import Console
+from rich.markdown import Markdown
 
 from sask.help.loader import discover_parallel_docs, discover_topics, index_path
 
 from .._paths import default_help_dir
+
+_console = Console()
 
 
 def _render_help(topic: str | None, locale: str, help_dir: Path) -> str:
@@ -62,4 +70,8 @@ def help_command(
     # matches a parallel doc key and falls back to the base document,
     # which is the correct behavior either way.
     locale = lang or "en-US"
-    typer.echo(_render_help(topic, locale, default_help_dir()))
+    text = _render_help(topic, locale, default_help_dir())
+    if _console.is_terminal:
+        _console.print(Markdown(text))
+    else:
+        typer.echo(text)

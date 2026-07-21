@@ -1,0 +1,40 @@
+id        = "REQ-SEC-006"
+title     = "CLI commands do not expose secrets or sensitive host info"
+category  = "SEC"
+priority  = "must"
+
+statement = """
+CLI commands shall never display secret values or sensitive host information.
+The verify-do-secrets command shall check the presence/validity of host secrets
+(e.g. the DigitalOcean token and SSH key) WITHOUT printing their values. The
+host_info command shall report only NON-SENSITIVE host information and shall not
+expose internal addresses, security-relevant paths, credentials, or other
+details that would aid an attacker. Any command that touches secrets or host
+detail shall follow the same redaction discipline as log output (REQ-SEC-004).
+"""
+
+rationale = """
+CLI output goes to terminals, scrollback, and potentially logs or shared
+screens; a secret or sensitive host detail printed by a command is a leak.
+verify-do-secrets exists to confirm secrets are correctly PLACED, which requires
+only presence/validity, never the value. host_info is a player-tier command,
+broadly accessible (and eventually available to lower-trust users once auth
+exists), so its output must be safe for a low-trust audience. Centralizing this
+as a security MUST prevents a convenience print from becoming an exposure.
+"""
+
+acceptance = """
+1. verify-do-secrets reports presence/validity (found/valid vs. missing/invalid)
+   for required host secrets and never prints any secret value.
+2. host_info output contains only non-sensitive information; a review confirms
+   no internal addresses, security-relevant paths, or credentials appear.
+3. No CLI command prints a known secret (DO token, SSH private key, future auth
+   material); a test asserts verify-do-secrets output excludes secret values.
+4. Secret/sensitive handling in the CLI follows the REQ-SEC-004 redaction
+   discipline.
+"""
+
+[links]
+implements   = ["DD-0025"]
+relates_to   = ["REQ-SEC-004", "REQ-FUN-017"]
+specified_by = ["SPEC-038"]

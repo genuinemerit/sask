@@ -37,8 +37,13 @@ bash tools/ops/connect.sh 'sudo journalctl -u sask -o cat -n 100 --no-pager'
 bash tools/ops/connect.sh 'sudo journalctl -u sask -o cat -f'
 
 # Automated check (criterion 7): recent lines are valid JSON, no
-# cleartext secrets, journald caps are applied:
-bash tools/ops/verify-logging.sh
+# cleartext secrets (DEBT-0001; SPEC-038's `logs verify` CLI command,
+# reading the local journal — no SSH needed once you're on the droplet):
+bash tools/ops/connect.sh 'sask logs verify'
+
+# The journald drop-in's SystemMaxUse/MaxRetentionSec caps are now asserted
+# automatically on every deploy (ansible/roles/base/tasks/main.yml) — no
+# separate manual check needed.
 
 # Change the production log level (INFO/DEBUG/TRACE/...); re-templates
 # the environment file via Ansible and restarts the service — see

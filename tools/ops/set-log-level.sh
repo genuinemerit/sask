@@ -8,9 +8,9 @@
 # SSH+sed edit would be invisible to Ansible and get silently reverted back
 # to the group_vars default on the next deploy.sh/redeploy.sh run.
 #
-# Intended to be called standalone now, and later from the CLI's
-# log-level-change command (once the CLI exists) — kept as a plain script
-# rather than inline Ansible so either caller can invoke it the same way.
+# Stays a standalone ops script, not a CLI command (DD-0021, reaffirmed by
+# DD-0025): service-mutating operations stay ops-side so Ansible remains the
+# single source of truth.
 #
 #   bash tools/ops/set-log-level.sh DEBUG
 #   bash tools/ops/set-log-level.sh INFO

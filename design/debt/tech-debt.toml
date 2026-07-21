@@ -6,7 +6,7 @@
 [[debt]]
 id               = "DEBT-0001"
 title            = "logs verify CLI command"
-status           = "open"
+status           = "resolved"
 raised           = "2026-07-09"
 source           = "analysis/tools-ops-vs-cli.md"
 area             = "cli"
@@ -20,16 +20,19 @@ journal on the droplet) rather than being SSH-only.
 """
 trigger          = "Next CLI round, once logs query has proven out in real use."
 open_subquestion = """
-verify-logging.sh's infra-config half (journald drop-in presence + SystemMaxUse/
-MaxRetentionSec caps) has no natural CLI home — decide then whether it stays ops
-bash or becomes an Ansible post-deploy assertion (so a deploy fails if the
-journald config is wrong).
+RESOLVED (SPEC-038): the infra-config half (journald drop-in presence +
+SystemMaxUse/MaxRetentionSec caps) became an Ansible post-deploy assertion
+(ansible/roles/base/tasks/main.yml, right after the drop-in is templated) so a
+deploy fails if the journald config is wrong. With both halves superseded
+(app-output -> `logs verify`; infra-config -> the Ansible assertion),
+tools/ops/verify-logging.sh was retired.
 """
+resolved_by      = "SPEC-038"
 
 [[debt]]
 id               = "DEBT-0002"
 title            = "set-log-level.sh stale comment"
-status           = "open"
+status           = "resolved"
 raised           = "2026-07-09"
 source           = "analysis/tools-ops-vs-cli.md"
 area             = "ops"
@@ -40,3 +43,21 @@ operations stay ops-side (to preserve Ansible as source of truth); the CLI
 aspiration is superseded and the comment is misleading.
 """
 trigger          = "Next time set-log-level.sh is edited for any unrelated reason (not worth a dedicated edit)."
+resolved_by      = "SPEC-038"
+
+[[debt]]
+id          = "DEBT-0003"
+title       = "Adopt rich for CLI presentation"
+status      = "resolved"
+raised      = "2026-07-09"
+source      = "design/analysis/saskan-app-alt-port/legacy-cli-deepening.md"
+area        = "cli"
+summary     = """
+SPEC-034's legacy-cli-deepening analysis deliberately declined a `rich`
+dependency for the first CLI round (no command yet needed rich's
+differentiating features - styled tables, panels, Markdown rendering - over
+plain typer.echo()). Filed as debt rather than a closed question because the
+CLI surface was expected to grow past that plain baseline.
+"""
+trigger     = "The CLI round that adds commands genuinely benefiting from styled output (tables, Markdown, structured results)."
+resolved_by = "SPEC-038"

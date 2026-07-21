@@ -1,0 +1,50 @@
+id        = "REQ-FUN-017"
+title     = "Expanded CLI command surface with dev tier and rich output"
+category  = "FUN"
+priority  = "should"
+
+statement = """
+The CLI shall expand its command surface, sorted by tier: ADMIN commands
+(logs verify, acceptance-test, run_perf) that consume/verify the running app;
+DEV commands (check_page_staleness, pre-commit-check, run-tests, start_web,
+verify-clean-env, verify-do-secrets, validate_specs, validate_i18n) available
+only in a development environment, gated by a SASK_ENV-style environment
+variable and erroring cleanly elsewhere; and PLAYER commands (host_info,
+validate_json). Each command shall remain a thin adapter over shared/clean-room
+logic (no reimplementation or new behavior of the underlying scripts).
+Infrastructure/service-mutating operations (deploy, redeploy, set-log-level)
+shall NOT be CLI commands (they remain in the ops harness). The CLI shall use
+rich for terminal presentation, styling additively and degrading to plain text
+when output is not a terminal.
+"""
+
+rationale = """
+Completing the command surface now lets the forthcoming auth round enforce
+player/admin tiers against a stable surface rather than a growing one (DD-0025).
+A dev tier, gated by environment rather than role, gives immediate protection
+for developer tooling without needing auth. Keeping infra/service-mutating ops
+out of the CLI reaffirms DD-0021's ops-vs-CLI boundary and Ansible-as-source-of-
+truth. rich (already a Typer transitive dependency) improves output with no new
+dependency, and degrading-to-plain preserves the pipe-clean behavior from
+SPEC-034.
+"""
+
+acceptance = """
+1. Admin commands logs verify, acceptance-test, run_perf exist as thin adapters
+   over shared logic; they consume/verify the app and mutate no service.
+2. Dev commands (the eight listed) are available only when SASK_ENV indicates a
+   dev environment; in a non-dev environment they are unavailable/error cleanly.
+3. Player commands host_info and validate_json exist and are read-only.
+4. deploy, redeploy, set-log-level are NOT CLI commands.
+5. Commands are tagged by tier (player/admin/dev); player/admin tags are not yet
+   enforced (auth later); dev is enforced now by SASK_ENV.
+6. rich renders help/tables/structured output and degrades to plain text when
+   piped/redirected.
+7. No wrapped script's behavior is changed.
+8. Full suite passes at the new count; pre-commit and validate_specs clean.
+"""
+
+[links]
+implements   = ["DD-0025"]
+relates_to   = ["DD-0021", "REQ-SEC-006"]
+specified_by = ["SPEC-038"]

@@ -14,6 +14,10 @@ from pathlib import Path
 _REPO_ROOT = Path(__file__).resolve().parent.parent.parent.parent
 
 
+def repo_root() -> Path:
+    return _REPO_ROOT
+
+
 def default_config_dir() -> Path:
     return _REPO_ROOT / "config"
 

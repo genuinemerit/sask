@@ -1,0 +1,143 @@
+id     = "SPEC-038"
+title  = "CLI Round Two: command surface, dev gating, rich presentation"
+status = "accepted"
+
+[implements]
+requirements = ["REQ-FUN-017", "REQ-SEC-006"]
+decisions    = ["DD-0025"]
+notes = """
+Completes the CLI command surface (admin/dev/player tiers) ahead of the auth
+round. Reaffirms DD-0021's ops-vs-CLI boundary (deploy/redeploy/set-log-level
+excluded). Adopts rich as the presentation layer. Retires DEBT-0001/0002/0003.
+"""
+
+[scope]
+in = """
+New admin, dev, and player CLI commands wrapping existing scripts as thin
+adapters over shared logic; SASK_ENV-based dev-tier gating; rich presentation
+(degrading to plain when non-terminal); the REQ-SEC-006 secret/sensitive-output
+safeguards; the DEBT-0002 comment fix; tests; and surfacing DEBT-0001's
+infrastructure-half sub-question for decision.
+"""
+
+out = """
+- CLI commands for deploy, redeploy, set-log-level or any service/infra-mutating
+  op (stay ops-only, DD-0021/DD-0025).
+- Auth enforcement of player/admin tiers (next round; tags only here).
+- Any behavior change to the wrapped scripts (invoke/share existing logic).
+- New ops or dev scripts (this wraps existing ones).
+"""
+
+[deliverables]
+env_gating = """
+Add a SASK_ENV-style environment indicator (consistent with SASK_LOG_LEVEL /
+SASK_LOCALE) that the CLI reads to determine dev vs. non-dev. Dev-tier commands
+are registered/visible and runnable only when the environment is dev; in a
+non-dev environment they are absent from help and error cleanly with a clear
+"available only in a development environment" message. Document the variable in
+dev-setup. This gating is enforced NOW (no auth needed).
+"""
+
+admin_commands = """
+Admin-tier commands, each a thin adapter over the existing script's logic (no
+behavior change), tagged admin (enforcement deferred to auth):
+- logs verify (DEBT-0001): the app-output-checking half of verify-logging.sh
+  (JSON well-formed + no-secrets in the log stream), reusing the logs query
+  journalctl-wrapping machinery; runs against the local environment's journal.
+- acceptance-test: runs the acceptance suite against the app.
+- run_perf: runs the performance benchmark(s).
+"""
+
+dev_commands = """
+Dev-tier commands (SASK_ENV-gated), thin adapters over existing dev scripts:
+check_page_staleness, pre-commit-check, run-tests, start_web, verify-clean-env,
+verify-do-secrets, validate_specs, validate_i18n. Each invokes/shares the
+existing script's logic. verify-do-secrets must follow REQ-SEC-006 (presence/
+validity only, never print values).
+"""
+
+player_commands = """
+Player-tier commands (read-only): host_info (scoped to NON-SENSITIVE host info
+per REQ-SEC-006), validate_json (generic JSON validation utility). Tagged player
+(enforcement deferred to auth).
+"""
+
+rich_presentation = """
+Adopt rich as the CLI presentation layer (DEBT-0003): render help Markdown,
+style tables (asset inventory, results) and structured output. Styling is
+additive and MUST degrade to plain text when output is not a terminal (piped/
+redirected), preserving SPEC-034's pipe-clean behavior; rely on rich's terminal
+auto-detection. No new dependency (rich is already transitive via Typer);
+confirm it is available and pin/declare it explicitly if appropriate.
+"""
+
+secret_safety = """
+Implement REQ-SEC-006: verify-do-secrets reports found/valid vs. missing/invalid
+for required host secrets WITHOUT printing values; host_info emits only
+non-sensitive fields (no internal addresses, security-relevant paths, or
+credentials). Apply the REQ-SEC-004 redaction discipline to any command that
+touches secrets or host detail.
+"""
+
+debt_items = """
+- DEBT-0002: fix the stale "later from the CLI" comment in set-log-level.sh
+  (which stays ops-only).
+- DEBT-0001 sub-question: SURFACE (do not silently drop) the disposition of
+  verify-logging.sh's infrastructure-checking half (journald drop-in presence +
+  SystemMaxUse/MaxRetentionSec caps) - recommend whether it stays ops bash or
+  becomes an Ansible post-deploy assertion; implement the chosen option or record
+  it as a follow-on if larger than this round.
+- DEBT-0003: retired by rich_presentation.
+Update design/debt/tech-debt.toml: mark DEBT-0002 and DEBT-0003 resolved (with
+resolved_by pointing here); update DEBT-0001 to reflect logs verify shipped and
+its remaining infra-half sub-question status.
+"""
+
+tests = """
+tests/test_spec_038.py:
+- Each command is a thin adapter delegating to shared logic (no new behavior);
+  verify by asserting delegation/output, not by re-testing the underlying script.
+- SASK_ENV gating: dev commands run in dev, are absent/error cleanly in non-dev;
+  admin/player commands run regardless of SASK_ENV.
+- REQ-SEC-006: verify-do-secrets output contains presence/validity but NO secret
+  value (assert a known secret string is absent); host_info output excludes
+  sensitive fields.
+- rich: output degrades to plain text when not a terminal (piped) - assert no
+  escape sequences in piped output; styled when a terminal.
+- Tier tags are present on all commands (player/admin/dev), ready for auth.
+Full suite passes at the new count; pre-commit and validate_specs clean.
+"""
+
+design_doc_status = """
+On acceptance set DD-0025, SPEC-038 to "accepted"; update the debt register per
+debt_items; add a devlog entry (the expanded surface, the dev tier + SASK_ENV
+gating, rich adoption, the secret-safety measures, and the DEBT-0001 infra-half
+decision).
+"""
+
+[acceptance]
+criteria = """
+1. Admin (logs verify, acceptance-test, run_perf), dev (the eight, SASK_ENV-
+   gated), and player (host_info, validate_json) commands exist as thin adapters
+   over shared logic; no wrapped script's behavior changed.
+2. deploy, redeploy, set-log-level are NOT CLI commands.
+3. Dev commands run only in a dev environment (SASK_ENV) and error cleanly
+   elsewhere; admin/player commands are environment-independent.
+4. rich renders styled output in a terminal and plain text when piped.
+5. REQ-SEC-006 holds: verify-do-secrets prints no secret values; host_info is
+   non-sensitive; tests assert both.
+6. All commands carry tier tags (player/admin/dev) for later auth enforcement.
+7. Debt register updated (DEBT-0002/0003 resolved; DEBT-0001 advanced);
+   set-log-level.sh comment fixed.
+8. Full suite passes at the new count; pre-commit and validate_specs clean.
+"""
+
+uat = """
+[manual] In dev: run representative admin, dev, and player commands; confirm
+styled rich output in the terminal and plain output when piped to a file.
+Confirm dev commands work in dev. In a non-dev environment (or with SASK_ENV
+unset/prod): confirm dev commands are unavailable/error cleanly while admin/
+player commands still run. Run verify-do-secrets and confirm it reports status
+without showing values; run host_info and confirm no sensitive fields. Confirm
+deploy/redeploy/set-log-level are not offered by the CLI.
+"""

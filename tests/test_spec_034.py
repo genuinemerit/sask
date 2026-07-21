@@ -318,13 +318,27 @@ def test_cli_app_is_runnable_via_typer_testrunner():
 
 
 def test_no_command_offers_a_service_mutating_action():
-    """No SPEC-034 command name suggests service mutation (start/stop/restart/
-    deploy/set-*) — a structural sanity check on the initial command set.
+    """No command name visible by default suggests service mutation
+    (start/stop/restart/deploy/set-*) — a structural sanity check on the
+    command set. Invoked via subprocess with SASK_ENV explicitly unset
+    (rather than the shared in-process cli_app) so the result doesn't depend
+    on whatever SASK_ENV value happened to be ambient when sask.cli was
+    first imported by this test session — DD-0025's dev-tier command
+    visibility (e.g. start_web, a dev-only Flask-server convenience, not a
+    service mutation) is fixed once at CLI process start and only appears
+    with SASK_ENV=dev explicitly set (see test_spec_038.py).
     """
-    result = runner.invoke(cli_app, ["--help"])
-    assert result.exit_code == 0
+    env = {**os.environ, "PYTHONPATH": str(PROJECT_ROOT / "src")}
+    env.pop("SASK_ENV", None)
+    result = subprocess.run(
+        [sys.executable, "-m", "sask.cli", "--help"],
+        capture_output=True,
+        text=True,
+        env=env,
+    )
+    assert result.returncode == 0
     forbidden = ("start", "stop", "restart", "deploy", "destroy", "set-log-level")
-    lowered = result.output.lower()
+    lowered = result.stdout.lower()
     for word in forbidden:
         assert word not in lowered
 

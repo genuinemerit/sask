@@ -115,3 +115,22 @@
     group: root
     mode: "0644"
   notify: Restart journald
+
+# DEBT-0001 infra half (DD-0025): a deploy-time replacement for the retired
+# tools/ops/verify-logging.sh's manual drop-in check — a missing/broken cap
+# now fails the deploy itself rather than requiring a separate manual script
+# run over SSH after the fact.
+- name: Read back the journald drop-in for verification
+  ansible.builtin.slurp:
+    src: /etc/systemd/journald.conf.d/sask.conf
+  register: sask_journald_dropin_readback
+
+- name: Assert the journald drop-in carries both size/retention caps
+  ansible.builtin.assert:
+    that:
+      - "'SystemMaxUse=' in (sask_journald_dropin_readback.content | b64decode)"
+      - "'MaxRetentionSec=' in (sask_journald_dropin_readback.content | b64decode)"
+    fail_msg: >-
+      /etc/systemd/journald.conf.d/sask.conf is missing SystemMaxUse=
+      and/or MaxRetentionSec= after templating.
+    success_msg: "journald drop-in caps verified present"

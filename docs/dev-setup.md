@@ -132,6 +132,23 @@ bash tools/dev/pre-commit-check.sh
 
 Every check must exit 0.
 
+## 8. SASK_ENV — enable dev-tier CLI commands
+
+`SASK_ENV`, set alongside `SASK_LOG_LEVEL`/`SASK_LOCALE` in your shell
+profile, is the CLI's dev/non-dev signal (DD-0025). With `SASK_ENV=dev`, the
+CLI's dev-tier commands — thin wraps of the same scripts above
+(`check_page_staleness`, `pre-commit-check`, `run-tests`, `start_web`,
+`verify-clean-env`, `verify-do-secrets`, `validate_specs`, `validate_i18n`)
+— appear in `sask --help` and run; without it they're hidden and refuse to
+run with a clean error. Player- and admin-tier commands are unaffected
+either way.
+
+```bash
+export SASK_ENV=dev   # add to your shell profile for day-to-day dev work
+sask --help            # dev-tier commands now listed under "Dev"
+sask pre-commit-check  # same script as `bash tools/dev/pre-commit-check.sh`
+```
+
 ---
 
 ## Host secrets (manual)

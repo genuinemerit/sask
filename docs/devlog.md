@@ -1,5 +1,67 @@
 # Dev log
 
+## 2026-07-21 — SPEC-038/DD-0025: CLI Round Two — dev tier, expanded surface, rich
+
+SPEC-038 and DD-0025 both `accepted`. Completes the CLI command surface
+ahead of the auth round (DD-0021's first round covered player/admin basics;
+this round adds the rest so auth enforces against a stable surface, not a
+growing one) and adopts `rich` for terminal presentation.
+
+**Tier model expands to {player, admin, dev}** (`src/sask/cli/__init__.py`):
+every command/group now carries `rich_help_panel="Player"/"Admin"/"Dev"` —
+doubling as visible grouping in `--help` and a structural tag tests assert
+on (`app.registered_commands`/`registered_groups`), the auth seam DD-0021
+named. Player/admin stay tagged-but-unenforced (auth later); dev is the one
+tier enforced now, via a new `SASK_ENV` environment variable
+(`src/sask/cli/_env.py`, same fresh-process-per-invocation model
+`SASK_LOG_LEVEL`/`SASK_LOCALE` already use) — dev commands are hidden from
+`--help` and refuse to run with a clean message unless `SASK_ENV=dev`.
+Documented in `docs/dev-setup.md` §8.
+
+**New commands**, each a thin adapter (subprocess wrap or direct reuse of
+existing logic — no wrapped script's behavior changed):
+
+- Admin: `logs verify` (DEBT-0001 — reuses `logs query`'s journalctl argv
+  machinery to check the local journal for well-formed app JSON and
+  cleartext secrets, superseding the SSH-only `verify-logging.sh`),
+  `acceptance-test`, `run_perf`.
+- Dev (SASK_ENV-gated, `src/sask/cli/commands/dev_tools.py`):
+  `check_page_staleness`, `pre-commit-check`, `run-tests`, `start_web`,
+  `verify-clean-env`, `verify-do-secrets`, `validate_specs`, `validate_i18n`.
+- Player: `host_info` (REQ-SEC-006 — a new, independent implementation
+  scoped to non-sensitive fields only: platform/release/version/
+  architecture/python-version/processor/ram; hostname/IP/MAC are never
+  collected, not filtered after the fact) and `validate_json` (full
+  JSON-Schema validation, self-contained since `tools/` isn't part of the
+  deployed package).
+- `deploy`/`redeploy`/`set-log-level` remain ops-only (DD-0021 reaffirmed).
+
+**Dependencies**: `psutil` and `jsonschema` moved from the dev group to
+main (so `host_info`/`validate_json` work in prod, not just dev); `rich`
+added as an explicit direct main dependency (previously only transitive via
+Typer). `requirements.txt` regenerated.
+
+**rich adoption** (DEBT-0003, retired): `formatting.py`, `help.py`,
+`asset.py` render styled tables/Markdown in a terminal; piped/redirected
+output stays byte-identical to the pre-rich plain text (not merely
+de-colored rich glyphs), preserving SPEC-034's pipe-clean behavior.
+
+**DEBT-0001 infra half resolved**: the journald drop-in's `SystemMaxUse`/
+`MaxRetentionSec` caps are now asserted automatically on every deploy
+(`ansible/roles/base/tasks/main.yml`, right after the drop-in is
+templated), rather than needing a separate manual script run. With both
+halves of `verify-logging.sh` superseded (app-output → `logs verify`;
+infra-config → the Ansible assertion), the script was retired;
+`docs/deploy-runbook.md` updated accordingly.
+
+**DEBT-0002 resolved**: `set-log-level.sh`'s stale "later from the CLI"
+comment fixed — it stays ops-only per DD-0021/DD-0025.
+
+`tests/test_spec_038.py` (38 tests) plus one hardened SPEC-034 test
+(`test_no_command_offers_a_service_mutating_action`, now SASK_ENV-explicit
+via subprocess so it doesn't depend on whatever `SASK_ENV` happened to be
+ambient at first import). Full suite: 857 passed. Pre-commit clean.
+
 ## 2026-07-21 — SPEC-036/DD-0023 accepted: full localization complete
 
 SPEC-036 and DD-0023 are both flipped `proposed` → `accepted`. This closes
