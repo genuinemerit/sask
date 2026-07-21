@@ -1,0 +1,8 @@
+# Tracks which base-source content hash each committed es-ES
+# translation was last reviewed against (DD-0023 page-is-code
+# staleness check, SPEC-036). Updated ONLY by a human running
+# `check_page_staleness.py --acknowledge <topic>` after reviewing
+# a fresh/updated translation -- never auto-updated by the builder.
+
+[getting-started]
+es-ES = "sha256:6ffce758be82ff390e7c91dc71ad60a75680f190127dab8cb9b138021796aff5"

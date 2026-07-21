@@ -1,5 +1,80 @@
 # Dev log
 
+## 2026-07-21 — SPEC-036/DD-0023 in progress: catalog, lore.py, page builder, LABEL tier
+
+First implementation round of SPEC-036 (full localization, implementing
+DD-0023's refinement of DD-0022's parallel-doc mechanism into a
+build-generated static-page model). DD-0023/SPEC-036 stay `"proposed"` —
+this entry covers work in progress, not acceptance; remaining tiers,
+dynamic-content decomposition, the deploy gate, and prod UAT are still
+ahead.
+
+**Proper-noun catalog** (DD-0022's respelling principle): every invented
+Saskan term across bodies/stars/comets and the lore-calendar vocabulary
+(~145 terms — moons, planets, Fatune, 16 fixed stars, 3 comets, plus
+month/day/era/age/festival/round/turn/moon words across all 5 lore
+calendars) proposed as a flat review table, human-reviewed and edited by
+the user (mostly respellings — e.g. Fatune→Fatún, Endor→Éndor,
+Range→Rendj — a handful left invariant), then adopted verbatim into
+`config/i18n/{en-US,es-ES}.toml`.
+
+**`lore.py` locale-parameterization** (a scope addition beyond the
+original SPEC-035 canary, explicitly approved): `render_lore_time`/
+`render_lore_date`/`apply_lore_overlay` now take an explicit `locale`
+argument; vocabulary and the format template itself resolve from the
+catalog rather than raw English config fields. Real Spanish grammar
+issues found and fixed: feminine watch names (agree with "Guardia"), "en"
+instead of "de" before age names (avoids a de+el→del contraction bug for
+masculine ages), "del" contraction for round/turn words, feminine
+ordinal marker on Hearth's "la vuelta" count. `tests/test_spec_017.py`'s
+21 pre-existing tests pass unchanged (en-US output byte-identical).
+
+**Dev-side page builder** (DD-0023, `tools/dev/build_i18n_pages.py`):
+generates rendered per-locale pages from tagged base sources
+(`docs/help_src/*.md`) + catalog — en-US deterministic and proven to
+match a fresh regeneration by test; es-ES produces a proper-noun-
+substituted draft (never auto-shipped) to a gitignored scratch location
+for human translation. The SPEC-035 canary's hand-authored
+`getting-started.es-ES.md` was migrated by reconstructing its tagged
+base and keeping the existing reviewed translation as the artifact
+(rather than regenerating and re-reviewing a working translation).
+
+**Pre-commit staleness check** (`tools/dev/check_page_staleness.py`,
+wired into `pre-commit-check.sh`): en-US hard-fails if stale relative to
+a fresh rebuild; es-ES hard-fails if the base changed since the
+translation was last reviewed, via a committed
+`docs/help_src/translation-status.toml` manifest and an explicit
+`--acknowledge` command as the human sign-off (not a bypass flag).
+
+**LABEL tier**: ~130 UI-chrome strings (page titles, form legends/
+fields, buttons, table headers, section headings, moon-phase names, the
+16-point compass, brightness bands, Yes/No) inventoried across all 8
+templates + `translator.py`'s lookup tables, proposed as a review table,
+human-reviewed (mostly Spanish sentence-case capitalization fixes, plus
+"Lore" → "tradición local"), then wired into the catalog and all 8
+templates via `{{ t("tag") }}`.
+
+While wiring the LABEL tier, found and fixed a real gap: the reviewed
+proper-noun catalog wasn't actually connected to any render path except
+`lore.py`'s calendar dates — body/star/comet names still showed raw
+English everywhere else (`/moons`, `/planets`, `/sky`). Fixed by
+threading `locale`/`i18n` through `translator.py`'s `to_moon_view`/
+`to_planet_view` and resolving `id`-based tags directly in `sky.html`'s
+moons/planets/comets/co-fullness sections. Verified live via the Flask
+test client in both locales, not just passing assertions.
+
+Deliberately left English, correctly deferred to later tiers: house
+names, lunar-calendar names, body/star free-text config fields
+(`notes`/`apparent_color`/`position`), and composed-prose sentences
+(co-fullness counts, "above/below horizon", the ephemeris instructional
+paragraph).
+
+**Tests**: `tests/test_spec_036.py` grew to 21 tests (catalog invariance/
+respelling, the strict gate, es-ES lore-rendering grammar edge cases,
+page-builder determinism, staleness-check fail/recover paths, LABEL-tier
+name resolution incl. a live Flask-client check). Full suite: 797
+passed. Pre-commit clean, including the new `check_page_staleness` step.
+
 ## 2026-07-13 — SPEC-035 accepted: prod deploy + redeploy verified, DD-0022/SPEC-035 → accepted
 
 Deployed the i18n port to the live droplet via `tools/ops/deploy.sh`

@@ -71,17 +71,17 @@ def test_get_cofullness_one_year(benchmark):
 
 @pytest.mark.parametrize("culture", ("fatunik", "terpin"))
 def test_render_lore_time(benchmark, culture):
-    benchmark(render_lore_time, STORY, culture, CONFIG)
+    benchmark(render_lore_time, STORY, culture, CONFIG, "en-US")
 
 
 def test_render_lore_date_solar(benchmark):
     date = astro_to_fatunik(STORY, CONFIG)
-    benchmark(render_lore_date, date, "fatunik_solar", CONFIG)
+    benchmark(render_lore_date, date, "fatunik_solar", CONFIG, "en-US")
 
 
 def test_render_lore_date_lunar(benchmark):
     date = get_lunar_date(STORY, "untamed", CONFIG)
-    benchmark(render_lore_date, date, "untamed", CONFIG)
+    benchmark(render_lore_date, date, "untamed", CONFIG, "en-US")
 
 
 # ── Ephemeris sweep (SPEC-015) ──────────────────────────────────────────────────

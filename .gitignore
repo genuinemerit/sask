@@ -41,3 +41,8 @@ Thumbs.db
 
 # tools/helpers/make_tree.sh output
 /tree.txt
+
+# SPEC-036/DD-0023 page-builder scratch output: proper-noun-substituted,
+# not-yet-translated es-ES drafts awaiting human review before promotion
+# to docs/help/*.es-ES.md. Transient working files, not a reviewed artifact.
+/docs/help_src/.drafts/

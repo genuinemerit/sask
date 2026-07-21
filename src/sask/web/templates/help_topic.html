@@ -1,13 +1,13 @@
 {% extends "base.html" %}
 
-{% block title %}Saskan Calendar — Help: {{ topic }}{% endblock %}
+{% block title %}{{ t("title.help_topic_short").replace("{topic}", topic) }}{% endblock %}
 
 {% block content %}
 {% if content_html %}
 {{ content_html | safe }}
 {% else %}
-<h1>Help topic not found</h1>
+<h1>{{ t("title.help_topic_not_found") }}</h1>
 <p class="error">No help topic named "{{ topic }}".</p>
 {% endif %}
-<p><a href="/help">Back to Help</a></p>
+<p><a href="/help">{{ t("label.link.back_to_help") }}</a></p>
 {% endblock %}

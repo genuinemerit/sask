@@ -1,12 +1,16 @@
 """Presentation translators: message units → view models (SPEC-005, SPEC-009).
 
-Converts raw engine output into display-ready strings. No web-layer dependency.
+Converts raw engine output into display-ready strings. No web-layer dependency
+beyond the i18n resolver (locale is an explicit argument throughout, DD-0022 —
+never ambient state).
 """
 
 from __future__ import annotations
 
 from dataclasses import dataclass
 
+from ..config_loader import I18nCatalog
+from ..i18n.catalog import resolve
 from ..message import BodyState, PulseInfo, SkyPosition
 
 
@@ -42,32 +46,33 @@ def to_pulse_view(info: PulseInfo) -> PulseViewModel:
 
 # ── SPEC-009 helpers ───────────────────────────────────────────────────────────
 
-_CARDINAL = [
-    "N",
-    "NNE",
-    "NE",
-    "ENE",
-    "E",
-    "ESE",
-    "SE",
-    "SSE",
-    "S",
-    "SSW",
-    "SW",
-    "WSW",
-    "W",
-    "WNW",
-    "NW",
-    "NNW",
+_CARDINAL_TAGS = [
+    "compass.n",
+    "compass.nne",
+    "compass.ne",
+    "compass.ene",
+    "compass.e",
+    "compass.ese",
+    "compass.se",
+    "compass.sse",
+    "compass.s",
+    "compass.ssw",
+    "compass.sw",
+    "compass.wsw",
+    "compass.w",
+    "compass.wnw",
+    "compass.nw",
+    "compass.nnw",
 ]
 
 
-def _cardinal(az_deg: float) -> str:
-    return _CARDINAL[int((az_deg + 11.25) / 22.5) % 16]
+def _cardinal(az_deg: float, locale: str, i18n: I18nCatalog) -> str:
+    tag = _CARDINAL_TAGS[int((az_deg + 11.25) / 22.5) % 16]
+    return resolve(tag, locale, i18n)
 
 
-def _az_str(az_deg: float) -> str:
-    return f"{az_deg:.1f}° {_cardinal(az_deg)}"
+def _az_str(az_deg: float, locale: str, i18n: I18nCatalog) -> str:
+    return f"{az_deg:.1f}° {_cardinal(az_deg, locale, i18n)}"
 
 
 def _alt_str(alt_deg: float) -> str:
@@ -75,31 +80,39 @@ def _alt_str(alt_deg: float) -> str:
     return f"{sign}{alt_deg:.1f}°"
 
 
-def _pulse_str(p: int | None, circumpolar: bool, never_rising: bool) -> str:
+def _pulse_str(
+    p: int | None,
+    circumpolar: bool,
+    never_rising: bool,
+    locale: str,
+    i18n: I18nCatalog,
+) -> str:
     if circumpolar:
-        return "circumpolar"
+        return resolve("misc.circumpolar_value", locale, i18n)
     if never_rising:
-        return "never rises"
+        return resolve("misc.never_rises", locale, i18n)
     return str(p) if p is not None else "—"
 
 
-def _phase_name(syn: float) -> str:
+_PHASE_TAGS = (
+    (0.03, "phase.new"),
+    (0.22, "phase.waxing_crescent"),
+    (0.28, "phase.first_quarter"),
+    (0.47, "phase.waxing_gibbous"),
+    (0.53, "phase.full"),
+    (0.72, "phase.waning_gibbous"),
+    (0.78, "phase.last_quarter"),
+)
+
+
+def _phase_name(syn: float, locale: str, i18n: I18nCatalog) -> str:
     """Rough phase name from synodic fraction (0=new, 0.5=full)."""
-    if syn < 0.03 or syn >= 0.97:
-        return "New"
-    if syn < 0.22:
-        return "Waxing Crescent"
-    if syn < 0.28:
-        return "First Quarter"
-    if syn < 0.47:
-        return "Waxing Gibbous"
-    if syn < 0.53:
-        return "Full"
-    if syn < 0.72:
-        return "Waning Gibbous"
-    if syn < 0.78:
-        return "Last Quarter"
-    return "Waning Crescent"
+    if syn >= 0.97:
+        return resolve("phase.new", locale, i18n)
+    for threshold, tag in _PHASE_TAGS:
+        if syn < threshold:
+            return resolve(tag, locale, i18n)
+    return resolve("phase.waning_crescent", locale, i18n)
 
 
 # ── SPEC-009 moon view model ───────────────────────────────────────────────────
@@ -125,24 +138,40 @@ class MoonViewModel:
     notes: str
 
 
+_ECLIPSE_TAGS = {"solar": "misc.eclipse_solar", "lunar": "misc.eclipse_lunar"}
+
+
 def to_moon_view(
-    body: BodyState, sky: SkyPosition, notes: str, albedo: float = 0.0
+    body: BodyState,
+    sky: SkyPosition,
+    notes: str,
+    albedo: float,
+    locale: str,
+    i18n: I18nCatalog,
 ) -> MoonViewModel:
-    eclipse = body.eclipse_type.capitalize() if body.eclipse_type else "—"
+    eclipse = (
+        resolve(_ECLIPSE_TAGS[body.eclipse_type], locale, i18n)
+        if body.eclipse_type
+        else "—"
+    )
     return MoonViewModel(
-        name=body.name,
-        phase_name=_phase_name(body.synodic_fraction),
+        name=resolve(f"body.{body.name.lower()}", locale, i18n),
+        phase_name=_phase_name(body.synodic_fraction, locale, i18n),
         illuminated_pct=f"{body.illuminated_fraction * 100:.1f}%",
         albedo=f"{albedo:.3f}",
         is_visible=body.is_visible and sky.above_horizon,
         visibility_pct=f"{body.visibility * 100:.1f}%",
         eclipse=eclipse,
         altitude=_alt_str(sky.altitude_deg),
-        azimuth=_az_str(sky.azimuth_deg),
+        azimuth=_az_str(sky.azimuth_deg, locale, i18n),
         above_horizon=sky.above_horizon,
-        rise_pulse=_pulse_str(sky.rise_pulse, sky.is_circumpolar, sky.is_never_rising),
+        rise_pulse=_pulse_str(
+            sky.rise_pulse, sky.is_circumpolar, sky.is_never_rising, locale, i18n
+        ),
         transit_pulse=str(sky.transit_pulse),
-        set_pulse=_pulse_str(sky.set_pulse, sky.is_circumpolar, sky.is_never_rising),
+        set_pulse=_pulse_str(
+            sky.set_pulse, sky.is_circumpolar, sky.is_never_rising, locale, i18n
+        ),
         notes=notes,
     )
 
@@ -179,22 +208,28 @@ def to_planet_view(
     rings: str | None,
     visible_moons: int | None,
     notes: str,
+    locale: str,
+    i18n: I18nCatalog,
 ) -> PlanetViewModel:
     rings_str = rings if rings and rings.lower() != "none" else "None"
     moons_str = str(visible_moons) if visible_moons is not None else "0"
     return PlanetViewModel(
-        name=body.name,
+        name=resolve(f"body.{body.name.lower()}", locale, i18n),
         apparent_color=apparent_color,
-        phase_name=_phase_name(body.synodic_fraction),
+        phase_name=_phase_name(body.synodic_fraction, locale, i18n),
         illuminated_pct=f"{body.illuminated_fraction * 100:.1f}%",
         is_visible=body.is_visible and sky.above_horizon,
         visibility_pct=f"{body.visibility * 100:.1f}%",
         altitude=_alt_str(sky.altitude_deg),
-        azimuth=_az_str(sky.azimuth_deg),
+        azimuth=_az_str(sky.azimuth_deg, locale, i18n),
         above_horizon=sky.above_horizon,
-        rise_pulse=_pulse_str(sky.rise_pulse, sky.is_circumpolar, sky.is_never_rising),
+        rise_pulse=_pulse_str(
+            sky.rise_pulse, sky.is_circumpolar, sky.is_never_rising, locale, i18n
+        ),
         transit_pulse=str(sky.transit_pulse),
-        set_pulse=_pulse_str(sky.set_pulse, sky.is_circumpolar, sky.is_never_rising),
+        set_pulse=_pulse_str(
+            sky.set_pulse, sky.is_circumpolar, sky.is_never_rising, locale, i18n
+        ),
         brightness_rel=f"{body.brightness:.4f}",
         rings=rings_str,
         visible_moons=moons_str,

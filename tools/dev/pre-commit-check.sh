@@ -47,4 +47,11 @@ run_check "pytest (validate_specs suite)" \
 run_check "validate_i18n" \
     python3 tools/dev/validate_i18n.py
 
+# DD-0023 page-is-code: en-US rendered pages must match a fresh
+# regeneration (hard-fail if stale); es-ES pages must be re-reviewed and
+# re-acknowledged after any base-source change (hard-fail, no auto-fix —
+# see tools/dev/check_page_staleness.py's own docstring for the override).
+run_check "check_page_staleness" \
+    poetry run python3 tools/dev/check_page_staleness.py
+
 printf '\n[ALL PASS] Pre-commit checks complete.\n'

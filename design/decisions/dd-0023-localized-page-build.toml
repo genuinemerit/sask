@@ -1,0 +1,152 @@
+id     = "DD-0023"
+title  = "Localized full-text pages: build-generated per-locale artifacts from tagged base sources"
+status = "proposed"
+date   = "2026-07-13"
+
+[context]
+summary = """
+DD-0022 established two localization mechanisms: tag substitution for short
+strings, and parallel per-locale DOCUMENTS for long-form prose (help pages),
+where a parallel document was assumed to be hand-authored per locale. Building
+out full localization surfaced a cleaner model for the full-text pages,
+combining the two mechanisms: a single tagged BASE source per page (English
+prose + i18n catalog tags for invented proper nouns) from which a dev-side BUILD
+step GENERATES clean, static, fully-baked per-locale pages for every supported
+locale (including en-US). This DD records that refinement to DD-0022's
+parallel-doc mechanism. It follows the i18n canary (SPEC-035), which is deployed
+and UAT-verified in production.
+"""
+
+problem = """
+Two problems with hand-authored parallel documents: (1) invented proper nouns
+(e.g. Fatune/Fatun-with-accent) would be embedded by hand in every translated
+page, so a respelling change means hunting through many pages; and (2) if the
+base/served English page itself carried catalog tags, rendering it would still
+require request-time tag lookup, making en-US asymmetric with the fully-baked
+translations. Full-page AI translation is now good enough for the ordinary
+prose (verified on the canary), but cannot be trusted with invented vocabulary.
+The model must keep invented terms catalog-managed, keep served pages clean and
+lookup-free in EVERY language, and keep translation a reviewable dev activity.
+"""
+
+[decision]
+summary = """
+Full-text pages use three artifact types: a tagged BASE source (authoring
+input, dev-only), the shared term CATALOG, and GENERATED per-locale rendered
+pages (the served artifact, static and fully-baked, one per supported locale
+including en-US). A dev-side build command generates the rendered pages from
+base + catalog; only rendered pages deploy to prod. Editing a page is treated
+as a code change: built, checked, reviewed, committed - all in dev.
+"""
+
+three_artifacts = """
+- BASE / TEMPLATE page (source; dev-only, NOT served): English prose with i18n
+  catalog tags embedded for invented proper nouns (e.g. "... the moon
+  {body.fatune} rises ..."). This is what the maintainer edits. One per page.
+- CATALOG (shared source of truth): per-locale spellings of invented terms
+  (body.fatune -> "Fatune" en-US, the accented respelling es-ES). The SAME
+  catalog the short-string tag mechanism uses - one authoritative per-locale
+  term vocabulary, consumed by both mechanisms.
+- RENDERED per-locale page (build output; the SERVED artifact): a clean, static,
+  fully-baked document per supported locale INCLUDING en-US - tags resolved to
+  that locale's spellings, and (for non-base locales) the prose translated.
+  Contains no tags; requires no request-time lookup.
+"""
+
+build_step = """
+A dev command (the page builder) generates all rendered per-locale pages from
+the base sources + catalog:
+- en-US: resolve tags to en-US spellings; no translation. Deterministic.
+- Non-base (es-ES): resolve tags to the locale's spellings, then translate the
+  surrounding prose (substitute-then-translate: correct proper nouns are placed
+  first, then the prose is machine-translated with an instruction to PRESERVE
+  those proper nouns), producing a reviewable draft.
+The builder runs ONLY in dev. It is not a deploy step (see dev_prod_split).
+"""
+
+dev_prod_split = """
+Dev holds the SOURCES (base/template pages) and the BUILD TOOLING; prod holds
+ONLY the rendered per-locale pages. The build tooling and base pages are never
+required on the droplet. Deploy is unchanged and DUMB: it ships the committed
+rendered static pages exactly as it ships any other file, with NO build/
+generation step in the deploy path (no new deploy-time failure mode, no
+request-time interpolation). The freshness guarantee lives at COMMIT time (see
+page_is_code), not deploy time.
+"""
+
+rendered_pages_are_committed = """
+Rendered per-locale pages are COMMITTED artifacts (in git, reviewed), not
+uncommitted build products. Three reasons converge on this: (1) the dev/prod
+split means the builder cannot run on the droplet, so rendered pages must be
+built-and-committed in dev; (2) deploy stays dumb (ships committed files);
+(3) and most importantly, the translated pages are AI-generated prose that MUST
+be reviewed before shipping - committing them forces normal review, whereas
+deploy-time generation would ship them unseen. Base sources AND rendered pages
+are both committed.
+"""
+
+page_is_code = """
+Editing a full-text page is a CODE CHANGE, subject to the same verify-and-review
+discipline as any other change: rebuild the rendered pages, pass the staleness
+check, review (ideally a knowledgeable translator's read-through catching
+machine-translation errors), commit. A pre-commit staleness check guards that
+rendered output is current relative to its base source. The check's behavior
+differs by locale by necessity:
+- en-US: DETERMINISTIC verify - the base changed implies the en-US rendered page
+  must be regenerated (pure tag resolution); the check can verify exact
+  regeneration and fail if stale.
+- Non-base (es-ES): HUMAN-FLAG - a base change means the translation may be out
+  of date, but re-translating is not something a hook should do automatically
+  (it needs an API call and produces unreviewed prose). The check FLAGS "base
+  changed since this translation was built; re-translate and review" rather than
+  auto-fixing. Machine verifies freshness/presence; human arbitrates translation
+  quality - the same division as the completeness gate.
+"""
+
+[consequences]
+positive = """
+- Uniform, lookup-free render path for EVERY language including en-US: serve a
+  static baked file. No request-time tag interpolation anywhere.
+- Invented terms stay catalog-managed (change once, rebuild, all pages/locales
+  update) WITHOUT placeholder-riddled served documents - the DRY benefit without
+  the cost, because tags live in the SOURCE and the SERVED files are clean.
+- Deploy stays dumb and deterministic; no build step or new failure mode in the
+  deploy path; the dev/prod split holds (no build tooling on the droplet).
+- Translated pages are committed and therefore reviewed before shipping.
+- This is a small purpose-built static-site-generation pattern (author once,
+  render to many outputs, serve the outputs) - a proven approach at the right
+  scale, consistent with the single-source/multiple-render instinct behind
+  DD-0018.
+"""
+
+negative_or_deferred = """
+- Introduces a build step and a staleness surface (edit base, forget to
+  rebuild); mitigated by the pre-commit staleness check.
+- The es-ES staleness check can only FLAG, not auto-fix (translation needs
+  review); accepted - it is the correct human-in-the-loop boundary.
+- Refines DD-0022's assumption of hand-authored parallel docs; existing/canary
+  hand-authored es-ES pages should be migrated to the base+build model (or the
+  canary page's hand translation retained as a reviewed rendered artifact with a
+  reconstructed base source).
+"""
+
+out_of_scope = """
+- Render-time tag interpolation into documents (the rejected Strategy A);
+  revisit only if invented-term churn ever makes catalog-managed-in-served-docs
+  worth the added mechanism.
+- Running the builder at deploy time (explicitly not done; deploy ships
+  committed static pages).
+- The short-string tag mechanism (unchanged from DD-0022; this DD concerns
+  full-text pages only).
+"""
+
+[links]
+depends_on = ["DD-0018", "DD-0022"]
+relates_to = ["DD-0014", "DD-0016"]
+implemented_by = ["SPEC-036"]
+notes = """
+Amends DD-0022's parallel-doc mechanism: served parallel documents are now
+build-GENERATED from tagged base sources rather than hand-authored per locale.
+The shared term catalog is the same one DD-0022's tag mechanism uses. i18n
+canary (SPEC-035) is deployed and UAT-verified in prod, clearing this to build.
+"""

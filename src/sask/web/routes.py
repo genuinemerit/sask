@@ -216,6 +216,8 @@ def moons() -> str:
                 pos,
                 body_cfg_map[state.name].notes or "",
                 albedo=body_cfg_map[state.name].albedo,
+                locale=g.sask_locale,
+                i18n=cfg.i18n,
             )
             for state, pos in zip(all_states, all_positions)
             if state.body_type == "moon"
@@ -261,6 +263,8 @@ def planets() -> str:
                 rings=body_cfg_map[state.name].rings,
                 visible_moons=body_cfg_map[state.name].visible_moons,
                 notes=body_cfg_map[state.name].notes or "",
+                locale=g.sask_locale,
+                i18n=cfg.i18n,
             )
             for state, pos in zip(all_states, all_positions)
             if state.body_type == "planet"
@@ -317,12 +321,16 @@ def sky() -> str:
         ]
 
         if cfg.lore_time.enabled:
-            fatunik_lore_time = render_lore_time(pulse, "fatunik", cfg)
-            terpin_lore_time = render_lore_time(pulse, "terpin", cfg)
-            fatunik_lore_date = render_lore_date(fatunik_date, "fatunik_solar", cfg)
-            terpin_lore_date = render_lore_date(terpin_date, "terpin_solar", cfg)
+            fatunik_lore_time = render_lore_time(pulse, "fatunik", cfg, g.sask_locale)
+            terpin_lore_time = render_lore_time(pulse, "terpin", cfg, g.sask_locale)
+            fatunik_lore_date = render_lore_date(
+                fatunik_date, "fatunik_solar", cfg, g.sask_locale
+            )
+            terpin_lore_date = render_lore_date(
+                terpin_date, "terpin_solar", cfg, g.sask_locale
+            )
             lore_lunar_dates = [
-                (cal, ld, render_lore_date(ld, cal.id, cfg))
+                (cal, ld, render_lore_date(ld, cal.id, cfg, g.sask_locale))
                 for cal, ld in lunar_entries
             ]
 

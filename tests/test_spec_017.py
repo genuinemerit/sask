@@ -75,30 +75,36 @@ def test_config_fatunik_solar_ages():
 
 def test_terpin_lore_time_pulse_300():
     # Terpin midnight = pulse 0; pulse 300 is 5 min into shur 1, keyt 1
-    assert render_lore_time(300, "terpin", CONFIG) == "First Watch . shur 1 : keyt 1"
+    assert (
+        render_lore_time(300, "terpin", CONFIG, "en-US")
+        == "First Watch . shur 1 : keyt 1"
+    )
 
 
 def test_fatunik_lore_time_pulse_300():
     # Fatunik day starts at pulse 21600 (6 AM); pulse 300 is in the fifth shur
-    assert render_lore_time(300, "fatunik", CONFIG) == "Fifth Watch . shur 10 : keyt 1"
+    assert (
+        render_lore_time(300, "fatunik", CONFIG, "en-US")
+        == "Fifth Watch . shur 10 : keyt 1"
+    )
 
 
 def test_fatunik_lore_time_at_day_start():
     # pulse=21600 is exactly the start of the Fatunik day → First Watch, shur 1, keyt 1
-    result = render_lore_time(21600, "fatunik", CONFIG)
+    result = render_lore_time(21600, "fatunik", CONFIG, "en-US")
     assert result == "First Watch . shur 1 : keyt 1"
 
 
 def test_lore_time_day_boundary_wrap():
     # pulse 86400 is one full day past pulse 0; same Terpin position as pulse 0
-    assert render_lore_time(86400, "terpin", CONFIG) == render_lore_time(
-        0, "terpin", CONFIG
+    assert render_lore_time(86400, "terpin", CONFIG, "en-US") == render_lore_time(
+        0, "terpin", CONFIG, "en-US"
     )
 
 
 def test_lore_time_invalid_culture():
     with pytest.raises(ValueError, match="Unknown lore culture"):
-        render_lore_time(0, "gnomish", CONFIG)
+        render_lore_time(0, "gnomish", CONFIG, "en-US")
 
 
 # ── render_lore_date: solar ───────────────────────────────────────────────────
@@ -106,20 +112,20 @@ def test_lore_time_invalid_culture():
 
 def test_fatunik_solar_lore_date():
     date = CalendarDate(calendar_id="fatunik", year=1782, month=10, day=29)
-    result = render_lore_date(date, "fatunik_solar", CONFIG)
+    result = render_lore_date(date, "fatunik_solar", CONFIG, "en-US")
     assert result == "Velden, the 6th kell of Tarnel, Year 1782 of the Bright Age"
 
 
 def test_terpin_solar_lore_date():
     date = CalendarDate(calendar_id="terpin", year=2271, month=2, day=2)
-    result = render_lore_date(date, "terpin_solar", CONFIG)
+    result = render_lore_date(date, "terpin_solar", CONFIG, "en-US")
     assert result == "Bessen, the 1st deshan of Omarra, Year 2271 of the Deepening"
 
 
 def test_fatunik_solar_festival_month():
     # Month 1 is the festival month "Gleaming"
     date = CalendarDate(calendar_id="fatunik", year=1000, month=1, day=3)
-    result = render_lore_date(date, "fatunik_solar", CONFIG)
+    result = render_lore_date(date, "fatunik_solar", CONFIG, "en-US")
     assert "Gleaming" in result
     assert "the Age of the Open Hand" in result
 
@@ -130,11 +136,13 @@ def test_fatunik_solar_age_boundary():
         CalendarDate(calendar_id="fatunik", year=1531, month=5, day=1),
         "fatunik_solar",
         CONFIG,
+        "en-US",
     )
     before = render_lore_date(
         CalendarDate(calendar_id="fatunik", year=1530, month=5, day=1),
         "fatunik_solar",
         CONFIG,
+        "en-US",
     )
     assert "the Bright Age" in at
     assert "the Age of the Open Hand" in before
@@ -156,7 +164,7 @@ def test_untamed_lore_date_first_phase():
         short_count=2,
         long_count=3,
     )
-    result = render_lore_date(ld, "untamed", CONFIG)
+    result = render_lore_date(ld, "untamed", CONFIG, "en-US")
     assert "the Dark" in result  # quarter_names[0]
     assert "Olvar" in result  # month_names[4] (month 5, no festival)
     assert "Range 2 of the Reave 4" in result  # short=2, long=long_count+1=4
@@ -174,7 +182,7 @@ def test_warren_lore_date_first_phase():
         short_count=3,
         long_count=1,
     )
-    result = render_lore_date(ld, "warren", CONFIG)
+    result = render_lore_date(ld, "warren", CONFIG, "en-US")
     assert "the Dark" in result  # quarter_names[0]
     assert "Fenn" in result  # month_names[1] (month 2)
     assert "Litter 3 of the Wend 2" in result  # short=3, long=long_count+1=2
@@ -196,7 +204,7 @@ def test_terpin_lunar_lore_date():
         short_count=1,
         long_count=0,
     )
-    result = render_lore_date(ld, "terpin_lunar", CONFIG)
+    result = render_lore_date(ld, "terpin_lunar", CONFIG, "en-US")
     assert "First Quarter" in result  # day=1 → quarter_names[0]
     assert "Olreth" in result  # month_names[2] (month 3)
     assert "Year 125 of the First Watching" in result
@@ -215,7 +223,7 @@ def test_hearth_lore_date_first_phase():
         lunation=50,
         day=1,
     )
-    result = render_lore_date(ld, "hearth", CONFIG)
+    result = render_lore_date(ld, "hearth", CONFIG, "en-US")
     assert result == "the waxing, the 1st day of Old Jem's 51st turning"
 
 
@@ -224,7 +232,7 @@ def test_hearth_lore_date_first_phase():
 
 def test_apply_lore_overlay_adds_fields():
     record = {"pulse": 300, "scene_data": "test"}
-    result = apply_lore_overlay(record, "terpin", "terpin_solar", CONFIG)
+    result = apply_lore_overlay(record, "terpin", "terpin_solar", CONFIG, "en-US")
     assert "lore_time" in result
     assert "lore_date" in result
     assert result["scene_data"] == "test"
@@ -232,14 +240,14 @@ def test_apply_lore_overlay_adds_fields():
 
 def test_apply_lore_overlay_does_not_mutate():
     record = {"pulse": 300}
-    apply_lore_overlay(record, "terpin", "terpin_solar", CONFIG)
+    apply_lore_overlay(record, "terpin", "terpin_solar", CONFIG, "en-US")
     assert "lore_time" not in record
     assert "lore_date" not in record
 
 
 def test_apply_lore_overlay_is_deterministic():
     record = {"pulse": 86400}
-    r1 = apply_lore_overlay(record, "fatunik", "fatunik_solar", CONFIG)
-    r2 = apply_lore_overlay(record, "fatunik", "fatunik_solar", CONFIG)
+    r1 = apply_lore_overlay(record, "fatunik", "fatunik_solar", CONFIG, "en-US")
+    r2 = apply_lore_overlay(record, "fatunik", "fatunik_solar", CONFIG, "en-US")
     assert r1["lore_time"] == r2["lore_time"]
     assert r1["lore_date"] == r2["lore_date"]

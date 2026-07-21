@@ -1,9 +1,9 @@
 {% extends "base.html" %}
 
-{% block title %}Ephemeris — Saskan Calendar{% endblock %}
+{% block title %}{{ t("title.ephemeris_page_short") }}{% endblock %}
 
 {% block content %}
-<h1>Ephemeris Generator</h1>
+<h1>{{ t("title.ephemeris_page_h1") }}</h1>
 
 <p class="meta">
   Enter a <strong>start time</strong> using any one input type below.
@@ -16,94 +16,94 @@
 <form method="get" action="/ephemeris">
 
   <fieldset>
-    <legend>Pulse (explicit start and end)</legend>
+    <legend>{{ t("label.legend.pulse_start_end") }}</legend>
     <div style="margin-bottom:.4rem">
-      <label style="width:4rem">Start</label>
+      <label style="width:4rem">{{ t("label.field.start") }}</label>
       <input type="number" name="start_pulse" step="any" style="width:14rem"
              value="{{ start_pulse if start_pulse is not none else '' }}">
     </div>
     <div>
-      <label style="width:4rem">End</label>
+      <label style="width:4rem">{{ t("label.field.end") }}</label>
       <input type="number" name="end_pulse" step="any" style="width:14rem"
              value="{{ end_pulse if end_pulse is not none else '' }}">
     </div>
   </fieldset>
 
   <fieldset>
-    <legend>Astro Day (start; end set by Duration)</legend>
+    <legend>{{ t("label.legend.astro_day_range") }}</legend>
     <div>
-      <label style="width:4rem">Start</label>
+      <label style="width:4rem">{{ t("label.field.start") }}</label>
       <input type="number" name="start_astro_day" step="1" min="1" style="width:9rem"
              value="{{ start_astro_day if start_astro_day is not none else '' }}">
       {% if start_time_of_day %}&ensp;<span style="color:#555; font-size:.9rem;">{{ start_time_of_day }}</span>{% endif %}
-      {% if end_astro_day %}&ensp;&ensp;<span style="color:#555; font-size:.9rem;"><strong>End:</strong> {{ end_astro_day }} &middot; {{ end_time_of_day }}</span>{% endif %}
+      {% if end_astro_day %}&ensp;&ensp;<span style="color:#555; font-size:.9rem;"><strong>{{ t("label.field.end") }}:</strong> {{ end_astro_day }} &middot; {{ end_time_of_day }}</span>{% endif %}
     </div>
   </fieldset>
 
   <fieldset>
-    <legend>Fatunik Date (start; end set by Duration)</legend>
+    <legend>{{ t("label.legend.fatunik_range") }}</legend>
     <div>
-      <label style="width:4rem">Start</label>
-      <span style="font-size:.9rem">Year</span>
+      <label style="width:4rem">{{ t("label.field.start") }}</label>
+      <span style="font-size:.9rem">{{ t("label.field.year") }}</span>
       <input type="number" name="start_fatunik_year" step="1" style="width:6rem"
              value="{{ start_fatunik_date.year if start_fatunik_date else '' }}">
-      <span style="font-size:.9rem; margin-left:.4rem">Month</span>
+      <span style="font-size:.9rem; margin-left:.4rem">{{ t("label.field.month") }}</span>
       <input type="number" name="start_fatunik_month" min="1" max="13" step="1" style="width:4rem"
              value="{{ start_fatunik_date.month if start_fatunik_date else '' }}">
-      <span style="font-size:.9rem; margin-left:.4rem">Day</span>
+      <span style="font-size:.9rem; margin-left:.4rem">{{ t("label.field.day") }}</span>
       <input type="number" name="start_fatunik_day" min="1" max="30" step="1" style="width:4rem"
              value="{{ start_fatunik_date.day if start_fatunik_date else '' }}">
       {% if start_time_of_day %}&ensp;<span style="color:#555; font-size:.9rem;">{{ start_time_of_day }}</span>{% endif %}
-      {% if end_fatunik_date %}&ensp;&ensp;<span style="color:#555; font-size:.9rem;"><strong>End:</strong> T{{ end_fatunik_date.year }} M{{ end_fatunik_date.month }} D{{ end_fatunik_date.day }} &middot; {{ end_time_of_day }}</span>{% endif %}
+      {% if end_fatunik_date %}&ensp;&ensp;<span style="color:#555; font-size:.9rem;"><strong>{{ t("label.field.end") }}:</strong> T{{ end_fatunik_date.year }} M{{ end_fatunik_date.month }} D{{ end_fatunik_date.day }} &middot; {{ end_time_of_day }}</span>{% endif %}
     </div>
   </fieldset>
 
   <fieldset>
-    <legend>Terpin Date (start; end set by Duration)</legend>
+    <legend>{{ t("label.legend.terpin_range") }}</legend>
     <div>
-      <label style="width:4rem">Start</label>
-      <span style="font-size:.9rem">Year</span>
+      <label style="width:4rem">{{ t("label.field.start") }}</label>
+      <span style="font-size:.9rem">{{ t("label.field.year") }}</span>
       <input type="number" name="start_terpin_year" step="1" style="width:6rem"
              value="{{ start_terpin_date.year if start_terpin_date else '' }}">
-      <span style="font-size:.9rem; margin-left:.4rem">Month</span>
+      <span style="font-size:.9rem; margin-left:.4rem">{{ t("label.field.month") }}</span>
       <input type="number" name="start_terpin_month" min="1" max="13" step="1" style="width:4rem"
              value="{{ start_terpin_date.month if start_terpin_date else '' }}">
-      <span style="font-size:.9rem; margin-left:.4rem">Day</span>
+      <span style="font-size:.9rem; margin-left:.4rem">{{ t("label.field.day") }}</span>
       <input type="number" name="start_terpin_day" min="1" max="37" step="1" style="width:4rem"
              value="{{ start_terpin_date.day if start_terpin_date else '' }}">
       {% if start_time_of_day %}&ensp;<span style="color:#555; font-size:.9rem;">{{ start_time_of_day }}</span>{% endif %}
-      {% if end_terpin_date %}&ensp;&ensp;<span style="color:#555; font-size:.9rem;"><strong>End:</strong> T{{ end_terpin_date.year }} M{{ end_terpin_date.month }} D{{ end_terpin_date.day }} &middot; {{ end_time_of_day }}</span>{% endif %}
+      {% if end_terpin_date %}&ensp;&ensp;<span style="color:#555; font-size:.9rem;"><strong>{{ t("label.field.end") }}:</strong> T{{ end_terpin_date.year }} M{{ end_terpin_date.month }} D{{ end_terpin_date.day }} &middot; {{ end_time_of_day }}</span>{% endif %}
     </div>
   </fieldset>
 
   <fieldset>
-    <legend>Step and profile</legend>
+    <legend>{{ t("label.legend.step_profile") }}</legend>
     <div style="margin-bottom:.4rem">
-      <label for="step_minutes">Step (Astro minutes)</label>
+      <label for="step_minutes">{{ t("label.field.step_minutes") }}</label>
       <input type="number" id="step_minutes" name="step_minutes" min="5" step="1" style="width:6rem"
              value="{{ (step_pulses // 60) if step_pulses else '' }}">
     </div>
     <div style="margin-bottom:.4rem">
-      <label for="duration_days">Duration (Days)</label>
+      <label for="duration_days">{{ t("label.field.duration_days") }}</label>
       <input type="number" id="duration_days" name="duration_days" min="1" max="30" step="1" style="width:6rem"
              value="{{ duration_days if duration_days is not none else '' }}">
-      <span class="meta" style="margin-left:.5rem">ignored when Pulse start and end are used</span>
+      <span class="meta" style="margin-left:.5rem">{{ t("label.field.duration_hint") }}</span>
     </div>
     <div style="margin-bottom:.6rem">
-      <label for="profile">Profile</label>
+      <label for="profile">{{ t("label.field.profile") }}</label>
       <select id="profile" name="profile" style="font-size:1rem; padding:.2rem .4rem; border:1px solid #aaa; border-radius:3px">
-        <option value="scribal" {% if profile == 'scribal' %}selected{% endif %}>Scribal</option>
-        <option value="kinematic" {% if profile == 'kinematic' %}selected{% endif %}>Kinematic</option>
-        <option value="both" {% if profile == 'both' %}selected{% endif %}>Both</option>
+        <option value="scribal" {% if profile == 'scribal' %}selected{% endif %}>{{ t("label.option.scribal") }}</option>
+        <option value="kinematic" {% if profile == 'kinematic' %}selected{% endif %}>{{ t("label.option.kinematic") }}</option>
+        <option value="both" {% if profile == 'both' %}selected{% endif %}>{{ t("label.option.both") }}</option>
       </select>
     </div>
     <div>
       <label style="width:9rem"></label>
-      <button type="submit">Generate</button>
+      <button type="submit">{{ t("label.button.generate") }}</button>
       &ensp;<a href="/ephemeris"
                style="padding:.3rem .9rem; font-size:1rem; cursor:pointer; border:1px solid #ccc;
                       background:#f0f0f0; border-radius:3px; text-decoration:none; color:#333;
-                      display:inline-block">Reset</a>
+                      display:inline-block">{{ t("label.button.reset") }}</a>
     </div>
   </fieldset>
 
@@ -115,27 +115,27 @@
 
 {% if scribal_preview or kinematic_preview %}
   <p class="meta">
-    Preview: first 5 steps of {{ series.steps | length }} total
+    {{ t("misc.preview_prefix").replace("{n}", series.steps | length | string) }}
     (pulse {{ series.start_pulse }}–{{ series.end_pulse }}, step {{ series.step_pulses }} pulses).
   </p>
 {% endif %}
 
 {% if scribal_preview %}
-  <h2>Scribal preview</h2>
+  <h2>{{ t("misc.scribal_preview") }}</h2>
   <pre style="background:#f6f6f6; border:1px solid #ccc; padding:.8rem; overflow:auto; max-height:24rem; font-size:.8rem">{{ scribal_preview }}</pre>
   <p>
     <a href="/ephemeris/download?start={{ start_pulse }}&amp;end={{ end_pulse }}&amp;step={{ step_pulses }}&amp;profile=scribal">
-      Download scribal JSON
+      {{ t("label.link.download_scribal") }}
     </a>
   </p>
 {% endif %}
 
 {% if kinematic_preview %}
-  <h2>Kinematic preview</h2>
+  <h2>{{ t("misc.kinematic_preview") }}</h2>
   <pre style="background:#f6f6f6; border:1px solid #ccc; padding:.8rem; overflow:auto; max-height:24rem; font-size:.8rem">{{ kinematic_preview }}</pre>
   <p>
     <a href="/ephemeris/download?start={{ start_pulse }}&amp;end={{ end_pulse }}&amp;step={{ step_pulses }}&amp;profile=kinematic">
-      Download kinematic JSON
+      {{ t("label.link.download_kinematic") }}
     </a>
   </p>
 {% endif %}

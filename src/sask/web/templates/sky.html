@@ -1,57 +1,57 @@
 {% extends "base.html" %}
 
-{% block title %}Sky — Saskan Calendar{% endblock %}
+{% block title %}{{ t("title.sky_page_short") }}{% endblock %}
 
 {% block content %}
-<h1>Sky for a Date</h1>
+<h1>{{ t("title.sky_page_h1") }}</h1>
 
 <form method="get" action="/sky">
   <fieldset>
-    <legend>Enter pulse</legend>
-    <label for="pulse">Pulse</label>
+    <legend>{{ t("label.legend.enter_pulse") }}</legend>
+    <label for="pulse">{{ t("label.field.pulse") }}</label>
     <input type="number" id="pulse" name="pulse" step="any"
            value="{{ queried_pulse if queried_pulse is not none else '' }}">
-    <button type="submit">Query</button>
+    <button type="submit">{{ t("label.query_button") }}</button>
   </fieldset>
 </form>
 <form method="get" action="/sky">
   <fieldset>
-    <legend>Or Astro day</legend>
-    <label for="astro_day">Astro Day</label>
+    <legend>{{ t("label.legend.or_astro_day") }}</legend>
+    <label for="astro_day">{{ t("label.field.astro_day") }}</label>
     <input type="number" id="astro_day" name="astro_day" step="1" min="1"
            value="{{ queried_astro_day if queried_astro_day is not none else '' }}">
-    <button type="submit">Query</button>
+    <button type="submit">{{ t("label.query_button") }}</button>
     {% if scene %}&ensp;<span style="color:#555; font-size:.9rem;">{{ time_of_day }}</span>{% endif %}
   </fieldset>
 </form>
 <form method="get" action="/sky">
   <fieldset>
-    <legend>Or Fatunik date</legend>
-    <label for="fatunik_year">Year</label>
+    <legend>{{ t("label.legend.or_fatunik_date") }}</legend>
+    <label for="fatunik_year">{{ t("label.field.year") }}</label>
     <input type="number" id="fatunik_year" name="fatunik_year" step="1" style="width:6rem"
            value="{{ fatunik_date.year if fatunik_date else '' }}">
-    <label for="fatunik_month" style="width:5rem; margin-left:.5rem">Month</label>
+    <label for="fatunik_month" style="width:5rem; margin-left:.5rem">{{ t("label.field.month") }}</label>
     <input type="number" id="fatunik_month" name="fatunik_month" min="1" max="13" step="1" style="width:4rem"
            value="{{ fatunik_date.month if fatunik_date else '' }}">
-    <label for="fatunik_day" style="width:4rem; margin-left:.5rem">Day</label>
+    <label for="fatunik_day" style="width:4rem; margin-left:.5rem">{{ t("label.field.day") }}</label>
     <input type="number" id="fatunik_day" name="fatunik_day" min="1" max="30" step="1" style="width:4rem"
            value="{{ fatunik_date.day if fatunik_date else '' }}">
-    <button type="submit">Query</button>
+    <button type="submit">{{ t("label.query_button") }}</button>
   </fieldset>
 </form>
 <form method="get" action="/sky">
   <fieldset>
-    <legend>Or Terpin date</legend>
-    <label for="terpin_year">Year</label>
+    <legend>{{ t("label.legend.or_terpin_date") }}</legend>
+    <label for="terpin_year">{{ t("label.field.year") }}</label>
     <input type="number" id="terpin_year" name="terpin_year" step="1" style="width:6rem"
            value="{{ terpin_date.year if terpin_date else '' }}">
-    <label for="terpin_month" style="width:5rem; margin-left:.5rem">Month</label>
+    <label for="terpin_month" style="width:5rem; margin-left:.5rem">{{ t("label.field.month") }}</label>
     <input type="number" id="terpin_month" name="terpin_month" min="1" max="13" step="1" style="width:4rem"
            value="{{ terpin_date.month if terpin_date else '' }}">
-    <label for="terpin_day" style="width:4rem; margin-left:.5rem">Day</label>
+    <label for="terpin_day" style="width:4rem; margin-left:.5rem">{{ t("label.field.day") }}</label>
     <input type="number" id="terpin_day" name="terpin_day" min="1" max="37" step="1" style="width:4rem"
            value="{{ terpin_date.day if terpin_date else '' }}">
-    <button type="submit">Query</button>
+    <button type="submit">{{ t("label.query_button") }}</button>
   </fieldset>
 </form>
 
@@ -62,13 +62,13 @@
 {% if scene %}
 
 {% if lore_enabled %}
-<h2>Lore Overlay</h2>
+<h2>{{ t("misc.lore_overlay") }}</h2>
 <table>
   <tbody>
-    <tr><td><strong>Fatunik time</strong></td><td>{{ fatunik_lore_time }}</td></tr>
-    <tr><td><strong>Terpin time</strong></td><td>{{ terpin_lore_time }}</td></tr>
-    <tr><td><strong>Fatunik Solar</strong></td><td>{{ fatunik_lore_date }}</td></tr>
-    <tr><td><strong>Terpin Solar</strong></td><td>{{ terpin_lore_date }}</td></tr>
+    <tr><td><strong>{{ t("misc.fatunik_time") }}</strong></td><td>{{ fatunik_lore_time }}</td></tr>
+    <tr><td><strong>{{ t("misc.terpin_time") }}</strong></td><td>{{ terpin_lore_time }}</td></tr>
+    <tr><td><strong>{{ t("misc.fatunik_solar") }}</strong></td><td>{{ fatunik_lore_date }}</td></tr>
+    <tr><td><strong>{{ t("misc.terpin_solar") }}</strong></td><td>{{ terpin_lore_date }}</td></tr>
     {% for cal, ld, lore_str in lore_lunar_dates %}
     <tr><td><strong>{{ cal.name }}</strong></td><td>{{ lore_str }}</td></tr>
     {% endfor %}
@@ -76,13 +76,13 @@
 </table>
 {% endif %}
 
-<h2>Lunar Calendars <span class="meta">(display-only)</span></h2>
+<h2>{{ t("misc.lunar_calendars") }} <span class="meta">{{ t("misc.display_only") }}</span></h2>
 <table>
   <thead>
     <tr>
-      <th>Calendar</th><th>Moon</th>
-      <th>Long&nbsp;Count</th><th>Short&nbsp;Count</th><th>Turn</th>
-      <th>Month</th><th>Day</th><th>Lunation</th>
+      <th>{{ t("th.calendar") }}</th><th>{{ t("th.moon") }}</th>
+      <th>{{ t("th.long_count") }}</th><th>{{ t("th.short_count") }}</th><th>{{ t("th.turn") }}</th>
+      <th>{{ t("label.field.month") }}</th><th>{{ t("label.field.day") }}</th><th>{{ t("th.lunation") }}</th>
     </tr>
   </thead>
   <tbody>
@@ -101,81 +101,81 @@
   </tbody>
 </table>
 
-<h2>Moons Above the Horizon</h2>
+<h2>{{ t("misc.moons_above_horizon") }}</h2>
 {% if moons_up %}
 <table>
   <thead>
-    <tr><th>Moon</th><th>Color</th><th>Phase</th><th>Direction</th><th>Brightness</th></tr>
+    <tr><th>{{ t("th.moon") }}</th><th>{{ t("th.color") }}</th><th>{{ t("th.phase") }}</th><th>{{ t("th.direction") }}</th><th>{{ t("th.brightness") }}</th></tr>
   </thead>
   <tbody>
     {% for b in moons_up %}
     <tr>
-      <td><a href="/moons?pulse={{ queried_pulse }}">{{ b.name }}</a></td>
+      <td><a href="/moons?pulse={{ queried_pulse }}">{{ t("body." + b.id) }}</a></td>
       <td>{{ b.color }}</td>
       <td>{{ b.phase }}</td>
       <td>{{ b.direction }}</td>
-      <td>{% if b.brightness >= 0.32 %}Brilliant{% elif b.brightness >= 0.20 %}Bright{% elif b.brightness >= 0.10 %}Moderate{% elif b.brightness >= 0.04 %}Faint{% else %}Dim{% endif %}</td>
+      <td>{% if b.brightness >= 0.32 %}{{ t("brightness.brilliant") }}{% elif b.brightness >= 0.20 %}{{ t("brightness.bright") }}{% elif b.brightness >= 0.10 %}{{ t("brightness.moderate") }}{% elif b.brightness >= 0.04 %}{{ t("brightness.faint") }}{% else %}{{ t("brightness.dim") }}{% endif %}</td>
     </tr>
     {% endfor %}
   </tbody>
 </table>
 {% else %}
-<p class="meta">No moons above the horizon at this time.</p>
+<p class="meta">{{ t("misc.no_moons_above") }}</p>
 {% endif %}
 
-<h2>Co-fullness</h2>
+<h2>{{ t("misc.co_fullness") }}</h2>
 {% if scene.co_fullness_tonight %}
-<p><strong>This day:</strong>
+<p><strong>{{ t("misc.this_day") }}</strong>
   {{ scene.co_fullness_tonight.count }}
   moon{{ 's' if scene.co_fullness_tonight.count != 1 else '' }} near-full together —
-  {{ scene.co_fullness_tonight.moons | map('capitalize') | join(", ") }}
+  {% for m in scene.co_fullness_tonight.moons %}{{ t("body." + m) }}{% if not loop.last %}, {% endif %}{% endfor %}
   {% if not scene.co_fullness_tonight.observable %}
-  <span class="meta">(below the horizon throughout this day)</span>
+  <span class="meta">{{ t("misc.below_horizon_all_day") }}</span>
   {% endif %}
 </p>
 {% else %}
-<p>No co-fullness event this day.</p>
+<p>{{ t("misc.no_cofullness_event") }}</p>
 {% endif %}
-<p><strong>Next event:</strong>
+<p><strong>{{ t("misc.next_event") }}</strong>
   in {{ cofullness_days }} day{{ 's' if cofullness_days != 1 else '' }} —
   {{ scene.next_co_fullness.count }}
   moon{{ 's' if scene.next_co_fullness.count != 1 else '' }}:
-  {{ scene.next_co_fullness.moons | map('capitalize') | join(", ") }}
+  {% for m in scene.next_co_fullness.moons %}{{ t("body." + m) }}{% if not loop.last %}, {% endif %}{% endfor %}
 </p>
 
-<h2>Wanderers Above the Horizon</h2>
+<h2>{{ t("misc.wanderers_above_horizon") }}</h2>
 {% if planets_up %}
 <table>
   <thead>
-    <tr><th>Planet</th><th>Color</th><th>Phase</th><th>Direction</th><th>Brightness</th></tr>
+    <tr><th>{{ t("th.planet") }}</th><th>{{ t("th.color") }}</th><th>{{ t("th.phase") }}</th><th>{{ t("th.direction") }}</th><th>{{ t("th.brightness") }}</th></tr>
   </thead>
   <tbody>
     {% for b in planets_up %}
     <tr>
-      <td><a href="/planets?pulse={{ queried_pulse }}">{{ b.name }}</a></td>
+      <td><a href="/planets?pulse={{ queried_pulse }}">{{ t("body." + b.id) }}</a></td>
       <td>{{ b.color }}</td>
       <td>{{ b.phase }}</td>
       <td>{{ b.direction }}</td>
-      <td>{% if b.brightness >= 0.32 %}Brilliant{% elif b.brightness >= 0.20 %}Bright{% elif b.brightness >= 0.10 %}Moderate{% elif b.brightness >= 0.04 %}Faint{% else %}Dim{% endif %}</td>
+      <td>{% if b.brightness >= 0.32 %}{{ t("brightness.brilliant") }}{% elif b.brightness >= 0.20 %}{{ t("brightness.bright") }}{% elif b.brightness >= 0.10 %}{{ t("brightness.moderate") }}{% elif b.brightness >= 0.04 %}{{ t("brightness.faint") }}{% else %}{{ t("brightness.dim") }}{% endif %}</td>
     </tr>
     {% endfor %}
   </tbody>
 </table>
 {% else %}
-<p class="meta">No wanderers above the horizon at this time.</p>
+<p class="meta">{{ t("misc.no_wanderers_above") }}</p>
 {% endif %}
 
 {% if apparitions_up %}
-<h2>Comets &amp; the Spark</h2>
+<h2>{{ t("misc.comets_and_spark") }}</h2>
 <table>
   <thead>
-    <tr><th>Body</th><th>Type</th><th>Direction</th><th>Color</th><th>Visibility</th></tr>
+    <tr><th>{{ t("th.body") }}</th><th>{{ t("th.type") }}</th><th>{{ t("th.direction") }}</th><th>{{ t("th.color") }}</th><th>{{ t("th.visibility") }}</th></tr>
   </thead>
   <tbody>
     {% for b in apparitions_up %}
     <tr>
-      <td>{{ b.name }}</td>
-      <td>{{ b.body_type }}</td>
+      <td>{{ t("comet." + b.id) if b.body_type == "comet" else t("body.spark") }}</td>
+      <td>{{ t("misc.body_type_" + b.body_type) }}</td>
       <td>{{ b.direction }}</td>
       <td>{{ b.color }}</td>
       <td>{{ "%.0f%%" | format(b.brightness * 100) }}</td>
@@ -185,34 +185,34 @@
 </table>
 {% endif %}
 
-<h2>Season</h2>
+<h2>{{ t("misc.season") }}</h2>
 <p>{{ season_name }}{% if si.near_event_name %} — near <strong>{{ si.near_event_name }}</strong>{% endif %}</p>
 
-<h2>Fixed Stars &amp; Houses of the Equinox</h2>
+<h2>{{ t("misc.fixed_stars_houses") }}</h2>
 <p>
-  <strong>Active house:</strong> {{ scene.active_house.name }}<br>
+  <strong>{{ t("misc.active_house") }}</strong> {{ scene.active_house.name }}<br>
   {% if scene.circumpolar_houses %}
-  <strong>Circumpolar:</strong>
+  <strong>{{ t("misc.circumpolar") }}</strong>
   {% for h in scene.circumpolar_houses %}{{ h.name }}{% if not loop.last %}, {% endif %}{% endfor %}
   {% endif %}
 </p>
 {% if scene.stars_up %}
 <table>
-  <thead><tr><th>Star</th><th>Position</th></tr></thead>
+  <thead><tr><th>{{ t("th.star") }}</th><th>{{ t("th.position") }}</th></tr></thead>
   <tbody>
     {% for s in scene.stars_up %}
-    <tr><td>{{ s.name }}</td><td>{{ s.direction }}</td></tr>
+    <tr><td>{{ t("star." + s.id) }}</td><td>{{ s.direction }}</td></tr>
     {% endfor %}
   </tbody>
 </table>
 {% else %}
-<p class="meta">No fixed stars visible this season.</p>
+<p class="meta">{{ t("misc.no_fixed_stars") }}</p>
 {% endif %}
 
-<h2>Night Summary</h2>
+<h2>{{ t("misc.night_summary") }}</h2>
 <p>{{ night_summary }}</p>
 
-<h2>Image Prompt</h2>
+<h2>{{ t("misc.image_prompt") }}</h2>
 <pre style="white-space:pre-wrap; background:#f9f9f9; padding:.7rem 1rem; border:1px solid #ddd; border-radius:3px; font-size:.85rem; line-height:1.5;">{{ image_prompt }}</pre>
 
 {% endif %}

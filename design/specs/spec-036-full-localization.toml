@@ -1,0 +1,172 @@
+id     = "SPEC-036"
+title  = "Full localization: proper-noun catalog, page builder, tiered translation"
+status = "proposed"
+
+[implements]
+requirements = ["REQ-FUN-015", "REQ-OPS-021", "REQ-SEC-005"]
+decisions    = ["DD-0022", "DD-0023"]
+notes = """
+The localization-completion round: everything after the SPEC-035 canary (now
+deployed and UAT-verified in prod). Builds the page-generation build step
+(DD-0023), completes the proper-noun catalog, and translates existing content
+tiered. Ordering is dependency-driven: the proper-noun catalog is built and
+reviewed FIRST, then pages are generated using it. en-US and es-ES only.
+"""
+
+[scope]
+in = """
+The proper-noun (invented-term) catalog completion with human review; the
+dev-side page builder generating clean static per-locale full-text pages from
+tagged base sources + catalog (all locales incl. en-US); the pre-commit
+staleness check (deterministic for en-US, human-flag for es-ES); tiered
+translation of existing user-facing content (labels/sentences/statements, then
+full-text pages); resolution of the dynamic-content cases the canary inventory
+flagged; the deploy-mode completeness gate wired for the full content set; and
+tests.
+"""
+
+out = """
+- New localization ARCHITECTURE (DD-0022/DD-0023 already decide it; this
+  implements).
+- Render-time tag interpolation into documents (rejected Strategy A, DD-0023).
+- Running the builder at deploy time (deploy ships committed static pages).
+- Locales beyond en-US and es-ES.
+- Auth (the remaining, separate port area).
+- Auto-translation without human review (machine output is always a reviewable
+  draft; the pre-commit/UAT review is mandatory).
+"""
+
+[deliverables]
+proper_noun_catalog = """
+FIRST, before any page generation: complete the per-locale invented-term catalog
+(the human-reviewed respelling pass). For every invented Saskan proper noun used
+in user-facing content, the catalog carries its en-US spelling and its es-ES
+spelling - respelled where the source spelling would mislead the intended
+pronunciation (DD-0022 principle; worked example Fatune -> the accented Spanish
+form), left invariant (same value, present in both catalogs) otherwise. This is
+a HUMAN-ARBITRATED step: an AI may propose respellings, but the maintainer (or a
+Spanish-speaking reviewer) decides, ideally with a read-aloud check. This
+catalog is the SAME shared catalog the short-string tag mechanism uses, and it
+is the prerequisite the page builder consumes. Page generation MUST NOT begin
+until this catalog is complete and reviewed for the terms in scope.
+"""
+
+page_builder = """
+A dev command (e.g. tools/dev/build-i18n-pages.sh or a CLI/Typer subcommand)
+that generates rendered per-locale full-text pages from tagged base sources +
+the catalog, per DD-0023:
+- Input: base/template pages (English prose + {tag} references for invented
+  terms), the term catalog.
+- en-US output: resolve tags to en-US spellings; no translation; deterministic.
+- es-ES output: resolve tags to es-ES spellings (substitute proper nouns FIRST),
+  then produce a translated draft of the surrounding prose with an explicit
+  instruction to PRESERVE the already-correct proper nouns; output is a
+  reviewable draft, not auto-shipped.
+- Output: clean, static, tag-free rendered pages, committed to the repo.
+The builder runs ONLY in dev; it is never invoked by deploy. Whether the es-ES
+translation call is manual paste or an author-time translation-API call is an
+implementation choice; either way the output is a reviewed draft.
+"""
+
+staleness_check = """
+A pre-commit check (added to tools/dev/pre-commit-check.sh) guarding rendered-
+page freshness relative to base sources, per DD-0023's page-is-code principle:
+- en-US: DETERMINISTIC - if a base page changed, its en-US rendered page must
+  match a fresh regeneration; the check fails (hard) if stale.
+- es-ES: HUMAN-FLAG - if a base page changed since its es-ES rendered page was
+  built, the check FLAGS "re-translate and review" (it does NOT auto-translate).
+  Whether this flag is a hard-fail or a warning is a deliberate choice: default
+  to FAIL (a stale translation should not be committed silently) with an explicit
+  acknowledged-override mechanism for intentional "base edit, translation update
+  pending" states.
+"""
+
+tiered_translation = """
+Translate existing user-facing content in increasing-complexity tiers, each
+reviewed before the next:
+1. Labels (short, many) - tag catalog entries.
+2. Sentences / statements (medium) - tag catalog entries.
+3. Full-text pages (verbose) - via the page builder above.
+All machine-translated content is a reviewable draft; a knowledgeable-translator
+read-through (the maintainer at B2, or a stronger reviewer) is the quality gate
+that the automated completeness check cannot provide. Operator-facing text is
+NOT translated.
+"""
+
+dynamic_content = """
+Resolve the dynamic-content cases the SPEC-035 content inventory
+(i18n-content-inventory.md) flagged:
+- The "in-game scholar" night-sky description: implement per the inventory's
+  classification - if TEMPLATED assembly, decompose into a localizable template +
+  vocabulary tags (handling en-US/es-ES plural/agreement rules explicitly; general
+  plural machinery deferred); if LLM-GENERATED, make locale a GENERATION
+  PARAMETER (generate directly in the target language), never a request-time
+  translation step.
+- The AI image-generator PROMPT: classified system-facing (a tool instruction,
+  not user-facing); NOT localized, stays English. Record as an explicit instance
+  of DD-0022's origin boundary.
+"""
+
+completeness_gate = """
+Wire the REQ-OPS-021 deploy-mode (strict) completeness gate for the full content
+set: a declared locale (es-ES) with any missing tag translation, or a base page
+whose es-ES rendered page is stale/missing, blocks deploy. Permissive mode
+(everyday/CI) warns; strict mode (deploy) fails. Base-language (en-US) content
+must be complete (hard error anywhere).
+"""
+
+tests = """
+tests/test_spec_036.py:
+- Proper-noun catalog: invariant terms present-with-identical-value in both
+  locales; respelled terms differ; a term missing from es-ES fails the gate.
+- Page builder: en-US render is deterministic tag resolution; es-ES render
+  substitutes proper nouns before translating (proper nouns preserved verbatim
+  in output); rendered pages are tag-free.
+- Staleness check: editing a base page makes the en-US check fail until rebuilt;
+  makes the es-ES check flag/fail until re-translated-and-acknowledged.
+- Dynamic content: the scholar-description path behaves per its classification;
+  the image-prompt is not localized.
+- Completeness gate: strict mode blocks on a missing es-ES translation or stale
+  es-ES page; permissive mode warns.
+Full suite passes at the new count; pre-commit and validate_specs clean.
+"""
+
+design_doc_status = """
+On acceptance set DD-0023, SPEC-036 to "accepted" (DD-0022 already accepted with
+the canary). Add a devlog entry: the page-build model, the proper-noun catalog,
+the staleness check, the tiered translation completed, the dynamic-content
+resolutions, and any migration of the canary's hand-authored es-ES page into the
+base+build model.
+"""
+
+[acceptance]
+criteria = """
+1. The invented-term catalog is complete and human-reviewed for in-scope terms;
+   invariant terms are present-with-identical-value in both locales, respelled
+   terms differ; it is the shared catalog both mechanisms use.
+2. The dev page builder generates clean, tag-free, static per-locale pages
+   (en-US deterministic; es-ES substitute-then-translate as reviewable draft);
+   it runs only in dev and is never a deploy step.
+3. Rendered pages are committed; deploy ships them with no build/generation step.
+4. The pre-commit staleness check guards freshness (en-US deterministic-fail;
+   es-ES human-flag/fail-with-override).
+5. Existing user-facing content is translated in tiers (labels, sentences,
+   pages), each human-reviewed; operator content is not translated.
+6. Dynamic-content cases resolved per the inventory (scholar-description by its
+   classification; image-prompt not localized).
+7. The strict completeness gate blocks deploy on missing/stale es-ES content;
+   en-US is complete-always.
+8. Full suite passes at the new count; pre-commit and validate_specs clean; the
+   full content set is UAT-verified in prod (both languages, toggle, fallback,
+   pages), consistent with the canary's prod verification.
+"""
+
+uat = """
+[manual] Build pages in dev; review the es-ES renders (knowledgeable-translator
+read-through) confirming proper nouns are correctly spelled and prose is sound.
+Confirm editing a base page trips the staleness check (en-US fails until rebuilt;
+es-ES flags). Deploy; in prod confirm both languages render full pages cleanly
+with no request-time lookup, the toggle works, fallback works for any not-yet-
+translated item, and operator output stays un-localized. Confirm the deploy gate
+blocks a deliberately-incomplete es-ES state and passes when completed.
+"""

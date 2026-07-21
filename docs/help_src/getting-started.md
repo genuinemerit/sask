@@ -2,8 +2,8 @@
 
 Every page in sask is driven by a **pulse**: an integer count of seconds
 since the Astro epoch (Astro day 1, midnight). Enter a pulse, an Astro
-day, or a date in one of the two civil calendars (Fatunik or
-Terpin), and the other forms fill in automatically.
+day, or a date in one of the two civil calendars ({culture.fatunik} or
+{culture.terpin}), and the other forms fill in automatically.
 
 ## Looking up a date
 

@@ -145,6 +145,33 @@ choice — it depends on content shape, exactly as expected:
   inventory's job was to show which shape each piece of content actually
   has, not to force one mechanism onto all of them.
 
+## Addendum (SPEC-036) — scholar-description classification: templated, not LLM-generated
+
+SPEC-036's `dynamic_content` deliverable requires resolving whether the
+"in-game scholar" night-sky description (`scene.py::render_night_summary()`/
+`render_image_prompt()`) is TEMPLATED assembly or LLM-GENERATED, since the
+two classifications imply different localization mechanisms (decompose into
+template+tags, vs. make locale a generation parameter).
+
+**Confirmed by direct read of `scene.py` (module docstring and both function
+docstrings): TEMPLATED ASSEMBLY.** No AI or network call is made anywhere in
+either function — output is deterministic Python string-building over
+`SkyScene` data (conditional branches, list-joins, runtime plural/agreement
+ternaries), exactly as this document's COMPOSED-PROSE section above already
+described. There is no LLM call to parameterize with locale; the
+`render_image_prompt()` output is text handed to an *external* AI
+image-generator as an instruction, not generated *by* one.
+
+This confirms the COMPOSED-PROSE section's standing recommendation now
+applies as SPEC-036's actual scope (no longer deferred): decompose into
+structured data (already available as `SkyScene` fields) plus locale-aware
+templates with explicit en-US/es-ES plural/agreement handling (general
+ICU-style plural machinery remains deferred — only the two languages in
+scope need explicit rules). `render_image_prompt()`'s own directive list
+stays English/system-facing (a tool instruction, not user-facing prose) per
+DD-0022's origin boundary — only the `render_night_summary()` portion it
+wraps is user-facing and needs localization.
+
 ## Help documents — confirmed for the parallel-document mechanism
 
 `docs/help/index.md` (6 lines, 271 bytes), `getting-started.md` (50
