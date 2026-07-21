@@ -387,6 +387,8 @@
 "misc.circumpolar_value" = "circumpolar"
 "misc.never_rises" = "nunca sale"
 
+"misc.mean_moon" = "promedio"
+
 # Reused verbatim from the already-reviewed getting-started.es-ES.md, which
 # translates this exact result table.
 "th.day_pulse_offset" = "Desfase de Pulso del Día"

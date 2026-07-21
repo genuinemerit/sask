@@ -398,6 +398,12 @@
 "misc.circumpolar_value" = "circumpolar"
 "misc.never_rises" = "never rises"
 
+# Second prod spot-check follow-up: the lunar-calendars table's "Moon"
+# column printed cal.moon raw (a body id, or the "mean" sentinel for the
+# Terpin Lunar Count) instead of resolving it -- missed by both the
+# earlier LABEL tier and the descriptive-free-text-tier fix.
+"misc.mean_moon" = "mean"
+
 # Also missed in the reviewed table: index.html's own result table
 # (distinct from the moons/planets/sky tables already covered).
 "th.day_pulse_offset" = "Day Pulse Offset"

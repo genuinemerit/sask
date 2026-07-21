@@ -89,7 +89,7 @@
     {% for cal, ld in lunar_entries %}
     <tr>
       <td>{{ t("calendar." + cal.id + "_name") }}</td>
-      <td>{{ cal.moon if cal.moon == 'mean' else cal.moon | capitalize }}</td>
+      <td>{{ t("misc.mean_moon") if cal.moon == 'mean' else t("body." + cal.moon) }}</td>
       <td>{{ ld.long_count if ld.has_turns else "—" }}</td>
       <td>{{ ld.short_count if ld.has_turns else "—" }}</td>
       <td>{{ ld.turn if ld.has_turns else "—" }}</td>

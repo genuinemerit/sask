@@ -1,5 +1,26 @@
 # Dev log
 
+## 2026-07-21 — SPEC-036/DD-0023 in progress: second prod spot-check, lunar-calendars Moon column
+
+A second round of prod spot-checking (after the descriptive-free-text-
+tier fix) found one more raw-English spot: `/sky`'s "Lunar Calendars"
+table printed its Moon column via `cal.moon | capitalize` -- a body id
+or the `"mean"` sentinel (for the Terpin Lunar Count, which reckons by
+an averaged synodic period rather than a real moon) -- straight from
+config, never resolved via the catalog. Missed by both the original
+LABEL tier and the prior descriptive-free-text-tier fix since this cell
+used raw capitalization instead of a missing tag lookup, so it didn't
+show up in a search for untagged strings.
+
+Fixed by resolving `body.<id>` for real moons (already-existing tags,
+verified byte-identical en-US casing) and adding one new tag,
+`misc.mean_moon` ("mean"/"promedio"), for the sentinel case.
+
+**Tests**: 819 passing (no new test added -- this is a one-line template
+fix fully covered by existing `validate_i18n --strict` catalog-
+completeness enforcement); verified live on the dev Flask server across
+all four lunar-calendar rows in es-ES before committing.
+
 ## 2026-07-21 — SPEC-036/DD-0023 in progress: prod spot-check turned up a missed content tier
 
 Manual spot-checking on the prod es-ES pages (following the completeness-
