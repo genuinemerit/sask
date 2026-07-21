@@ -41,7 +41,7 @@ from sask.help.loader import render_markdown
 from sask.i18n.catalog import resolve as resolve_i18n
 from sask.i18n.tags import season_tag
 
-from ..config_loader import AppConfig
+from ..config_loader import AppConfig, I18nCatalog
 from ..message import CalendarDate, PulseInfo
 from .translator import (
     to_moon_view,
@@ -55,8 +55,17 @@ bp = Blueprint("main", __name__)
 # ── Pulse resolution ───────────────────────────────────────────────────────────
 
 
+def _msg(tag: str, locale: str, i18n: I18nCatalog, **kwargs: str) -> str:
+    """Resolve tag and substitute {key} placeholders from kwargs (SPEC-036)."""
+    text = resolve_i18n(tag, locale, i18n)
+    for key, value in kwargs.items():
+        text = text.replace(f"{{{key}}}", value)
+    return text
+
+
 def _resolve_pulse(
     cfg: AppConfig,
+    locale: str,
 ) -> tuple[int | None, str | None]:
     """Parse request args into a pulse integer, or return an error string.
 
@@ -64,6 +73,7 @@ def _resolve_pulse(
     Returns (pulse, None) on success; (None, error_msg) on bad input;
     (None, None) when no input was given (form should render empty).
     """
+    i18n = cfg.i18n
     # treat empty strings (unset form fields) the same as absent
     pulse_p = request.args.get("pulse") or None
     astro_day_p = request.args.get("astro_day") or None
@@ -78,28 +88,36 @@ def _resolve_pulse(
         try:
             return int(round(float(pulse_p))), None
         except ValueError:
-            return None, f"Invalid pulse value: {pulse_p!r} — enter a number."
+            return None, _msg(
+                "error.invalid_pulse_value", locale, i18n, value=repr(pulse_p)
+            )
 
     if astro_day_p is not None:
         try:
             day = int(astro_day_p)
             return (day - 1) * cfg.time_constants.pulses_per_day, None
         except ValueError:
-            return None, f"Invalid Astro day: {astro_day_p!r} — enter an integer."
+            return None, _msg(
+                "error.invalid_astro_day", locale, i18n, value=repr(astro_day_p)
+            )
 
     if fat_y and fat_m and fat_d:
         try:
             date = CalendarDate("fatunik", int(fat_y), int(fat_m), int(fat_d))
             return fatunik_to_pulse(date, cfg), None
         except (ValueError, KeyError) as exc:
-            return None, f"Invalid Fatunik date: {exc}"
+            return None, _msg(
+                "error.invalid_fatunik_date", locale, i18n, detail=str(exc)
+            )
 
     if ter_y and ter_m and ter_d:
         try:
             date = CalendarDate("terpin", int(ter_y), int(ter_m), int(ter_d))
             return terpin_to_pulse(date, cfg), None
         except (ValueError, KeyError) as exc:
-            return None, f"Invalid Terpin date: {exc}"
+            return None, _msg(
+                "error.invalid_terpin_date", locale, i18n, detail=str(exc)
+            )
 
     return None, None
 
@@ -107,11 +125,13 @@ def _resolve_pulse(
 def _resolve_endpoint(
     prefix: str,
     cfg: AppConfig,
+    locale: str,
 ) -> tuple[int | None, str | None]:
     """Like _resolve_pulse but with prefixed query param names (e.g. 'start_').
 
     Priority: {prefix}pulse > {prefix}astro_day > fatunik date > terpin date.
     """
+    i18n = cfg.i18n
     pulse_p = request.args.get(f"{prefix}pulse") or None
     astro_day_p = request.args.get(f"{prefix}astro_day") or None
     fat_y = request.args.get(f"{prefix}fatunik_year") or None
@@ -125,16 +145,25 @@ def _resolve_endpoint(
         try:
             return int(round(float(pulse_p))), None
         except ValueError:
-            return None, f"Invalid {prefix}pulse {pulse_p!r} — enter a number."
+            return None, _msg(
+                "error.invalid_prefixed_pulse",
+                locale,
+                i18n,
+                prefix=prefix,
+                value=repr(pulse_p),
+            )
 
     if astro_day_p is not None:
         try:
             day = int(astro_day_p)
             return (day - 1) * cfg.time_constants.pulses_per_day, None
         except ValueError:
-            return (
-                None,
-                f"Invalid {prefix}astro_day {astro_day_p!r} — enter an integer.",
+            return None, _msg(
+                "error.invalid_prefixed_astro_day",
+                locale,
+                i18n,
+                prefix=prefix,
+                value=repr(astro_day_p),
             )
 
     if fat_y and fat_m and fat_d:
@@ -142,14 +171,26 @@ def _resolve_endpoint(
             date = CalendarDate("fatunik", int(fat_y), int(fat_m), int(fat_d))
             return fatunik_to_pulse(date, cfg), None
         except (ValueError, KeyError) as exc:
-            return None, f"Invalid {prefix}Fatunik date: {exc}"
+            return None, _msg(
+                "error.invalid_prefixed_fatunik_date",
+                locale,
+                i18n,
+                prefix=prefix,
+                detail=str(exc),
+            )
 
     if ter_y and ter_m and ter_d:
         try:
             date = CalendarDate("terpin", int(ter_y), int(ter_m), int(ter_d))
             return terpin_to_pulse(date, cfg), None
         except (ValueError, KeyError) as exc:
-            return None, f"Invalid {prefix}Terpin date: {exc}"
+            return None, _msg(
+                "error.invalid_prefixed_terpin_date",
+                locale,
+                i18n,
+                prefix=prefix,
+                detail=str(exc),
+            )
 
     return None, None
 
@@ -178,7 +219,12 @@ def index() -> str:
             info: PulseInfo = pulse_info(pulse, cfg)
             view = to_pulse_view(info)
         except ValueError:
-            error = f"Invalid pulse value: {pulse_param!r} — enter a number."
+            error = _msg(
+                "error.invalid_pulse_value",
+                g.sask_locale,
+                cfg.i18n,
+                value=repr(pulse_param),
+            )
 
     return render_template(
         "index.html",
@@ -191,7 +237,7 @@ def index() -> str:
 @bp.route("/moons")
 def moons() -> str:
     cfg: AppConfig = current_app.config["SASK_CONFIG"]
-    pulse, error = _resolve_pulse(cfg)
+    pulse, error = _resolve_pulse(cfg, g.sask_locale)
 
     moon_views = None
     fatune_pos = None
@@ -241,7 +287,7 @@ def moons() -> str:
 @bp.route("/planets")
 def planets() -> str:
     cfg: AppConfig = current_app.config["SASK_CONFIG"]
-    pulse, error = _resolve_pulse(cfg)
+    pulse, error = _resolve_pulse(cfg, g.sask_locale)
 
     planet_views = None
     fatune_pos = None
@@ -288,7 +334,7 @@ def planets() -> str:
 def sky() -> str:
     cfg: AppConfig = current_app.config["SASK_CONFIG"]
     ppd = cfg.time_constants.pulses_per_day
-    pulse, error = _resolve_pulse(cfg)
+    pulse, error = _resolve_pulse(cfg, g.sask_locale)
 
     scene = None
     lunar_entries = None
@@ -392,7 +438,7 @@ def ephemeris() -> str:
     ppd = cfg.time_constants.pulses_per_day
 
     # Start resolves from whichever input type is supplied (pulse priority).
-    start_pulse, start_err = _resolve_endpoint("start_", cfg)
+    start_pulse, start_err = _resolve_endpoint("start_", cfg, g.sask_locale)
     error = start_err
 
     # End mode:
@@ -411,7 +457,13 @@ def ephemeris() -> str:
         try:
             end_pulse = int(round(float(end_pulse_raw)))  # type: ignore[arg-type]
         except ValueError:
-            error = error or f"Invalid end_pulse {end_pulse_raw!r} — enter a number."
+            error = error or _msg(
+                "error.invalid_prefixed_pulse",
+                g.sask_locale,
+                cfg.i18n,
+                prefix="end_",
+                value=repr(end_pulse_raw),
+            )
 
     profile = request.args.get("profile", "scribal")
     step_pulses = None
@@ -439,33 +491,44 @@ def ephemeris() -> str:
 
     if error is None and any_input:
         if start_pulse is None:
-            error = "Start time is required."
+            error = _msg("error.start_time_required", g.sask_locale, cfg.i18n)
         elif step_min_p is None:
-            error = "Step (Astro minutes) is required."
+            error = _msg("error.step_required", g.sask_locale, cfg.i18n)
         else:
             try:
                 step_pulses = int(step_min_p) * 60
             except ValueError:
-                error = f"Invalid step_minutes {step_min_p!r} — enter an integer."
+                error = _msg(
+                    "error.invalid_step_minutes",
+                    g.sask_locale,
+                    cfg.i18n,
+                    value=repr(step_min_p),
+                )
 
             if error is None:
                 if pulse_mode:
                     if end_pulse is None:
-                        error = "End pulse is required."
+                        error = _msg(
+                            "error.end_pulse_required", g.sask_locale, cfg.i18n
+                        )
                 else:
                     if duration_days_p is None:
-                        error = "Duration (Days) is required."
+                        error = _msg("error.duration_required", g.sask_locale, cfg.i18n)
                     else:
                         try:
                             duration_days = int(duration_days_p)
                             if duration_days < 1:
-                                error = "Duration (Days) must be at least 1."
+                                error = _msg(
+                                    "error.duration_min", g.sask_locale, cfg.i18n
+                                )
                             else:
                                 end_pulse = start_pulse + duration_days * ppd
                         except ValueError:
-                            error = (
-                                f"Invalid duration_days {duration_days_p!r}"
-                                " — enter an integer."
+                            error = _msg(
+                                "error.invalid_duration_days",
+                                g.sask_locale,
+                                cfg.i18n,
+                                value=repr(duration_days_p),
                             )
 
         if error is None and end_pulse is not None and step_pulses is not None:
@@ -473,9 +536,12 @@ def ephemeris() -> str:
             if step_pulses >= span:
                 step_min = step_pulses // 60
                 span_min = span // 60
-                error = (
-                    f"Step ({step_min} min) equals or exceeds the total duration "
-                    f"({span_min} min) — reduce Step or increase Duration (Days)."
+                error = _msg(
+                    "error.step_exceeds_duration",
+                    g.sask_locale,
+                    cfg.i18n,
+                    step_min=str(step_min),
+                    span_min=str(span_min),
                 )
             else:
                 try:
@@ -546,8 +612,13 @@ def ephemeris_download() -> Response:
     span = end_pulse - start_pulse
     if step_pulses >= span:
         resp = make_response(
-            f"step {step_pulses} pulses equals or exceeds range {span} pulses"
-            " — no intermediate steps would be generated.",
+            _msg(
+                "error.step_exceeds_range_download",
+                g.sask_locale,
+                cfg.i18n,
+                steps=str(step_pulses),
+                span=str(span),
+            ),
             400,
         )
         resp.content_type = "text/plain"

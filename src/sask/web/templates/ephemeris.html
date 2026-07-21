@@ -5,13 +5,7 @@
 {% block content %}
 <h1>{{ t("title.ephemeris_page_h1") }}</h1>
 
-<p class="meta">
-  Enter a <strong>start time</strong> using any one input type below.
-  For Astro Day, Fatunik, or Terpin inputs the range length is set by
-  <strong>Duration (Days)</strong> in the Step &amp; Profile section.
-  Use <strong>Pulse</strong> for a precise start and end.
-  Click <strong>Reset</strong> to clear all fields before switching input type.
-</p>
+<p class="meta">{{ t("statement.ephemeris_intro") | safe }}</p>
 
 <form method="get" action="/ephemeris">
 

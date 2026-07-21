@@ -7,7 +7,7 @@
 {{ content_html | safe }}
 {% else %}
 <h1>{{ t("title.help_topic_not_found") }}</h1>
-<p class="error">No help topic named "{{ topic }}".</p>
+<p class="error">{{ t("error.no_help_topic").replace("{topic}", topic) }}</p>
 {% endif %}
 <p><a href="/help">{{ t("label.link.back_to_help") }}</a></p>
 {% endblock %}

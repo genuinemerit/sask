@@ -1,5 +1,47 @@
 # Dev log
 
+## 2026-07-21 — SPEC-036/DD-0023 in progress: SENTENCE/STATEMENT tier
+
+Second implementation round of SPEC-036, following the LABEL tier.
+DD-0023/SPEC-036 stay `"proposed"` — remaining tiers, dynamic-content
+decomposition, the deploy gate, and prod UAT are still ahead.
+
+Inventoried and human-reviewed (same propose-a-flat-table, adopt-edits-
+verbatim rhythm as the proper-noun and LABEL tiers): `routes.py`'s ~17
+validation/error message templates, the ephemeris page's STATEMENT-tier
+instructional paragraph, remaining composed-prose fragments (co-fullness
+pluralization, "above/below horizon"), 14 house names, and 4 lunar-
+calendar names — the last two correctly deferred from the LABEL tier as
+ordinary translatable phrases, not proper nouns (one embeds the
+already-reviewed star respelling: "El telar de **Krena**", not "Krenna").
+
+**`routes.py`** now threads `locale` through `_resolve_pulse`/
+`_resolve_endpoint` and every error-string call site via a new `_msg()`
+helper (resolve + `{placeholder}` substitution). Several messages
+interpolate a raw Python exception (`{detail}`) — only the sask-authored
+wrapper text is translated, matching the pre-existing flagged deferral
+from the SPEC-035 content inventory (not fixed here either).
+
+**Templates**: `ephemeris.html`'s STATEMENT paragraph — one real bug
+caught before it shipped: the review table's proposed value used
+markdown `**bold**` markers, which Jinja would have rendered as literal
+asterisks in HTML rather than bold text. Fixed by switching the catalog
+values to real `<strong>` tags rendered with `| safe`, verified via the
+live Flask client (`<strong>hora de inicio</strong>` renders correctly,
+no stray `**`). `sky.html`'s house names (`scene.active_house.id`/
+circumpolar `h.id`) and lunar-calendar names (`cal.id`) now resolve
+through the catalog via the same id-based `t("prefix." + id)` pattern
+established in the LABEL tier — confirmed each config's `id` field
+actually matches the proposed tag slugs before wiring (`house_data.toml`,
+`lunar_calendar_data.toml`), not assumed. Co-fullness pluralization
+verified correct for both singular and plural counts.
+
+**Tests**: `tests/test_spec_036.py` grew to 28 (7 new — error messages in
+both prefixed/unprefixed forms, the STATEMENT paragraph's HTML-not-
+markdown rendering, co-fullness pluralization, house/calendar names — all
+via the live Flask test client, not just unit-level assertions). Full
+suite: 804 passed. Pre-commit clean.
+
 ## 2026-07-21 — SPEC-036/DD-0023 in progress: catalog, lore.py, page builder, LABEL tier
 
 First implementation round of SPEC-036 (full localization, implementing

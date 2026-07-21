@@ -61,7 +61,7 @@
 {% if planet_views %}
   <p class="meta">
     {% if fatune_pos %}
-      {{ t("body.fatune") }} {{ "above" if fatune_pos.above_horizon else "below" }} horizon
+      {{ t("body.fatune") }} {{ t("sentence.horizon_above") if fatune_pos.above_horizon else t("sentence.horizon_below") }} {{ t("sentence.horizon_suffix") }}
       ({{ fatune_pos.altitude_deg | round(1) }}°)
     {% endif %}
   </p>

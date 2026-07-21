@@ -21,6 +21,10 @@ are covered yet. Currently covers:
     compass points, eclipse type, and rise/set special values through the
     catalog (not just lore.py's calendar dates); web routes render the
     localized templates end to end in both locales
+  - SENTENCE/STATEMENT tier: routes.py validation errors (incl. prefixed
+    start_/end_ variants), the ephemeris instructional paragraph, co-
+    fullness pluralization, house names, and lunar-calendar names all
+    resolve correctly in es-ES via the live Flask test client
 """
 
 from __future__ import annotations
@@ -336,3 +340,55 @@ def test_moons_page_es_es_localizes_names_and_phase(client):
     html = resp.data.decode()
     assert "Éndor" in html
     assert "Sí" in html  # Yes -> Sí (visibility column)
+
+
+# ── SENTENCE/STATEMENT tier ─────────────────────────────────────────────────────
+
+
+def test_index_invalid_pulse_error_es_es(client):
+    resp = client.get("/?pulse=abc&locale=es-ES")
+    assert resp.status_code == 200
+    assert "Valor de pulso inv\xe1lido" in resp.data.decode()
+
+
+def test_ephemeris_prefixed_start_pulse_error_es_es(client):
+    resp = client.get("/ephemeris?start_pulse=abc&step_minutes=5&locale=es-ES")
+    assert resp.status_code == 200
+    assert "start_pulse inv\xe1lido" in resp.data.decode()
+
+
+def test_ephemeris_step_exceeds_duration_error_es_es(client):
+    resp = client.get(
+        "/ephemeris?start_pulse=0&end_pulse=100&step_minutes=5&locale=es-ES"
+    )
+    assert resp.status_code == 200
+    html = resp.data.decode()
+    assert "iguala o supera la duraci\xf3n total" in html
+
+
+def test_help_topic_not_found_es_es(client):
+    resp = client.get("/help/nonexistent-topic-xyz?locale=es-ES")
+    assert resp.status_code == 404
+    html = resp.data.decode()
+    assert "No existe un tema de ayuda llamado" in html
+
+
+def test_ephemeris_statement_intro_renders_html_bold_es_es(client):
+    resp = client.get("/ephemeris?locale=es-ES")
+    html = resp.data.decode()
+    assert "<strong>hora de inicio</strong>" in html
+    assert "**" not in html  # markdown markers must not leak into HTML
+
+
+def test_sky_page_co_fullness_pluralization_es_es(client):
+    resp = client.get(f"/sky?pulse={STORY_PULSE}&locale=es-ES")
+    text = " ".join(resp.data.decode().split())  # collapse template whitespace
+    assert "lunas casi llenas al mismo tiempo" in text  # count=3, plural
+    assert "en 1 d\xeda" in text  # singular day count
+
+
+def test_sky_page_house_and_calendar_names_es_es(client):
+    resp = client.get(f"/sky?pulse={STORY_PULSE}&locale=es-ES")
+    html = resp.data.decode()
+    assert "El polinizador alado" in html  # active house
+    assert "El c\xf3mputo salvaje" in html  # untamed calendar name

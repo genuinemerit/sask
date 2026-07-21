@@ -70,7 +70,7 @@
     <tr><td><strong>{{ t("misc.fatunik_solar") }}</strong></td><td>{{ fatunik_lore_date }}</td></tr>
     <tr><td><strong>{{ t("misc.terpin_solar") }}</strong></td><td>{{ terpin_lore_date }}</td></tr>
     {% for cal, ld, lore_str in lore_lunar_dates %}
-    <tr><td><strong>{{ cal.name }}</strong></td><td>{{ lore_str }}</td></tr>
+    <tr><td><strong>{{ t("calendar." + cal.id + "_name") }}</strong></td><td>{{ lore_str }}</td></tr>
     {% endfor %}
   </tbody>
 </table>
@@ -88,7 +88,7 @@
   <tbody>
     {% for cal, ld in lunar_entries %}
     <tr>
-      <td>{{ cal.name }}</td>
+      <td>{{ t("calendar." + cal.id + "_name") }}</td>
       <td>{{ cal.moon if cal.moon == 'mean' else cal.moon | capitalize }}</td>
       <td>{{ ld.long_count if ld.has_turns else "—" }}</td>
       <td>{{ ld.short_count if ld.has_turns else "—" }}</td>
@@ -127,7 +127,8 @@
 {% if scene.co_fullness_tonight %}
 <p><strong>{{ t("misc.this_day") }}</strong>
   {{ scene.co_fullness_tonight.count }}
-  moon{{ 's' if scene.co_fullness_tonight.count != 1 else '' }} near-full together —
+  {{ t("sentence.co_fullness_moon_singular") if scene.co_fullness_tonight.count == 1 else t("sentence.co_fullness_moon_plural") }}
+  {{ t("sentence.near_full_together") }}
   {% for m in scene.co_fullness_tonight.moons %}{{ t("body." + m) }}{% if not loop.last %}, {% endif %}{% endfor %}
   {% if not scene.co_fullness_tonight.observable %}
   <span class="meta">{{ t("misc.below_horizon_all_day") }}</span>
@@ -137,9 +138,10 @@
 <p>{{ t("misc.no_cofullness_event") }}</p>
 {% endif %}
 <p><strong>{{ t("misc.next_event") }}</strong>
-  in {{ cofullness_days }} day{{ 's' if cofullness_days != 1 else '' }} —
+  {{ t("sentence.next_event_in") }} {{ cofullness_days }}
+  {{ t("sentence.day_singular") if cofullness_days == 1 else t("sentence.day_plural") }} —
   {{ scene.next_co_fullness.count }}
-  moon{{ 's' if scene.next_co_fullness.count != 1 else '' }}:
+  {{ t("sentence.co_fullness_moon_singular") if scene.next_co_fullness.count == 1 else t("sentence.co_fullness_moon_plural") }}:
   {% for m in scene.next_co_fullness.moons %}{{ t("body." + m) }}{% if not loop.last %}, {% endif %}{% endfor %}
 </p>
 
@@ -190,10 +192,10 @@
 
 <h2>{{ t("misc.fixed_stars_houses") }}</h2>
 <p>
-  <strong>{{ t("misc.active_house") }}</strong> {{ scene.active_house.name }}<br>
+  <strong>{{ t("misc.active_house") }}</strong> {{ t("house." + scene.active_house.id) }}<br>
   {% if scene.circumpolar_houses %}
   <strong>{{ t("misc.circumpolar") }}</strong>
-  {% for h in scene.circumpolar_houses %}{{ h.name }}{% if not loop.last %}, {% endif %}{% endfor %}
+  {% for h in scene.circumpolar_houses %}{{ t("house." + h.id) }}{% if not loop.last %}, {% endif %}{% endfor %}
   {% endif %}
 </p>
 {% if scene.stars_up %}
