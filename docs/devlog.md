@@ -1,5 +1,73 @@
 # Dev log
 
+## 2026-07-21 — SPEC-036/DD-0023 accepted: full localization complete
+
+SPEC-036 and DD-0023 are both flipped `proposed` → `accepted`. This closes
+the localization-completion round that followed the SPEC-035 canary:
+sask's Spanish (es-ES) translation now covers the whole app, not just the
+canary's proof-of-mechanism slice.
+
+**Page-build model (DD-0023)**: full-text help pages now use three
+artifact types — a tagged BASE source (dev-only, never served), the
+shared i18n CATALOG, and build-GENERATED per-locale RENDERED pages (the
+served artifact, static and tag-free in every language including
+en-US). `tools/dev/build_i18n_pages.py` is the dev-only builder;
+`tools/dev/check_page_staleness.py` is the pre-commit/pre-deploy
+guard — deterministic byte-for-byte re-render check for en-US, and a
+content-hash-against-reviewed-manifest human-flag check for es-ES
+(`docs/help_src/translation-status.toml`, updated only via an explicit
+`--acknowledge` sign-off). Deploy ships the committed rendered pages
+exactly as any other file — no build step in the deploy path, matching
+DD-0023's dev/prod split.
+
+**Canary migration**: the SPEC-035 canary's hand-authored
+`getting-started.es-ES.md` was left as a reviewed rendered artifact (its
+base source was reconstructed to match, per DD-0023's negative-
+consequences note); `index.md`/`calendar-lore.md` were built fresh into
+the base+build model from the start.
+
+**Proper-noun catalog**: ~145 terms (bodies, stars, comets, lore-
+calendar vocabulary) human-reviewed by the user across two review-table
+rounds, respelled for Spanish phonetics where warranted (e.g. Fatune →
+Fatún, Kelvarn → Kelvaren) and left invariant elsewhere, plus later
+terminology fixes (Untamed → Indomado, Warren → Madriguera, Round →
+Ronda, Hearth → Hogar, "lore" → "tradición local", and nine proper-noun
+respellings).
+
+**Tiered translation**: LABEL tier (~130 UI-chrome strings) → SENTENCE/
+STATEMENT tier (~40 validation errors/statements/house/calendar names)
+→ full-text pages tier → scholar-description tier (scene.py's composed
+night summary and image prompt, decomposed into whole-sentence catalog
+templates since the original built prose via runtime conditional
+branching and English-only pluralization).
+
+**Dynamic-content resolution**: scene.py's night-summary/image-prompt
+generation was confirmed TEMPLATED ASSEMBLY (not LLM-generated — no AI
+or network call is made), so it took the same tag-substitution treatment
+as the rest of the tiered translation, with `get_sky_scene()` gaining
+explicit locale-parameterization for the `BodyInScene.direction`/`.phase`
+fields computed at scene-composition time.
+
+**Post-acceptance prod UAT rounds** (both before this flip, folded into
+the same acceptance): live spot-checking on the real droplet across
+three sessions caught six raw-English spots the original inventory
+missed (a descriptive free-text tier: body/star/comet color, notes,
+rings, position, plus named season events and help-topic labels — see
+the two entries below) and one more (the lunar-calendars Moon column).
+Each round was verified on the dev Flask server before commit, deployed,
+and re-verified live in both languages before moving on — the same
+discipline as every prior port round (SPEC-031/032/034/035). A full
+`redeploy.sh -y` teardown/recreate test confirmed the from-scratch
+droplet path is unaffected: `ok=45, changed=39, failed=0`, acceptance
+suite green, and all i18n content spot-checked correctly present on the
+freshly recreated droplet.
+
+**Tests**: 819 passing. `validate_i18n.py --strict` (REQ-OPS-021
+completeness gate) and `check_page_staleness.py` (DD-0023's own
+completeness_gate deliverable) are both wired into `tools/ops/deploy.sh`
+as pre-infrastructure-touching fail-fast checks, alongside the existing
+`pre-commit-check.sh` gating.
+
 ## 2026-07-21 — SPEC-036/DD-0023 in progress: second prod spot-check, lunar-calendars Moon column
 
 A second round of prod spot-checking (after the descriptive-free-text-
