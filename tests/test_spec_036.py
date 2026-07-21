@@ -313,7 +313,7 @@ def test_to_moon_view_resolves_name_es_es():
     pos_map = {p.name: p for p in positions}
     endor = next(s for s in states if s.name == "Endor")
     view = to_moon_view(
-        endor, pos_map["Endor"], notes="", albedo=0.13, locale="es-ES", i18n=CONFIG.i18n
+        endor, pos_map["Endor"], albedo=0.13, locale="es-ES", i18n=CONFIG.i18n
     )
     assert view.name == "Éndor"
 
@@ -326,10 +326,8 @@ def test_to_planet_view_resolves_name_es_es():
     view = to_planet_view(
         dramond,
         pos_map["Dramond"],
-        apparent_color="Warm amber",
         rings=None,
         visible_moons=None,
-        notes="",
         locale="es-ES",
         i18n=CONFIG.i18n,
     )
@@ -561,11 +559,18 @@ def test_night_summary_en_us_unchanged_default_locale():
     assert "W mid" in summary
 
 
-def test_image_prompt_directives_stay_english_in_es_es():
+def test_image_prompt_stays_english_even_when_scene_composed_es_es():
+    # Even though the scene passed in was composed at es-ES (so its own
+    # bodies_up[].color/direction/phase are baked in Spanish), the prompt
+    # must come out fully English: it's a tool instruction pasted into an
+    # AI image generator, not user-facing prose (DD-0022 origin boundary).
     scene = get_sky_scene(STORY_PULSE, CONFIG, locale="es-ES")
-    prompt = render_image_prompt(scene, CONFIG, locale="es-ES")
-    assert prompt.startswith(render_night_summary(scene, CONFIG, "es-ES"))
-    assert "Image style:" in prompt  # directive wrapper text stays English
+    prompt = render_image_prompt(scene, CONFIG)
+    en_scene = get_sky_scene(STORY_PULSE, CONFIG, locale="en-US")
+    assert prompt.startswith(render_night_summary(en_scene, CONFIG, "en-US"))
+    assert "Image style:" in prompt
+    assert "Quietud" not in prompt
+    assert "night of stillness" in prompt
 
 
 def test_sky_page_night_summary_es_es_via_flask(client):

@@ -188,7 +188,7 @@
 {% endif %}
 
 <h2>{{ t("misc.season") }}</h2>
-<p>{{ season_name }}{% if si.near_event_name %} — near <strong>{{ si.near_event_name }}</strong>{% endif %}</p>
+<p>{{ season_name }}{% if near_event_name %} — {{ t("misc.near_event_prefix") }} <strong>{{ near_event_name }}</strong>{% endif %}</p>
 
 <h2>{{ t("misc.fixed_stars_houses") }}</h2>
 <p>
@@ -203,7 +203,7 @@
   <thead><tr><th>{{ t("th.star") }}</th><th>{{ t("th.position") }}</th></tr></thead>
   <tbody>
     {% for s in scene.stars_up %}
-    <tr><td>{{ t("star." + s.id) }}</td><td>{{ s.direction }}</td></tr>
+    <tr><td>{{ t("star." + s.id) }}</td><td>{{ t("star." + s.id + ".position") }}</td></tr>
     {% endfor %}
   </tbody>
 </table>

@@ -18,7 +18,7 @@ posición orbital para ese pulso:
 | --- | --- |
 | Día Astro | Número de día desde la época Astro |
 | Desfase de Pulso del Día | Segundos transcurridos desde la medianoche local |
-| Posición Orbital | Porcentaje recorrido del AstroYear actual |
+| Posición Orbital | Porcentaje recorrido del AñoAstro actual |
 
 ## Consultar el cielo
 

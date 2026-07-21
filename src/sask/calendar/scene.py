@@ -18,11 +18,14 @@ render_night_summary(scene, config, locale=...):
   via runtime conditional branching, list-joining, and English
   pluralization -- not simple tag substitution.
 
-render_image_prompt(scene, config, style_id=None, locale=...):
-  Night summary with the selected style's directives appended. The
-  directive list itself stays English/system-facing (a tool instruction,
-  not user-facing prose, per DD-0022's origin boundary) -- only the
-  wrapped night-summary portion is localized.
+render_image_prompt(scene, config, style_id=None):
+  Night summary with the selected style's directives appended, always in
+  English -- the whole thing is a tool instruction meant to be pasted into
+  an AI image generator, not user-facing prose (DD-0022 origin boundary),
+  so unlike render_night_summary() its output never follows the page's
+  locale. Recomposes its own English-locale scene rather than reusing the
+  caller's `scene` as-is, since BodyInScene.direction/color/phase may have
+  been baked in at a different locale at get_sky_scene() composition time.
   No AI or network call is made; output is text only.
 """
 
@@ -152,7 +155,7 @@ def get_sky_scene(
                     sp.altitude_deg, sp.azimuth_deg, locale, i18n
                 ),
                 altitude=sp.altitude_deg,
-                color=body_cfg_map[bs.name].apparent_color,
+                color=resolve(f"body.{bs.name.lower()}.color", locale, i18n),
                 brightness=body_cfg_map[bs.name].albedo * bs.illuminated_fraction,
                 phase=_phase_label(bs.synodic_fraction, locale, i18n),
             )
@@ -168,7 +171,7 @@ def get_sky_scene(
                 body_type="comet",
                 direction=resolve("scene.direction_above_horizon", locale, i18n),
                 altitude=45.0,
-                color=comet_info.color,
+                color=resolve(f"comet.{comet_info.id}.color", locale, i18n),
                 brightness=comet_info.visibility,
                 phase=resolve("scene.phase_tail_visible", locale, i18n),
             )
@@ -198,7 +201,7 @@ def get_sky_scene(
                 body_type="spark",
                 direction=direction,
                 altitude=altitude,
-                color=config.spark.color,
+                color=resolve("body.spark.color", locale, i18n),
                 brightness=app.spark.visibility,
                 phase=resolve("scene.phase_glimpsed", locale, i18n),
             )
@@ -394,13 +397,14 @@ def render_image_prompt(
     scene: SkyScene,
     config: AppConfig,
     style_id: str | None = None,
-    locale: str = "en-US",
 ) -> str:
     """Night summary with the selected style's image-generation directives appended.
 
-    The directive list stays English/system-facing (DD-0022 origin
-    boundary: a tool instruction, not user-facing prose) regardless of
-    locale -- only the wrapped render_night_summary() call is localized.
+    Always English (DD-0022 origin boundary: a tool instruction meant to be
+    pasted into an AI image generator, not user-facing prose) -- recomposes
+    its own English-locale scene rather than trusting the caller's `scene`,
+    since BodyInScene.direction/color/phase may have been baked in at a
+    different locale at get_sky_scene() composition time.
     No AI or network call is made. Output is deterministic text only.
     """
     effective_id = (
@@ -408,7 +412,8 @@ def render_image_prompt(
     )
     style = next(s for s in config.sky_styles if s.id == effective_id)
 
-    summary = render_night_summary(scene, config, locale)
+    en_scene = get_sky_scene(scene.pulse, config, locale="en-US")
+    summary = render_night_summary(en_scene, config, "en-US")
 
     directives = [style.medium, style.palette, style.composition]
     if style.extra:

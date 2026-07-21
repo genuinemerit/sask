@@ -11,7 +11,7 @@
 
 <ul>
   {% for topic in topics %}
-  <li><a href="/help/{{ topic }}">{{ topic }}</a></li>
+  <li><a href="/help/{{ topic }}">{{ t("help.topic." + topic.replace("-", "_")) }}</a></li>
   {% endfor %}
 </ul>
 {% endblock %}

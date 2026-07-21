@@ -144,7 +144,6 @@ _ECLIPSE_TAGS = {"solar": "misc.eclipse_solar", "lunar": "misc.eclipse_lunar"}
 def to_moon_view(
     body: BodyState,
     sky: SkyPosition,
-    notes: str,
     albedo: float,
     locale: str,
     i18n: I18nCatalog,
@@ -172,7 +171,7 @@ def to_moon_view(
         set_pulse=_pulse_str(
             sky.set_pulse, sky.is_circumpolar, sky.is_never_rising, locale, i18n
         ),
-        notes=notes,
+        notes=resolve(f"body.{body.name.lower()}.notes", locale, i18n),
     )
 
 
@@ -204,18 +203,21 @@ class PlanetViewModel:
 def to_planet_view(
     body: BodyState,
     sky: SkyPosition,
-    apparent_color: str,
     rings: str | None,
     visible_moons: int | None,
-    notes: str,
     locale: str,
     i18n: I18nCatalog,
 ) -> PlanetViewModel:
-    rings_str = rings if rings and rings.lower() != "none" else "None"
+    body_id = body.name.lower()
+    rings_str = (
+        resolve(f"body.{body_id}.rings", locale, i18n)
+        if rings and rings.lower() != "none"
+        else "None"
+    )
     moons_str = str(visible_moons) if visible_moons is not None else "0"
     return PlanetViewModel(
-        name=resolve(f"body.{body.name.lower()}", locale, i18n),
-        apparent_color=apparent_color,
+        name=resolve(f"body.{body_id}", locale, i18n),
+        apparent_color=resolve(f"body.{body_id}.color", locale, i18n),
         phase_name=_phase_name(body.synodic_fraction, locale, i18n),
         illuminated_pct=f"{body.illuminated_fraction * 100:.1f}%",
         is_visible=body.is_visible and sky.above_horizon,
@@ -233,5 +235,5 @@ def to_planet_view(
         brightness_rel=f"{body.brightness:.4f}",
         rings=rings_str,
         visible_moons=moons_str,
-        notes=notes,
+        notes=resolve(f"body.{body_id}.notes", locale, i18n),
     )

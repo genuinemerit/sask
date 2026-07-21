@@ -1,5 +1,46 @@
 # Dev log
 
+## 2026-07-21 — SPEC-036/DD-0023 in progress: prod spot-check turned up a missed content tier
+
+Manual spot-checking on the prod es-ES pages (following the completeness-
+gate deploy) found six places still showing raw English: the orbital-
+position suffix ("del AstroYear"), body notes on `/moons`, body color/
+notes/rings on `/planets`, body/comet/spark color and fixed-star position
+text on `/sky`, the near-event name ("Green Day" etc.), and the two
+`/help` topic links. Root cause was the same in every case: free-text
+fields authored in `body_data.toml`/`star_data.toml`/`comet_data.toml`/
+`spark_data.toml`/`seasons.toml` (color, notes, rings, star position,
+named events) and the help-topic slugs were piped straight from config
+into templates/`scene.py` with no i18n tag at all — a content tier the
+original SPEC-036 inventory missed entirely.
+
+Added ~60 new catalog tags (`body.<id>.color`/`.notes`, `body.kreetha.
+rings`, 3 `comet.<id>.color`, `body.spark.color`, 16 `star.<id>.
+position`, 8 `event.<id>`, 2 `help.topic.*`) with human-reviewed es-ES
+translations, plus a new `event_tag()` helper in `i18n/tags.py` (mirroring
+`season_tag()`) since `SeasonInfo.near_event_id` had no tag mapping at
+all before. `translator.py`'s `to_moon_view`/`to_planet_view` and
+`scene.py`'s `get_sky_scene()` now resolve color/notes/rings via the
+catalog instead of passing raw config text through; `sky.html`'s star
+table and `help_index.html`'s topic links resolve directly via `t()`.
+Also fixed a hardcoded English "near" literal in `sky.html`.
+
+One design question came up along the way: `render_image_prompt()`'s
+directive-only-stays-English rule (from the scholar-description round)
+turned out to still leave the embedded night summary in the page's
+locale, so the pasted-into-an-image-tool prompt was mixed Spanish/
+English. Confirmed with the user that the whole prompt should always be
+English — `render_image_prompt()` now recomposes its own en-US-locale
+scene internally rather than trusting the caller's (possibly non-English)
+`scene`, and dropped its now-unused `locale` parameter.
+
+**Tests**: fixed 3 existing tests for the `translator.py` signature
+changes and the reversed image-prompt behavior; net 819 passing (was
+818). Verified live on the dev Flask server and again on prod after
+deploy — all six findings confirmed fixed in es-ES, en-US confirmed
+byte-identical to before (catalog en-US values are literal copies of the
+prior raw config text).
+
 ## 2026-07-21 — SPEC-036/DD-0023 in progress: completeness gate wired for full content set
 
 Fifth implementation round of SPEC-036, following scholar-description

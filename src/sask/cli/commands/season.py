@@ -15,7 +15,7 @@ import typer
 
 from sask.calendar.season import season_info
 from sask.i18n.catalog import resolve
-from sask.i18n.tags import season_tag
+from sask.i18n.tags import event_tag, season_tag
 
 from .._config import resolve_and_load_config
 from ..formatting import echo_dict
@@ -37,13 +37,18 @@ def season(
 
     info = season_info(pulse, cfg)
     name = resolve(season_tag(info.season_id), locale, cfg.i18n)
+    near_event_name = (
+        resolve(event_tag(info.near_event_id), locale, cfg.i18n)
+        if info.near_event_id
+        else None
+    )
 
     echo_dict(
         "Season",
         {
             "season_id": info.season_id,
             "name": name,
-            "near_event_name": info.near_event_name or "—",
+            "near_event_name": near_event_name or "—",
             "locale": locale,
         },
     )

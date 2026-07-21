@@ -17,3 +17,8 @@ def season_tag(season_id: str) -> str:
     anticipates, mapping identifier -> tag before the resolver runs.
     """
     return f"season.{season_id}"
+
+
+def event_tag(event_id: str) -> str:
+    """Map a SeasonInfo.near_event_id (engine domain identifier) to its i18n tag."""
+    return f"event.{event_id}"

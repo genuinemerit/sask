@@ -499,3 +499,81 @@
 "scene.obs_below_horizon" = " (below the horizon)"
 "scene.next_cofullness_singular" = "Next night of co-fullness: {days} day away."
 "scene.next_cofullness_plural" = "Next night of co-fullness: {days} days away."
+
+# --- Descriptive free-text tier (prod UAT follow-up, post-SPEC-036) ---
+# Config-driven free-text fields (body_data.toml/star_data.toml/comet_data.toml/
+# spark_data.toml, seasons.toml's named events, help topic slugs) that the
+# original SPEC-036 inventory missed -- these were piped straight from config
+# into templates/scene.py with no tag at all. en-US values below are literal
+# copies of the existing config text (no behavior change for en-US); es-ES
+# gets real translations.
+
+"body.endor.color" = "Pale gray-blue"
+"body.sella.color" = "Ashy bronze"
+"body.lelako.color" = "Bright ivory"
+"body.jembor.color" = "Rust-brown"
+"body.calumbra.color" = "Silvery-gray"
+"body.zehembra.color" = "Gold-hued white"
+"body.shunna.color" = "Ice-blue shimmer"
+"body.kanka.color" = "Deep violet-brown"
+"body.aesthra.color" = "Dull pewter-gray"
+"body.lethra.color" = "Pale brassy gold"
+"body.beyarus.color" = "Brilliant silver-white"
+"body.dramond.color" = "Warm amber, hazy rim"
+"body.thurnak.color" = "Rusty blood-red"
+"body.zelven.color" = "Banded cream and tawny"
+"body.kreetha.color" = "Pale wheat-gold"
+"body.spark.color" = "blue-white"
+
+"comet.oloryn.color" = "white-gold"
+"comet.sevrith.color" = "pale blue-green"
+"comet.kelvarn.color" = "dull copper"
+
+"body.endor.notes" = "Tidal-locked; known as 'The Watcher'"
+"body.sella.notes" = "Highly regular; favored by navigators"
+"body.lelako.notes" = "Small but bright; sacred to rabbits"
+"body.jembor.notes" = "Captured object; not tidally locked; shows a different face"
+"body.calumbra.notes" = "Mysterious albedo variation with seasons"
+"body.zehembra.notes" = "Linked to solar omens and lore of fate; low inclination, eclipses often"
+"body.shunna.notes" = "Cold, dazzling; seen best during Stillness"
+"body.kanka.notes" = "Captured moon with seismic activity; sometimes 'moans' in storms"
+"body.aesthra.notes" = "Swift dawn-or-dusk herald; never far from Fatune's glare; shows crescent-to-full phases through a glass. Inner co-orbital twin."
+"body.lethra.notes" = "Co-orbital twin half a cycle behind Aesthra; rides the dusk when Aesthra rides the dawn. The two heralds."
+"body.beyarus.notes" = "Brightest wanderer; a beacon under heavy cloud; dramatic phases through a glass."
+"body.dramond.notes" = "Amber wanderer with a faintly oval disk and one dim attendant moon visible through a good glass."
+"body.thurnak.notes" = "The red wanderer; noticeably bright at opposition; ill-omened in lore."
+"body.zelven.notes" = "Banded giant with a train of four bright moons visible through a spyglass."
+"body.kreetha.notes" = "Slowest and most distant; the ringed sage."
+
+"body.kreetha.rings" = "Prominent; appears as a flattened, 'eared' disk through a glass"
+
+"star.ilyrun.position" = "The Pole Star, unwavering in the true north."
+"star.kresh.position" = "To the left of Ilyrun, rising and dipping like a kettle."
+"star.marnok.position" = "Below Ilyrun, clawing at the trees of the high north."
+"star.sethera.position" = "To the right of Ilyrun, where wanderers seem to gather."
+"star.thalona.position" = "In the east, just above the sowing fields."
+"star.tursin.position" = "In the northeast, halfway to the pole star."
+"star.velkora.position" = "In the west-northwest, between the Split Peaks."
+"star.mirrest.position" = "In the south-southeast, blazing over the old hills."
+"star.zomel.position" = "Low in the southwest, near the veil of clouds."
+"star.saurnak.position" = "In the south, tucked near the Lantern Grove."
+"star.krenna.position" = "In the west, near the horizon where the sun lingers."
+"star.ethranel.position" = "In the east-northeast, just before dawn."
+"star.henmae.position" = "In the west-southwest, red and near the harvest haze."
+"star.aghur.position" = "In the north-northeast, low above the frostline."
+"star.boreth.position" = "High in the northern sky, just east of the North Watch."
+"star.droven.position" = "Rising in the east with the third bell of night."
+
+"event.spring_equinox" = "Green Day"
+"event.mid_greening" = "Leafcrest"
+"event.summer_solstice" = "Blaze Day"
+"event.mid_blazing" = "Highsun"
+"event.autumn_equinox" = "Wither Day"
+"event.mid_withering" = "Deepleaf"
+"event.winter_solstice" = "Still Day"
+"event.mid_stillness" = "Deepwinter"
+
+"misc.near_event_prefix" = "near"
+
+"help.topic.getting_started" = "Getting Started"
+"help.topic.calendar_lore" = "Calendar Lore"

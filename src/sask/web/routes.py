@@ -2,8 +2,9 @@
 
 All engine calls go through message-unit functions (pulse_info, body_state,
 sky_position, etc.) and return typed message units. No engine internals are
-accessed directly from routes; lore overlay (color, rings, notes) is read
-from AppConfig and passed to the translator, not mixed into engine calls.
+accessed directly from routes; the `rings`/`visible_moons` structural signals
+are read from AppConfig and passed to the translator, which resolves the
+locale-facing color/notes/rings text itself via the i18n catalog.
 """
 
 from __future__ import annotations
@@ -39,7 +40,7 @@ from sask.calendar.season import season_info
 from sask.calendar.sky import all_sky_positions, fatune_sky_position
 from sask.help.loader import render_markdown
 from sask.i18n.catalog import resolve as resolve_i18n
-from sask.i18n.tags import season_tag
+from sask.i18n.tags import event_tag, season_tag
 
 from ..config_loader import AppConfig, I18nCatalog
 from ..message import CalendarDate, PulseInfo
@@ -260,7 +261,6 @@ def moons() -> str:
             to_moon_view(
                 state,
                 pos,
-                body_cfg_map[state.name].notes or "",
                 albedo=body_cfg_map[state.name].albedo,
                 locale=g.sask_locale,
                 i18n=cfg.i18n,
@@ -305,10 +305,8 @@ def planets() -> str:
             to_planet_view(
                 state,
                 pos,
-                apparent_color=body_cfg_map[state.name].apparent_color,
                 rings=body_cfg_map[state.name].rings,
                 visible_moons=body_cfg_map[state.name].visible_moons,
-                notes=body_cfg_map[state.name].notes or "",
                 locale=g.sask_locale,
                 i18n=cfg.i18n,
             )
@@ -340,6 +338,7 @@ def sky() -> str:
     lunar_entries = None
     si = None
     season_name = None
+    near_event_name = None
     moons_up: list = []
     planets_up: list = []
     apparitions_up: list = []
@@ -386,9 +385,14 @@ def sky() -> str:
         # for the bound request locale, the same catalog the CLI's `season`
         # command draws from.
         season_name = resolve_i18n(season_tag(si.season_id), g.sask_locale, cfg.i18n)
+        near_event_name = (
+            resolve_i18n(event_tag(si.near_event_id), g.sask_locale, cfg.i18n)
+            if si.near_event_id
+            else None
+        )
         scene = get_sky_scene(pulse, cfg, locale=g.sask_locale)
         night_summary = render_night_summary(scene, cfg, g.sask_locale)
-        image_prompt = render_image_prompt(scene, cfg, locale=g.sask_locale)
+        image_prompt = render_image_prompt(scene, cfg)
 
         moons_up = [b for b in scene.bodies_up if b.body_type == "moon"]
         planets_up = [b for b in scene.bodies_up if b.body_type == "planet"]
@@ -410,6 +414,7 @@ def sky() -> str:
         lunar_entries=lunar_entries,
         si=si,
         season_name=season_name,
+        near_event_name=near_event_name,
         scene=scene,
         moons_up=moons_up,
         planets_up=planets_up,
