@@ -36,7 +36,7 @@
 | Droven (fixed star) | Droven |
 | Oloryn (comet) | Oloryn |
 | Sevrith (comet) | Sévrit |
-| Kelvarn (comet) | Kelvarn |
+| Kelvarn (comet) | Kelvaren |
 | the Reckoning of Fatune (Fatunik era_name) | la Cuenta de Fatún |
 | Year (Fatunik turn_word) | Año |
 | the Age of Embers (Fatunik age 1) | la Era de las Brasas |
