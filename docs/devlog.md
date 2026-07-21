@@ -1,5 +1,53 @@
 # Dev log
 
+## 2026-07-21 — SPEC-036/DD-0023 in progress: scholar-description decomposition
+
+Fourth implementation round of SPEC-036, following full-text pages.
+DD-0023/SPEC-036 stay `"proposed"` — the completeness gate and prod UAT
+are still ahead; this closes out the last content tier.
+
+Decomposed `scene.py`'s `render_night_summary()`/`render_image_prompt()`
+(the "in-game scholar" night-sky description, classified TEMPLATED
+ASSEMBLY not LLM-generated in an earlier round) from opaque f-string
+composition into whole-sentence catalog templates with placeholders,
+matching the STATEMENT-tier pattern rather than fragment-gluing. Real
+runtime pluralization/agreement handled per-language: English's
+noun-only pluralization ("star"/"stars", invariant "are") vs. Spanish's
+full singular/plural template pairs with correct verb agreement ("es
+visible" / "son visibles"); Spanish's "y N más" needed no plural variant
+at all (unlike English's "other"/"others") since "más" doesn't inflect.
+
+**A bigger-than-expected scope finding, flagged and proceeded on**:
+`BodyInScene.direction`/`.phase` (compass+altitude-band and named lunar
+phase) are computed inside `get_sky_scene()` itself, at scene-composition
+time, not at render time — unlike `.name`/`.id`, which stay locale-neutral
+and get resolved later. This meant `get_sky_scene()` itself needed a
+`locale` parameter (default `"en-US"`, so every existing caller/test
+keeps working unchanged), not just the two render functions — otherwise
+`sky.html`'s own `moons_up`/`planets_up` mini-tables (which read
+`BodyInScene.direction`/`.phase` directly, separately from `moons.html`/
+`planets.html`'s already-correctly-localized `translator.py` path) would
+have kept showing raw English "W mid"/"waxing crescent" even after this
+round, a real inconsistency on the same page. Reused the existing 8 of
+16 `compass.*` tags and the 8 `phase.*` tags (lowercased for scene.py's
+prose style, vs. `translator.py`'s Title Case for table cells) rather
+than creating duplicates.
+
+`render_scribal_json()` (the ephemeris JSON export) gained a `locale`
+parameter that affects ONLY its `"summary"` field (wrapping
+`render_night_summary`) — every other field (season_name, body
+direction/phase, etc.) is a stable data-export value, deliberately kept
+out of scope, matching the function's own pre-existing documented
+contract ("No Fatunik, Terpin, or lore terms appear in the output").
+
+**Tests**: `test_spec_013.py`'s 27 pre-existing tests pass unchanged (all
+new parameters default to `"en-US"`). `tests/test_spec_036.py` grew by 9
+(singular/plural star-count, singular/plural co-fullness incl. the
+below-horizon annotation, the "and 1 other" singular case, no-moons,
+en-US regression, and a live Flask-client check) using synthetic
+`SkyScene` fixtures for edge cases hard to reach via a real pulse search.
+Full suite: 818 passed. Pre-commit clean.
+
 ## 2026-07-21 — SPEC-036/DD-0023 in progress: full-text pages tier
 
 Third implementation round of SPEC-036, following LABEL and SENTENCE/

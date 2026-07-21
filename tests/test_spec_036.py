@@ -29,6 +29,11 @@ are covered yet. Currently covers:
     deterministically; both es-ES translations (hand-authored, promoted
     from the builder's proper-noun-substituted draft) serve correctly
     through the /help routes
+  - scholar-description tier: render_night_summary/render_image_prompt
+    localize correctly (season mood, body/star/house names via .id,
+    compass/height/phase, singular/plural star-count and co-fullness
+    templates); en-US output is unchanged from pre-SPEC-036 (SPEC-013)
+    behavior; render_image_prompt's directive list stays English
 """
 
 from __future__ import annotations
@@ -42,8 +47,10 @@ from sask.calendar.bodies import all_body_states
 from sask.calendar.lore import render_lore_date, render_lore_time
 from sask.calendar.lunar import get_lunar_date
 from sask.calendar.pulse import astro_to_fatunik, astro_to_terpin
+from sask.calendar.scene import get_sky_scene, render_image_prompt, render_night_summary
 from sask.calendar.sky import all_sky_positions
 from sask.config_loader import load_config
+from sask.message import CofullnessTonightRef, HouseRef, NextCofullnessRef, SkyScene
 from sask.web import create_app
 from sask.web.translator import to_moon_view, to_planet_view
 
@@ -459,3 +466,111 @@ def test_calendar_lore_en_us_still_serves_original_english(client):
     html = resp.data.decode()
     assert "Untamed" in html
     assert "Harvenn" in html  # en-US month spelling unaffected by es-ES fix
+
+
+# ── Scholar-description tier (scene.py) ─────────────────────────────────────────
+
+
+def _empty_scene(**overrides) -> SkyScene:
+    base = dict(
+        pulse=0,
+        season="stillness",
+        bodies_up=(),
+        stars_up=(),
+        active_house=HouseRef(id="ember_gate", name="The Ember Gate"),
+        circumpolar_houses=(),
+        co_fullness_tonight=None,
+        next_co_fullness=NextCofullnessRef(pulse=86400, count=0, moons=()),
+    )
+    base.update(overrides)
+    return SkyScene(**base)
+
+
+def test_night_summary_real_scene_es_es_matches_verified_output():
+    scene = get_sky_scene(STORY_PULSE, CONFIG, locale="es-ES")
+    summary = render_night_summary(scene, CONFIG, "es-ES")
+    assert summary.startswith(
+        "Una noche de quietud: pleno invierno, el cielo largo y fr\xedo."
+    )
+    assert "Djémbor" in summary  # body name resolved via .id, not raw .name
+    assert " O " in summary or " O medio" in summary  # compass.w -> "O"
+    assert (
+        "cuarto creciente" in summary
+    )  # lowercase phase, unlike translator.py's Title Case
+    assert "El polinizador alado" in summary  # house name via .id
+    assert "estrellas fijas son visibles" in summary  # plural verb agreement
+    assert "casi llenas al mismo tiempo" in summary
+    assert "d\xeda de distancia" in summary  # singular "day" (1 day to next event)
+
+
+def test_night_summary_no_moons_es_es():
+    scene = _empty_scene()
+    summary = render_night_summary(scene, CONFIG, "es-ES")
+    assert "No hay lunas sobre el horizonte." in summary
+
+
+def test_night_summary_singular_star_count_es_es():
+    from sask.message import StarInScene
+
+    scene = _empty_scene(
+        stars_up=(StarInScene(id="ilyrun", name="Ilyrun", direction="x"),)
+    )
+    summary = render_night_summary(scene, CONFIG, "es-ES")
+    assert "1 estrella fija es visible, incluyendo Ilirun" in summary
+
+
+def test_night_summary_and_one_other_singular_es_es():
+    from sask.message import StarInScene
+
+    stars = tuple(
+        StarInScene(id=sid, name=sid, direction="x")
+        for sid in ("ilyrun", "kresh", "marnok", "sethera")
+    )
+    scene = _empty_scene(stars_up=stars)
+    summary = render_night_summary(scene, CONFIG, "es-ES")
+    assert "y 1 m\xe1s" in summary
+
+
+def test_night_summary_singular_cofullness_es_es():
+    scene = _empty_scene(
+        co_fullness_tonight=CofullnessTonightRef(
+            count=1, moons=("sella",), observable=True
+        )
+    )
+    summary = render_night_summary(scene, CONFIG, "es-ES")
+    assert "Este d\xeda, 1 luna est\xe1 casi llena: Sela." in summary
+
+
+def test_night_summary_cofullness_below_horizon_es_es():
+    scene = _empty_scene(
+        co_fullness_tonight=CofullnessTonightRef(
+            count=2, moons=("sella", "shunna"), observable=False
+        )
+    )
+    summary = render_night_summary(scene, CONFIG, "es-ES")
+    assert "(bajo el horizonte)" in summary
+
+
+def test_night_summary_en_us_unchanged_default_locale():
+    scene = get_sky_scene(STORY_PULSE, CONFIG)  # no locale kwarg -> defaults en-US
+    summary = render_night_summary(scene, CONFIG)  # no locale arg -> defaults en-US
+    assert summary.startswith(
+        "A night of stillness: deep winter, the sky long and cold."
+    )
+    assert "Jembor" in summary
+    assert "W mid" in summary
+
+
+def test_image_prompt_directives_stay_english_in_es_es():
+    scene = get_sky_scene(STORY_PULSE, CONFIG, locale="es-ES")
+    prompt = render_image_prompt(scene, CONFIG, locale="es-ES")
+    assert prompt.startswith(render_night_summary(scene, CONFIG, "es-ES"))
+    assert "Image style:" in prompt  # directive wrapper text stays English
+
+
+def test_sky_page_night_summary_es_es_via_flask(client):
+    resp = client.get(f"/sky?pulse={STORY_PULSE}&locale=es-ES")
+    assert resp.status_code == 200
+    html = resp.data.decode()
+    assert "Una noche de quietud" in html
+    assert "El polinizador alado" in html

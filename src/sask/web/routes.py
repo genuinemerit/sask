@@ -386,9 +386,9 @@ def sky() -> str:
         # for the bound request locale, the same catalog the CLI's `season`
         # command draws from.
         season_name = resolve_i18n(season_tag(si.season_id), g.sask_locale, cfg.i18n)
-        scene = get_sky_scene(pulse, cfg)
-        night_summary = render_night_summary(scene, cfg)
-        image_prompt = render_image_prompt(scene, cfg)
+        scene = get_sky_scene(pulse, cfg, locale=g.sask_locale)
+        night_summary = render_night_summary(scene, cfg, g.sask_locale)
+        image_prompt = render_image_prompt(scene, cfg, locale=g.sask_locale)
 
         moons_up = [b for b in scene.bodies_up if b.body_type == "moon"]
         planets_up = [b for b in scene.bodies_up if b.body_type == "planet"]
@@ -551,7 +551,9 @@ def ephemeris() -> str:
                         start_pulse, preview_end, step_pulses, cfg
                     )
                     if profile in ("scribal", "both"):
-                        scribal_preview = render_scribal_json(preview_series, cfg)
+                        scribal_preview = render_scribal_json(
+                            preview_series, cfg, g.sask_locale
+                        )
                     if profile in ("kinematic", "both"):
                         kinematic_preview = render_kinematic_json(preview_series, cfg)
                 except ValueError as exc:
@@ -632,7 +634,7 @@ def ephemeris_download() -> Response:
         return resp
 
     if profile == "scribal":
-        body = render_scribal_json(series, cfg)
+        body = render_scribal_json(series, cfg, g.sask_locale)
     else:
         body = render_kinematic_json(series, cfg)
 

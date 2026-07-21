@@ -460,3 +460,42 @@
 "calendar.warren_name" = "The Warren Count"
 "calendar.hearth_name" = "The Hearth Count"
 "calendar.terpin_lunar_name" = "The Terpin Lunar Count"
+
+# --- Scholar-description tier (SPEC-036): scene.py's composed night summary ---
+# scene.py's render_night_summary()/render_image_prompt() build a variable-
+# length list of sentences via conditional branching, list-joining, and
+# runtime English pluralization -- decomposed here into whole-sentence
+# templates with placeholders (matching the STATEMENT-tier pattern), plus
+# reuse of the existing body/star/house/compass/phase tags. get_sky_scene()
+# also gained locale-parameterization for BodyInScene.direction/phase,
+# which were computed at scene-composition time (not render time) -- see
+# devlog for why this was in scope, not just the two render_* functions.
+
+"scene.mood.greening" = "A greening night: the air carries new growth and lengthening light."
+"scene.mood.blazing" = "A blazing night: summer warmth, short darkness, the sky vivid overhead."
+"scene.mood.withering" = "A withering night: the harvest season, the air cooling, darkness returning."
+"scene.mood.stillness" = "A night of stillness: deep winter, the sky long and cold."
+"scene.unknown_season" = "Season: {season}."
+
+"scene.height.low" = "low"
+"scene.height.mid" = "mid"
+"scene.height.high" = "high"
+"scene.direction_above_horizon" = "above horizon"
+"scene.phase_tail_visible" = "tail visible"
+"scene.phase_glimpsed" = "glimpsed"
+
+"scene.moons_line" = "Moons above the horizon: {list}."
+"scene.no_moons_line" = "No moons are above the horizon."
+"scene.wanderers_line" = "Wanderers visible: {list}."
+"scene.comet_line" = "The comet {name} traces the sky with a {color} tail."
+"scene.spark_line" = "The Spark glimmers briefly, {direction}."
+"scene.house_line" = "The active House of the Equinox is {house}."
+"scene.star_count_singular" = "{n} fixed star is visible, including {list}."
+"scene.star_count_plural" = "{n} fixed stars are visible, including {list}."
+"scene.and_other_singular" = "and {more} other"
+"scene.and_other_plural" = "and {more} others"
+"scene.cofullness_singular" = "This day, {c} moon is near-full together: {names}{obs}."
+"scene.cofullness_plural" = "This day, {c} moons are near-full together: {names}{obs}."
+"scene.obs_below_horizon" = " (below the horizon)"
+"scene.next_cofullness_singular" = "Next night of co-fullness: {days} day away."
+"scene.next_cofullness_plural" = "Next night of co-fullness: {days} days away."

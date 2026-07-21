@@ -190,10 +190,15 @@ def get_sky_series(
     )
 
 
-def render_scribal_json(series: EphemerisSeries, config: AppConfig) -> str:
+def render_scribal_json(
+    series: EphemerisSeries, config: AppConfig, locale: str = "en-US"
+) -> str:
     """Render the scribal profile: a readable per-step record.
 
-    No Fatunik, Terpin, or lore terms appear in the output.
+    No Fatunik, Terpin, or lore terms appear in the output. locale only
+    affects the "summary" field (SPEC-036, wraps render_night_summary) --
+    every other field (season_name, body direction/phase, etc.) is a
+    stable data-export value, deliberately out of SPEC-036's scope.
     """
     ppd = config.time_constants.pulses_per_day
 
@@ -254,7 +259,7 @@ def render_scribal_json(series: EphemerisSeries, config: AppConfig) -> str:
                     {"id": h.id, "name": h.name} for h in scene.circumpolar_houses
                 ],
                 "co_fullness_tonight": co_full,
-                "summary": render_night_summary(scene, config),
+                "summary": render_night_summary(scene, config, locale),
             }
         )
 
