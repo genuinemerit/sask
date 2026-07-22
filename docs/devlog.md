@@ -1,5 +1,29 @@
 # Dev log
 
+## 2026-07-22 — SPEC-038: hide acceptance-test/run_perf where tools/ops/ is absent
+
+Dave asked the right question after the previous fix: why register
+`acceptance-test`/`run_perf` as CLI commands at all if they can never
+succeed once deployed? Chose option (2) — hide them, don't just error
+cleanly.
+
+**Added** `has_tools_ops()` (`src/sask/cli/_paths.py`): true when
+`tools/ops/` exists relative to `repo_root()`. A separate signal from
+`is_dev_env()`/`SASK_ENV` — capability, not identity. In
+`src/sask/cli/__init__.py`, `acceptance-test`/`run_perf` now register with
+`hidden=not _HAS_TOOLS_OPS`, computed once at CLI startup the same way
+`_IS_DEV` already is. They stay Admin-tagged (DD-0025's tier model is
+unchanged) — this isn't gated by environment identity or auth, just by
+whether the wrapped `tools/ops/` script can possibly exist here. `logs
+verify`/`logs query`/`config check` are unaffected (pure Python,
+self-contained in `src/sask/cli/`, genuinely work everywhere).
+
+Added `test_has_tools_ops_true_for_real_checkout`,
+`test_has_tools_ops_false_without_tools_ops_dir`, and
+`test_acceptance_test_and_run_perf_not_hidden_in_this_checkout` to
+`tests/test_spec_038.py`. Full suite: 862 passed. Pre-commit clean.
+`README.md` updated to explain the hide condition.
+
 ## 2026-07-22 — SPEC-038 second prod fix: run_tool's missing-script error
 
 Dave manually ran `sask run_perf`/`sask acceptance-test` directly on the

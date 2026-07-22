@@ -103,7 +103,7 @@ poetry run sask --help
 | `sask host_info` | Non-sensitive host/platform diagnostics (no hostname/IP/MAC) |
 | `sask validate_json SCHEMA DATA` | Generic JSON-Schema (Draft 2020-12) validation |
 
-**Admin** (diagnostics/verification, no service mutation, always available):
+**Admin** (diagnostics/verification, no service mutation):
 
 | Command | Description |
 |---|---|
@@ -112,6 +112,13 @@ poetry run sask --help
 | `sask logs verify` | Verify recent journal output: well-formed app JSON, no cleartext secrets |
 | `sask acceptance-test` | Layer 2 acceptance suite against a live sask endpoint |
 | `sask run_perf` | Layer 1 engine benchmarks |
+
+`config`/`logs` are always available. `acceptance-test`/`run_perf` wrap
+`tools/ops/` scripts, which aren't part of the deployed package (only
+`src/sask/`, `config/`, assets, `docs/help/`, `wsgi.py` are synced to the
+droplet) — they're hidden from `--help` wherever `tools/ops/` isn't
+present (i.e. on the deployed droplet), since they could never succeed
+there regardless of tier/auth.
 
 **Dev** (development/build/verification tooling — only available with
 `SASK_ENV=dev`; see `docs/dev-setup.md` §8), each a thin adapter over the

@@ -34,6 +34,7 @@ import pytest
 import typer
 from typer.testing import CliRunner
 
+from sask.cli import _paths as paths_module
 from sask.cli import _subprocess as subprocess_module
 from sask.cli import app as cli_app
 from sask.cli.commands import (
@@ -94,10 +95,37 @@ def test_dev_command_runs_with_sask_env_dev():
 
 
 def test_admin_command_visible_and_error_shape_regardless_of_sask_env():
+    """acceptance-test/run_perf's visibility does not depend on SASK_ENV —
+    it depends on a separate signal, tools/ops/ presence (has_tools_ops(),
+    see test_has_tools_ops_* below), which is True in this real checkout
+    either way.
+    """
     for env in (None, {"SASK_ENV": "dev"}):
         result = _run_cli(["--help"], env)
         assert "acceptance-test" in result.stdout
         assert "run_perf" in result.stdout
+
+
+def test_has_tools_ops_true_for_real_checkout():
+    assert paths_module.has_tools_ops() is True
+
+
+def test_has_tools_ops_false_without_tools_ops_dir(tmp_path, monkeypatch):
+    monkeypatch.setattr(paths_module, "_REPO_ROOT", tmp_path)
+    assert paths_module.has_tools_ops() is False
+
+
+def test_acceptance_test_and_run_perf_not_hidden_in_this_checkout():
+    """Regression guard for the fix itself: caught live on the droplet
+    where tools/ops/ isn't deployed (DD-0021's ops-vs-CLI boundary) —
+    acceptance-test/run_perf were visible and admin-tagged but always
+    failed there. hidden=not has_tools_ops() now hides them where they
+    structurally cannot work; this checkout has tools/ops/, so they must
+    stay visible here.
+    """
+    hidden_by_name = {cmd.name: cmd.hidden for cmd in cli_app.registered_commands}
+    assert hidden_by_name["acceptance-test"] is False
+    assert hidden_by_name["run_perf"] is False
 
 
 def test_player_command_visible_regardless_of_sask_env():

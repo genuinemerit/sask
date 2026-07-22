@@ -18,6 +18,18 @@ Dev-tier commands are additionally hidden=not _IS_DEV, the one tier
 DD-0025 enforces now (player/admin stay tagged-but-unenforced until auth
 exists) — SASK_ENV is read once here, the same fresh-process-per-invocation
 model SASK_LOG_LEVEL/SASK_LOCALE already use.
+
+acceptance-test/run_perf are additionally hidden=not _HAS_TOOLS_OPS — a
+SEPARATE signal from SASK_ENV (capability, not identity): they subprocess-
+wrap tools/ops/ scripts that are structurally never part of the deployed
+package (DD-0021's ops-vs-CLI boundary excludes tools/ from the prod
+sync), so on the droplet they could never succeed regardless of SASK_ENV.
+Caught live during SPEC-038 prod UAT — they were visible and admin-tagged
+(un-gated, per DD-0025) but always failed there; hiding them where they
+structurally cannot work is more honest than leaving them listed only to
+error on every attempt. They stay Admin-tagged (not Dev) — this isn't an
+identity/environment distinction, just a "does the underlying tool exist
+here" one.
 """
 
 from __future__ import annotations
@@ -28,6 +40,7 @@ import typer
 
 from sask import logsetup
 from sask.cli._env import is_dev_env
+from sask.cli._paths import has_tools_ops
 from sask.cli.commands import (
     acceptance_test,
     asset,
@@ -45,6 +58,7 @@ from sask.cli.commands import (
 app = typer.Typer(help="sask calendar-engine CLI", no_args_is_help=True)
 
 _IS_DEV = is_dev_env()
+_HAS_TOOLS_OPS = has_tools_ops()
 
 
 @app.callback()
@@ -82,8 +96,12 @@ app.add_typer(asset.app, name="asset", rich_help_panel="Player")
 # service mutation (tagged now, enforced by auth later).
 app.add_typer(config.app, name="config", rich_help_panel="Admin")
 app.add_typer(logs.app, name="logs", rich_help_panel="Admin")
-app.command("acceptance-test", rich_help_panel="Admin")(acceptance_test.acceptance_test)
-app.command("run_perf", rich_help_panel="Admin")(run_perf.run_perf)
+app.command("acceptance-test", hidden=not _HAS_TOOLS_OPS, rich_help_panel="Admin")(
+    acceptance_test.acceptance_test
+)
+app.command("run_perf", hidden=not _HAS_TOOLS_OPS, rich_help_panel="Admin")(
+    run_perf.run_perf
+)
 
 # Dev tier — development/build/verification tooling, only meaningful in a
 # development environment. Enforced NOW via SASK_ENV (not auth): hidden from
