@@ -2417,3 +2417,320 @@ service for TC-035-05, stop it with `bash tools/dev/sask-dev-service.sh
 stop` if you don't want it running continuously. Confirm
 `config/i18n/es-ES.toml` was restored if TC-035-06's backup/restore steps
 were interrupted (`git status` should show it unmodified).
+
+---
+
+## SPEC-038 — CLI Round Two: dev tier, expanded admin surface, rich presentation
+
+SPEC-038 adds eleven commands to the CLI — admin (`logs verify`,
+`acceptance-test`, `run_perf`), a new `SASK_ENV`-gated dev tier
+(`check_page_staleness`, `pre-commit-check`, `run-tests`, `start_web`,
+`verify-clean-env`, `verify-do-secrets`, `validate_specs`, `validate_i18n`),
+and player (`host_info`, `validate_json`) — and adopts `rich` for styled
+terminal output. Automated tests (`tests/test_spec_038.py`, 38 tests) cover
+delegation (via a monkeypatched `run_tool`, not a live run), the
+SASK_ENV-gating logic, tier tags, and REQ-SEC-006's secret-safety
+predicates; this UAT checks what those tests deliberately don't: does each
+wrapped command actually behave correctly when its real script runs, does
+`SASK_ENV` gate correctly in a real shell, does rich actually render
+styled/plain correctly in a real terminal vs. a real pipe, and — the one
+thing automated tests structurally cannot cover — do the commands that
+depend on the `psutil`/`jsonschema` main-dependency move (`host_info`,
+`validate_json`) and the retired-`verify-logging.sh` replacement (`logs
+verify`) actually work once the CLI is deployed to the droplet.
+
+TC-038-01 through TC-038-08 can be run now, on the dev host. TC-038-09
+through TC-038-12 require the CLI to actually be deployed first — run them
+after the deploy/redeploy round that follows this UAT.
+
+### SPEC-038 Setup
+
+**In a terminal on the dev host:**
+
+```bash
+cd ~/Code/sask
+poetry install   # picks up rich as an explicit dep; psutil/jsonschema now main-group
+```
+
+---
+
+### SPEC-038 Test cases
+
+#### TC-038-01 — `host_info` excludes sensitive fields
+
+**Action:**
+
+```bash
+poetry run sask host_info
+poetry run sask host_info | cat
+```
+
+**Pass criteria:**
+
+- Output shows `platform`, `platform-release`, `platform-version`,
+  `architecture`, `python-version`, `processor`, `ram` — and nothing else.
+- No `hostname`, `ip-address`, or `mac-address` field appears anywhere
+  (REQ-SEC-006) — these are structurally never collected, not filtered.
+- Piped output (`| cat`) is plain `key: value` text with no visible escape
+  sequences; the direct-terminal run renders as a styled rich table.
+
+---
+
+#### TC-038-02 — `validate_json` reports pass/fail cleanly
+
+**Action:**
+
+```bash
+echo '{"type":"object"}' > /tmp/schema.json
+echo '{}' > /tmp/data.json
+poetry run sask validate_json /tmp/schema.json /tmp/data.json
+echo "exit=$?"
+
+echo '{"type":"string"}' > /tmp/schema2.json
+poetry run sask validate_json /tmp/schema2.json /tmp/data.json
+echo "exit=$?"
+```
+
+**Pass criteria:**
+
+- The matching schema/data pair prints nothing and exits 0.
+- The mismatched pair prints a `jsonschema`-style `path: message` line
+  (e.g. `[]: {} is not of type 'string'`) and exits 1.
+
+---
+
+#### TC-038-03 — `logs verify` works against the dev journal
+
+**Precondition:** the SPEC-033 dev systemd service is running
+(`bash tools/dev/sask-dev-service.sh start` if it isn't).
+
+**Action:**
+
+```bash
+poetry run sask logs verify --user --unit sask-dev -n 50
+```
+
+**Pass criteria:**
+
+- Prints `total`/`well_formed_json`/`secret_hits` counts, with
+  `well_formed_json` > 0 and `secret_hits` = 0.
+- Exits 0 with a trailing `PASS` line — confirms DEBT-0001's app-output
+  check now works against the local journal directly, no SSH required.
+
+---
+
+#### TC-038-04 — `acceptance-test` and `run_perf` run the real scripts
+
+**Action:**
+
+```bash
+poetry run sask acceptance-test
+poetry run sask run_perf
+```
+
+**Pass criteria:**
+
+- `acceptance-test` prints the same TLS/`/health`/asset checks
+  `tools/ops/acceptance-test.sh` always has, against the currently-live
+  site (this doesn't depend on today's CLI deploy) — all `[PASS]` lines,
+  exit 0.
+- `run_perf` runs the Layer 1 benchmark suite and reports "Layer 1
+  benchmarks saved under tests/results/perf/benchmarks/", exit 0.
+
+---
+
+#### TC-038-05 — `SASK_ENV` gates the dev tier
+
+**Action:**
+
+```bash
+poetry run sask --help              # SASK_ENV unset
+poetry run sask validate_specs      # SASK_ENV unset
+
+export SASK_ENV=dev
+poetry run sask --help
+poetry run sask pre-commit-check
+poetry run sask run-tests --spec SPEC-038
+unset SASK_ENV
+```
+
+**Pass criteria:**
+
+- With `SASK_ENV` unset: none of the eight dev commands appear in
+  `--help`'s output; `validate_specs` prints `Error: this command is
+  available only in a development environment (set SASK_ENV=dev).` and
+  exits 1.
+- With `SASK_ENV=dev`: all eight appear under a `Dev` help panel, and
+  `pre-commit-check`/`run-tests` run their underlying scripts for real —
+  same output/exit code as running `tools/dev/pre-commit-check.sh` or
+  `tools/dev/run-tests.sh` directly.
+
+---
+
+#### TC-038-06 — Remaining dev-tier wraps behave identically to their scripts
+
+**Action (with `SASK_ENV=dev`):**
+
+```bash
+poetry run sask check_page_staleness
+poetry run sask verify-clean-env
+poetry run sask verify-do-secrets
+poetry run sask validate_i18n --strict
+poetry run sask start_web            # Ctrl+C once it's confirmed running
+```
+
+**Pass criteria:**
+
+- Each prints the same output and exit code as running its
+  `tools/dev/*.sh`/`*.py` script directly.
+- `verify-do-secrets` reports presence/validity only — the
+  `DIGITALOCEAN_TOKEN` value itself never appears in the output
+  (REQ-SEC-006).
+
+---
+
+#### TC-038-07 — rich renders styled in a terminal, plain when piped
+
+**Action:**
+
+```bash
+poetry run sask asset list           # direct terminal
+poetry run sask asset list | cat     # piped
+poetry run sask help | cat
+poetry run sask config check | cat
+```
+
+**Pass criteria:**
+
+- Run directly in a terminal, `asset list` renders as a bordered rich
+  table and `help` renders styled Markdown.
+- Piped to `cat`, output is plain text with the exact same field
+  values/lines SPEC-034 always produced (byte-comparable, not merely
+  de-colored table glyphs) — no visible escape sequences.
+
+---
+
+#### TC-038-08 — Ops boundary unchanged
+
+**Action:**
+
+```bash
+poetry run sask --help
+poetry run sask logs --help
+```
+
+**Pass criteria:**
+
+- No `deploy`, `redeploy`, or `set-log-level` command appears anywhere.
+- `logs --help` lists both `query` and the new `verify` subcommand.
+
+---
+
+#### TC-038-09 — [after deploy] `host_info`/`validate_json` run on the droplet
+
+**Precondition:** the CLI has been deployed (`deploy.sh`/`redeploy.sh`),
+so `requirements.txt` — now including `psutil`/`jsonschema`/`rich` in the
+main group — has actually been installed on the droplet.
+
+**Action:**
+
+```bash
+bash tools/ops/connect.sh
+# on the droplet:
+sask host_info
+echo '{"type":"object"}' > /tmp/s.json
+echo '{}' > /tmp/d.json
+sask validate_json /tmp/s.json /tmp/d.json
+```
+
+**Pass criteria:**
+
+- Both commands run without `ModuleNotFoundError` and produce the same
+  shape of output as TC-038-01/TC-038-02 — confirms the `psutil`/
+  `jsonschema` dev→main dependency move actually reaches production
+  (the entire reason for that change).
+
+---
+
+#### TC-038-10 — [after deploy] `logs verify` against the production journal
+
+**Action:**
+
+```bash
+bash tools/ops/connect.sh
+# on the droplet:
+sask logs verify --unit sask -n 50
+```
+
+**Pass criteria:**
+
+- Same shape as TC-038-03's dev output — `well_formed_json` > 0,
+  `secret_hits` = 0, exits 0 with `PASS` — confirming DEBT-0001's
+  replacement for the retired `tools/ops/verify-logging.sh` works against
+  the real production journal.
+
+---
+
+#### TC-038-11 — [after deploy] dev-tier commands stay hidden/refused in prod
+
+**Action:**
+
+```bash
+bash tools/ops/connect.sh
+# on the droplet:
+sask --help
+sask validate_specs
+```
+
+**Pass criteria:**
+
+- None of the eight dev commands appear in `--help` (`SASK_ENV` is not set
+  to `dev` on the droplet).
+- `validate_specs` prints the "available only in a development
+  environment" error and exits 1 — confirming the gating holds in the real
+  production environment, not just a simulated local check.
+
+---
+
+#### TC-038-12 — [after deploy] the Ansible journald-cap assertion ran and passed
+
+**Action:** review the `deploy.sh`/`redeploy.sh` output for the "Assert the
+journald drop-in carries both size/retention caps" task.
+
+**Pass criteria:**
+
+- The task reports `ok` (or `changed` on the first run after this round),
+  not a failure — confirming DEBT-0001's infra half is now enforced
+  automatically on every deploy, replacing the retired manual
+  `verify-logging.sh` check.
+
+---
+
+### SPEC-038 Results — pending
+
+Not yet run. TC-038-01 through TC-038-08 to be completed on the dev host;
+TC-038-09 through TC-038-12 after the next deploy/redeploy round.
+
+| TC | Result | Notes |
+|---|---|---|
+| TC-038-01 | PENDING | |
+| TC-038-02 | PENDING | |
+| TC-038-03 | PENDING | |
+| TC-038-04 | PENDING | |
+| TC-038-05 | PENDING | |
+| TC-038-06 | PENDING | |
+| TC-038-07 | PENDING | |
+| TC-038-08 | PENDING | |
+| TC-038-09 | PENDING | requires prior deploy/redeploy |
+| TC-038-10 | PENDING | requires prior deploy/redeploy |
+| TC-038-11 | PENDING | requires prior deploy/redeploy |
+| TC-038-12 | PENDING | requires prior deploy/redeploy |
+
+---
+
+### SPEC-038 Teardown
+
+Stop the SPEC-033 dev service if it was started just for TC-038-03
+(`bash tools/dev/sask-dev-service.sh stop`), and confirm `SASK_ENV` is
+unset again in your shell unless you're keeping it set for day-to-day dev
+work (see `docs/dev-setup.md` §8).

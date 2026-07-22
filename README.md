@@ -83,12 +83,16 @@ PYTHONPATH=src poetry run gunicorn wsgi:app
 
 ## CLI
 
-A `sask` console-script (DD-0021) wraps the same engine/spine functions the
-web adapter uses:
+A `sask` console-script (DD-0021, DD-0025) wraps the same engine/spine
+functions the web adapter uses, with commands tagged by role tier
+(player/admin/dev — DD-0025) as an auth seam, and rendered with `rich`
+(styled in a terminal, plain when piped/redirected):
 
 ```bash
 poetry run sask --help
 ```
+
+**Player** (read-only, always available):
 
 | Command | Description |
 |---|---|
@@ -96,8 +100,29 @@ poetry run sask --help
 | `sask season --pulse N` | Astronomical season (and near-event) for a pulse, localized |
 | `sask help [topic]` | Renders the same Markdown help content as the web `/help` route |
 | `sask asset list` / `sask asset info <kind> <id>` | Asset catalog descriptor fields (no payload reads) |
+| `sask host_info` | Non-sensitive host/platform diagnostics (no hostname/IP/MAC) |
+| `sask validate_json SCHEMA DATA` | Generic JSON-Schema (Draft 2020-12) validation |
+
+**Admin** (diagnostics/verification, no service mutation, always available):
+
+| Command | Description |
+|---|---|
 | `sask config check` | Read-only config validation |
 | `sask logs query` | Query the app's structured journald logs |
+| `sask logs verify` | Verify recent journal output: well-formed app JSON, no cleartext secrets |
+| `sask acceptance-test` | Layer 2 acceptance suite against a live sask endpoint |
+| `sask run_perf` | Layer 1 engine benchmarks |
+
+**Dev** (development/build/verification tooling — only available with
+`SASK_ENV=dev`; see `docs/dev-setup.md` §8), each a thin adapter over the
+identically-named `tools/dev/` script:
+
+`sask check_page_staleness`, `sask pre-commit-check`, `sask run-tests`,
+`sask start_web`, `sask verify-clean-env`, `sask verify-do-secrets`,
+`sask validate_specs`, `sask validate_i18n`.
+
+`deploy`/`redeploy`/`set-log-level` are deliberately **not** CLI commands —
+service/infrastructure mutation stays in `tools/ops/` (DD-0021).
 
 `--lang <locale>` / `SASK_LOCALE` selects the locale for interface text and
 localized results (mirrors `SASK_LOG_LEVEL`'s flag/env-var precedence); logs

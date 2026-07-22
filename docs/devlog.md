@@ -62,6 +62,24 @@ comment fixed — it stays ops-only per DD-0021/DD-0025.
 via subprocess so it doesn't depend on whatever `SASK_ENV` happened to be
 ambient at first import). Full suite: 857 passed. Pre-commit clean.
 
+**UAT documented, not yet run**: `docs/user_testing.md` gained a SPEC-038
+section (TC-038-01 through TC-038-12) covering every new command — the
+eight dev-tier scripts, `logs verify`, `acceptance-test`, `run_perf`,
+`host_info`, `validate_json` — plus `SASK_ENV` gating and rich's terminal-
+vs-piped rendering. TC-038-01 through TC-038-08 run entirely on the dev
+host; TC-038-09 through TC-038-12 are marked `[after deploy]` since they
+specifically confirm the things only production can prove: the `psutil`/
+`jsonschema` dev→main dependency move actually reaching `requirements.txt`
+on the droplet, `logs verify` against the real production journal, dev-tier
+gating holding with no `SASK_ENV` set in prod, and the new Ansible
+journald-cap assertion passing during a real deploy. Results table left
+`PENDING` throughout — Dave is running these himself rather than having
+Claude execute them (`acceptance-test`/`run_perf`/`pre-commit-check`/
+`run-tests`/`start_web`/`verify-clean-env` are network-dependent, slow, or
+recursive enough that they were only argv-delegation-tested, not actually
+executed, during implementation). `README.md`'s CLI section rewritten to
+list all seventeen commands by tier.
+
 ## 2026-07-21 — SPEC-036/DD-0023 accepted: full localization complete
 
 SPEC-036 and DD-0023 are both flipped `proposed` → `accepted`. This closes
