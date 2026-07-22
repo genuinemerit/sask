@@ -148,7 +148,16 @@ def logs_verify(
     `sask logs verify --user --unit sask-dev`
     `sask logs verify -n 200`
     """
-    argv = _build_journalctl_argv(unit, user_scope, None, None, lines)
+    # -o cat: journalctl's default format prepends a syslog-style prefix
+    # ("Jul 22 15:03:17 host gunicorn[PID]: ") before each line, which
+    # would make every line fail json.loads() regardless of content. -o cat
+    # strips that prefix, matching the exact flag the retired
+    # verify-logging.sh's REMOTE_CHECK used for the same reason. `logs
+    # query` deliberately keeps the default format (its own --level
+    # filtering already accounts for non-JSON lines, and its purpose is
+    # human-readable display, not JSON parsing) — this flag is added here
+    # only, not in the shared argv builder.
+    argv = _build_journalctl_argv(unit, user_scope, None, None, lines) + ["-o", "cat"]
     try:
         result = subprocess.run(argv, capture_output=True, text=True, check=False)
     except FileNotFoundError:

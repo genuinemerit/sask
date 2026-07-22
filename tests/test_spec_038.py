@@ -274,6 +274,36 @@ def test_logs_verify_secret_needle_predicate():
     assert not logs_module._line_has_cleartext_secret("dop_v1_***REDACTED***")
 
 
+def test_logs_verify_requests_cat_output_format(monkeypatch):
+    """Regression test: journalctl's default output format prepends a
+    syslog-style prefix ("Jul 22 15:03:17 host gunicorn[PID]: ") before
+    each line, which makes every line fail json.loads() regardless of
+    content — caught live during SPEC-038 prod UAT (well_formed_json
+    reported 0 against a journal that plainly had well-formed JSON). -o cat
+    strips that prefix, matching the retired verify-logging.sh's own flag.
+    Earlier versions of this test suite monkeypatched subprocess.run
+    entirely and never asserted the actual argv, so this exact regression
+    slipped past every prior automated test.
+    """
+    captured_argv = []
+
+    class FakeResult:
+        returncode = 0
+        stdout = ""
+        stderr = ""
+
+    def fake_run(argv, **kwargs):
+        captured_argv.append(argv)
+        return FakeResult()
+
+    monkeypatch.setattr(logs_module.subprocess, "run", fake_run)
+    runner.invoke(cli_app, ["logs", "verify"])
+
+    argv = captured_argv[0]
+    assert "-o" in argv
+    assert argv[argv.index("-o") + 1] == "cat"
+
+
 def test_logs_verify_fails_when_no_wellformed_json(monkeypatch):
     class FakeResult:
         returncode = 0
