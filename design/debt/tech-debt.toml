@@ -61,3 +61,38 @@ CLI surface was expected to grow past that plain baseline.
 """
 trigger     = "The CLI round that adds commands genuinely benefiting from styled output (tables, Markdown, structured results)."
 resolved_by = "SPEC-038"
+
+[[debt]]
+id               = "DEBT-0004"
+title            = "CLI --lang/SASK_LOCALE coverage gaps: help index, Typer's own --help text"
+status           = "open"
+raised           = "2026-07-22"
+source           = "manual UAT during SPEC-038 CLI Round Two acceptance testing"
+area             = "i18n"
+summary          = """
+`--lang`/`SASK_LOCALE` (DD-0022) does not reach all CLI locale-selectable
+text. Two distinct gaps observed:
+(1) `sask help` with no topic (the index) always renders the base
+docs/help/index.md regardless of --lang, even though docs/help/index.es-ES.md
+already exists and the web /help route already serves it correctly
+(src/sask/web/routes.py's index route looks up
+parallel_docs.get(("index", g.sask_locale)) before falling back). The CLI's
+help_command (src/sask/cli/commands/help.py::_render_help)'s topic-is-None
+branch calls sask.help.loader.index_path() directly and never consults
+discover_parallel_docs() at all, unlike its own per-topic branch a few lines
+below, which does the lookup correctly. A concrete, scoped fix within the
+existing DD-0022 mechanism -- not an architecture gap.
+(2) Typer's own auto-generated `--help` output (the command list, each
+command's description, and option help text -- all sourced from Python
+docstrings/help= strings) is not localized at all and is entirely outside
+DD-0022's tag/catalog mechanism. Localizing it would mean either hand-rolling
+per-locale docstrings selected at import/registration time or intercepting
+Typer's rich-based help formatter -- a real design question, not a quick fix.
+"""
+trigger          = "Next i18n or CLI round that revisits locale coverage."
+open_subquestion = """
+For (2): is localizing Typer's own --help worth the cost at all, given it is
+operator/developer-facing tooling (unlike the player-facing web UI DD-0022
+targeted)? If yes, decide the mechanism before implementing. (1) has no open
+subquestion -- it is a same-mechanism fix, just not made this round.
+"""

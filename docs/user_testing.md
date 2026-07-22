@@ -2706,21 +2706,26 @@ journald drop-in carries both size/retention caps" task.
 
 ---
 
-### SPEC-038 Results — pending
+### SPEC-038 Results — 2026-07-22 (dev)
 
-Not yet run. TC-038-01 through TC-038-08 to be completed on the dev host;
-TC-038-09 through TC-038-12 after the next deploy/redeploy round.
+Dave ran the dev-host round (TC-038-01 through TC-038-08) manually and
+reported it satisfactory, no fixes needed. One unrelated finding surfaced
+along the way: `sask --lang es-ES help` (no topic) and Typer's own
+auto-generated `--help` text both stay in English regardless of `--lang`
+— filed as DEBT-0004 (not a SPEC-038 regression; a pre-existing DD-0022
+coverage gap, evaluation deferred). TC-038-09 through TC-038-12 remain
+pending the next deploy/redeploy round.
 
 | TC | Result | Notes |
 |---|---|---|
-| TC-038-01 | PENDING | |
-| TC-038-02 | PENDING | |
-| TC-038-03 | PENDING | |
-| TC-038-04 | PENDING | |
-| TC-038-05 | PENDING | |
-| TC-038-06 | PENDING | |
-| TC-038-07 | PENDING | |
-| TC-038-08 | PENDING | |
+| TC-038-01 | PASS | |
+| TC-038-02 | PASS | |
+| TC-038-03 | PASS | |
+| TC-038-04 | PASS | |
+| TC-038-05 | PASS | |
+| TC-038-06 | PASS | |
+| TC-038-07 | PASS | |
+| TC-038-08 | PASS | |
 | TC-038-09 | PENDING | requires prior deploy/redeploy |
 | TC-038-10 | PENDING | requires prior deploy/redeploy |
 | TC-038-11 | PENDING | requires prior deploy/redeploy |

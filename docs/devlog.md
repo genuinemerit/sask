@@ -1,5 +1,27 @@
 # Dev log
 
+## 2026-07-22 — SPEC-038 dev-host UAT: PASS; DEBT-0004 filed (CLI locale gaps)
+
+Dave ran TC-038-01 through TC-038-08 manually on the dev host — all PASS,
+no fixes needed. `docs/user_testing.md`'s SPEC-038 Results table updated
+accordingly; TC-038-09 through TC-038-12 remain pending the next deploy/
+redeploy round.
+
+**DEBT-0004 filed** (`design/debt/tech-debt.toml`), not fixed — the user
+was explicit this needs evaluation, not an immediate change. Found
+incidentally while exercising `--lang`: `sask --lang es-ES help` (no
+topic) always renders the base English index even though
+`docs/help/index.es-ES.md` already exists and the web `/help` route
+already serves it correctly — `help_command`'s topic-is-None branch
+(`src/sask/cli/commands/help.py`) calls `index_path()` directly and never
+consults `discover_parallel_docs()`, unlike its own per-topic branch a few
+lines below. A concrete, scoped fix within the existing DD-0022 mechanism.
+Separately, Typer's own auto-generated `--help` (command list,
+descriptions, option help) isn't localized at all — outside DD-0022's tag/
+catalog mechanism entirely, a real design question (worth the cost for
+operator-facing tooling? what mechanism?) rather than a quick fix. Not a
+SPEC-038 regression — both gaps predate this round.
+
 ## 2026-07-21 — SPEC-038/DD-0025: CLI Round Two — dev tier, expanded surface, rich
 
 SPEC-038 and DD-0025 both `accepted`. Completes the CLI command surface
