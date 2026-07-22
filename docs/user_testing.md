@@ -2741,6 +2741,16 @@ added; re-deployed and re-verified — both commands now report `Error:
 .../tools/ops/....sh not found — this command needs a full sask checkout
 (tools/ is not part of the deployed package).` and exit 1.
 
+Dave then asked the natural follow-up: why register commands in the prod
+CLI that can never succeed there at all? Chose to hide them instead of
+just erroring cleanly. Added `has_tools_ops()`
+(`src/sask/cli/_paths.py`) — a capability signal separate from
+`SASK_ENV`/`is_dev_env()` — and `acceptance-test`/`run_perf` now register
+`hidden=not has_tools_ops()` (commit 2b26936). Re-deployed and
+re-verified: both commands are now absent from prod `--help`'s Admin
+panel entirely; `config`/`logs` (genuinely functional everywhere) remain
+listed; `logs verify` re-confirmed still PASS.
+
 | TC | Result | Notes |
 |---|---|---|
 | TC-038-01 | PASS | |
