@@ -2727,6 +2727,20 @@ added, and re-deployed; TC-038-10 re-run and confirmed PASS
 (`well_formed_json: 20` of 50 lines — the rest are gunicorn's own
 restart/worker notices, expected).
 
+Dave also manually ran `sask run_perf`/`sask acceptance-test` directly on
+the droplet (not one of the numbered TCs — `tools/` isn't deployed there
+by design, so these admin commands can't functionally succeed on the
+droplet, only degrade cleanly) and found bash's own raw
+`No such file or directory` error leaking through instead of a clean
+message: `subprocess.run(["bash", missing_path])` doesn't raise Python's
+`FileNotFoundError` (bash itself is on PATH; only its argument is
+missing), so `_subprocess.run_tool`'s `except FileNotFoundError` never
+actually fired. Fixed (`src/sask/cli/_subprocess.py`, commit 6d9e2f9) by
+checking `script.exists()` explicitly before invoking; a regression test
+added; re-deployed and re-verified — both commands now report `Error:
+.../tools/ops/....sh not found — this command needs a full sask checkout
+(tools/ is not part of the deployed package).` and exit 1.
+
 | TC | Result | Notes |
 |---|---|---|
 | TC-038-01 | PASS | |

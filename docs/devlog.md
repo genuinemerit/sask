@@ -1,5 +1,38 @@
 # Dev log
 
+## 2026-07-22 — SPEC-038 second prod fix: run_tool's missing-script error
+
+Dave manually ran `sask run_perf`/`sask acceptance-test` directly on the
+droplet (not one of the numbered UAT cases — `tools/` isn't deployed
+there by design, so these admin commands can only degrade cleanly, never
+functionally succeed there) and hit bash's own raw
+`No such file or directory` leaking through instead of a clean error.
+
+Root cause: `subprocess.run(["bash", missing_path])` does NOT raise
+Python's `FileNotFoundError` — bash itself is found on `PATH`; only ITS
+argument (the wrapped `tools/` script) is missing. `_subprocess.py`'s
+`run_tool` only caught `FileNotFoundError` around the `subprocess.run`
+call, so that handler never actually fired for this — the exact case it
+was written for, per its own docstring. bash printed its raw error
+straight to inherited stderr instead.
+
+**Fixed** (`src/sask/cli/_subprocess.py`, commit 6d9e2f9): `run_tool` now
+takes `(launcher, script, args=, env=)` and checks `script.exists()`
+itself, first, before invoking — reporting `Error: <path> not found —
+this command needs a full sask checkout (tools/ is not part of the
+deployed package).` Updated all eight dev-tier commands plus
+`acceptance-test`/`run_perf` to the new call signature; delegation tests
+updated to match; added a direct regression test for `run_tool`'s
+existence check (the earlier tests only asserted delegation happened, not
+what `run_tool` itself does with a missing path — exactly how this slipped
+through). Full suite: 859 passed. Pre-commit clean. Re-deployed,
+re-verified on the droplet: both commands now report the clean message
+and exit 1; `logs verify`/`host_info`/`acceptance-test` (against the live
+site) re-confirmed unaffected.
+
+`docs/user_testing.md`'s SPEC-038 Results section updated with both prod
+fixes. SPEC-038 remains fully verified in dev and prod.
+
 ## 2026-07-22 — SPEC-038 deployed to prod; `logs verify` -o cat fix
 
 Deployed SPEC-038 (`tools/ops/deploy.sh`, two runs) to `sask-droplet`.
