@@ -17,4 +17,4 @@ def run_perf() -> None:
     Example usage:
     `sask run_perf`
     """
-    run_tool(["bash", str(repo_root() / "tools" / "ops" / "run_perf.sh")])
+    run_tool(["bash"], repo_root() / "tools" / "ops" / "run_perf.sh")

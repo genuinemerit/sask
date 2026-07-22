@@ -6,6 +6,11 @@ command is a thin subprocess wrap of its existing tools/dev/ script; no
 logic is reimplemented, no behavior changes. Registration (hidden=not
 is_dev_env()) happens once in cli/__init__.py; each command body also calls
 require_dev() itself as defense in depth.
+
+Each _TOOLS_DEV / "..." script path is passed to _subprocess.run_tool,
+which checks the path's existence itself before invoking (see its own
+docstring for why that check can't be left to subprocess.run/except
+FileNotFoundError).
 """
 
 from __future__ import annotations
@@ -28,7 +33,7 @@ def check_page_staleness() -> None:
     `sask check_page_staleness`
     """
     require_dev()
-    run_tool([sys.executable, str(_TOOLS_DEV / "check_page_staleness.py")])
+    run_tool([sys.executable], _TOOLS_DEV / "check_page_staleness.py")
 
 
 def pre_commit_check() -> None:
@@ -38,7 +43,7 @@ def pre_commit_check() -> None:
     `sask pre-commit-check`
     """
     require_dev()
-    run_tool(["bash", str(_TOOLS_DEV / "pre-commit-check.sh")])
+    run_tool(["bash"], _TOOLS_DEV / "pre-commit-check.sh")
 
 
 def run_tests(
@@ -60,14 +65,14 @@ def run_tests(
     `sask run-tests --spec SPEC-002 -v --save`
     """
     require_dev()
-    argv = ["bash", str(_TOOLS_DEV / "run-tests.sh")]
+    args = []
     if spec:
-        argv += ["--spec", spec]
+        args += ["--spec", spec]
     if verbose:
-        argv.append("-v")
+        args.append("-v")
     if save:
-        argv.append("--save")
-    run_tool(argv)
+        args.append("--save")
+    run_tool(["bash"], _TOOLS_DEV / "run-tests.sh", args=args)
 
 
 def start_web() -> None:
@@ -77,7 +82,7 @@ def start_web() -> None:
     `sask start_web`
     """
     require_dev()
-    run_tool(["bash", str(_TOOLS_DEV / "start_web.sh")])
+    run_tool(["bash"], _TOOLS_DEV / "start_web.sh")
 
 
 def verify_clean_env() -> None:
@@ -87,7 +92,7 @@ def verify_clean_env() -> None:
     `sask verify-clean-env`
     """
     require_dev()
-    run_tool(["bash", str(_TOOLS_DEV / "verify-clean-env.sh")])
+    run_tool(["bash"], _TOOLS_DEV / "verify-clean-env.sh")
 
 
 def verify_do_secrets() -> None:
@@ -97,7 +102,7 @@ def verify_do_secrets() -> None:
     `sask verify-do-secrets`
     """
     require_dev()
-    run_tool(["bash", str(_TOOLS_DEV / "verify-do-secrets.sh")])
+    run_tool(["bash"], _TOOLS_DEV / "verify-do-secrets.sh")
 
 
 def validate_specs() -> None:
@@ -107,7 +112,7 @@ def validate_specs() -> None:
     `sask validate_specs`
     """
     require_dev()
-    run_tool([sys.executable, str(_TOOLS_DEV / "validate_specs.py")])
+    run_tool([sys.executable], _TOOLS_DEV / "validate_specs.py")
 
 
 def validate_i18n(
@@ -123,7 +128,5 @@ def validate_i18n(
     `sask validate_i18n --strict`
     """
     require_dev()
-    argv = [sys.executable, str(_TOOLS_DEV / "validate_i18n.py")]
-    if strict:
-        argv.append("--strict")
-    run_tool(argv)
+    args = ["--strict"] if strict else []
+    run_tool([sys.executable], _TOOLS_DEV / "validate_i18n.py", args=args)

@@ -30,8 +30,11 @@ import subprocess
 import sys
 from pathlib import Path
 
+import pytest
+import typer
 from typer.testing import CliRunner
 
+from sask.cli import _subprocess as subprocess_module
 from sask.cli import app as cli_app
 from sask.cli.commands import (
     acceptance_test as acceptance_test_module,
@@ -153,73 +156,83 @@ def test_deploy_redeploy_set_log_level_are_not_cli_commands():
 
 def _patch_dev_gate(monkeypatch):
     monkeypatch.setattr(dev_tools, "require_dev", lambda: None)
-    calls: list[list[str]] = []
-    monkeypatch.setattr(dev_tools, "run_tool", lambda argv, **kw: calls.append(argv))
+    calls: list[tuple] = []
+    monkeypatch.setattr(
+        dev_tools,
+        "run_tool",
+        lambda launcher, script, **kw: calls.append((launcher, script, kw)),
+    )
     return calls
 
 
 def test_check_page_staleness_delegates_to_the_existing_script(monkeypatch):
     calls = _patch_dev_gate(monkeypatch)
     dev_tools.check_page_staleness()
-    assert calls == [
-        [sys.executable, str(dev_tools._TOOLS_DEV / "check_page_staleness.py")]
-    ]
+    launcher, script, kw = calls[0]
+    assert launcher == [sys.executable]
+    assert script == dev_tools._TOOLS_DEV / "check_page_staleness.py"
+    assert kw.get("args") in (None, [])
 
 
 def test_pre_commit_check_delegates_to_the_existing_script(monkeypatch):
     calls = _patch_dev_gate(monkeypatch)
     dev_tools.pre_commit_check()
-    assert calls == [["bash", str(dev_tools._TOOLS_DEV / "pre-commit-check.sh")]]
+    launcher, script, _kw = calls[0]
+    assert launcher == ["bash"]
+    assert script == dev_tools._TOOLS_DEV / "pre-commit-check.sh"
 
 
 def test_run_tests_forwards_spec_verbose_save(monkeypatch):
     calls = _patch_dev_gate(monkeypatch)
     dev_tools.run_tests(spec="SPEC-002", verbose=True, save=True)
-    assert calls == [
-        [
-            "bash",
-            str(dev_tools._TOOLS_DEV / "run-tests.sh"),
-            "--spec",
-            "SPEC-002",
-            "-v",
-            "--save",
-        ]
-    ]
+    launcher, script, kw = calls[0]
+    assert launcher == ["bash"]
+    assert script == dev_tools._TOOLS_DEV / "run-tests.sh"
+    assert kw["args"] == ["--spec", "SPEC-002", "-v", "--save"]
 
 
 def test_start_web_delegates_to_the_existing_script(monkeypatch):
     calls = _patch_dev_gate(monkeypatch)
     dev_tools.start_web()
-    assert calls == [["bash", str(dev_tools._TOOLS_DEV / "start_web.sh")]]
+    launcher, script, _kw = calls[0]
+    assert launcher == ["bash"]
+    assert script == dev_tools._TOOLS_DEV / "start_web.sh"
 
 
 def test_verify_clean_env_delegates_to_the_existing_script(monkeypatch):
     calls = _patch_dev_gate(monkeypatch)
     dev_tools.verify_clean_env()
-    assert calls == [["bash", str(dev_tools._TOOLS_DEV / "verify-clean-env.sh")]]
+    launcher, script, _kw = calls[0]
+    assert launcher == ["bash"]
+    assert script == dev_tools._TOOLS_DEV / "verify-clean-env.sh"
 
 
 def test_verify_do_secrets_delegates_to_the_existing_script(monkeypatch):
     calls = _patch_dev_gate(monkeypatch)
     dev_tools.verify_do_secrets()
-    assert calls == [["bash", str(dev_tools._TOOLS_DEV / "verify-do-secrets.sh")]]
+    launcher, script, _kw = calls[0]
+    assert launcher == ["bash"]
+    assert script == dev_tools._TOOLS_DEV / "verify-do-secrets.sh"
 
 
 def test_validate_specs_delegates_to_the_existing_script(monkeypatch):
     calls = _patch_dev_gate(monkeypatch)
     dev_tools.validate_specs()
-    assert calls == [[sys.executable, str(dev_tools._TOOLS_DEV / "validate_specs.py")]]
+    launcher, script, _kw = calls[0]
+    assert launcher == [sys.executable]
+    assert script == dev_tools._TOOLS_DEV / "validate_specs.py"
 
 
 def test_validate_i18n_forwards_strict(monkeypatch):
     calls = _patch_dev_gate(monkeypatch)
     dev_tools.validate_i18n(strict=True)
-    assert calls == [
-        [sys.executable, str(dev_tools._TOOLS_DEV / "validate_i18n.py"), "--strict"]
-    ]
+    launcher, script, kw = calls[0]
+    assert launcher == [sys.executable]
+    assert script == dev_tools._TOOLS_DEV / "validate_i18n.py"
+    assert kw["args"] == ["--strict"]
     calls.clear()
     dev_tools.validate_i18n(strict=False)
-    assert calls == [[sys.executable, str(dev_tools._TOOLS_DEV / "validate_i18n.py")]]
+    assert calls[0][2]["args"] == []
 
 
 # ── Admin commands: thin delegation ──────────────────────────────────────────
@@ -228,31 +241,61 @@ def test_validate_i18n_forwards_strict(monkeypatch):
 def test_acceptance_test_delegates_to_the_existing_script(monkeypatch):
     calls = []
     monkeypatch.setattr(
-        acceptance_test_module, "run_tool", lambda argv, **kw: calls.append((argv, kw))
+        acceptance_test_module,
+        "run_tool",
+        lambda launcher, script, **kw: calls.append((launcher, script, kw)),
     )
     acceptance_test_module.acceptance_test(base_url=None)
-    argv, kwargs = calls[0]
-    assert argv[-1].endswith("tools/ops/acceptance-test.sh")
+    launcher, script, kwargs = calls[0]
+    assert launcher == ["bash"]
+    assert str(script).endswith("tools/ops/acceptance-test.sh")
     assert "SASK_BASE_URL" not in kwargs.get("env", {})
 
 
 def test_acceptance_test_forwards_base_url_via_env(monkeypatch):
     calls = []
     monkeypatch.setattr(
-        acceptance_test_module, "run_tool", lambda argv, **kw: calls.append((argv, kw))
+        acceptance_test_module,
+        "run_tool",
+        lambda launcher, script, **kw: calls.append((launcher, script, kw)),
     )
     acceptance_test_module.acceptance_test(base_url="https://staging.example")
-    _argv, kwargs = calls[0]
+    _launcher, _script, kwargs = calls[0]
     assert kwargs["env"]["SASK_BASE_URL"] == "https://staging.example"
 
 
 def test_run_perf_delegates_to_the_existing_script(monkeypatch):
     calls = []
     monkeypatch.setattr(
-        run_perf_module, "run_tool", lambda argv, **kw: calls.append(argv)
+        run_perf_module,
+        "run_tool",
+        lambda launcher, script, **kw: calls.append((launcher, script)),
     )
     run_perf_module.run_perf()
-    assert calls[0][-1].endswith("tools/ops/run_perf.sh")
+    launcher, script = calls[0]
+    assert launcher == ["bash"]
+    assert str(script).endswith("tools/ops/run_perf.sh")
+
+
+# ── run_tool: missing-script existence check (regression) ──────────────────
+
+
+def test_run_tool_reports_clean_error_for_missing_script(tmp_path, capsys):
+    """Regression test: caught live on the droplet running `sask run_perf`/
+    `sask acceptance-test` — subprocess.run(["bash", missing_path]) does
+    NOT raise Python's FileNotFoundError (bash itself is on PATH; only its
+    argument is missing), so bash's own raw "No such file or directory"
+    leaked to the user instead of a clean message. run_tool now checks
+    script.exists() itself first.
+    """
+    missing = tmp_path / "does-not-exist.sh"
+    with pytest.raises(typer.Exit) as exc_info:
+        subprocess_module.run_tool(["bash"], missing)
+    assert exc_info.value.exit_code == 1
+    captured = capsys.readouterr()
+    assert str(missing) in captured.err
+    assert "not found" in captured.err
+    assert "full sask checkout" in captured.err
 
 
 # ── logs verify: reuses logs query's argv machinery ─────────────────────────

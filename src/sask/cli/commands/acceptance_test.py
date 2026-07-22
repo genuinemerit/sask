@@ -7,8 +7,8 @@ deployed to the droplet (ansible/roles/app/tasks/main.yml only syncs
 src/sask/, config/, assets, docs/help/, wsgi.py), so this command is
 functional wherever a full repo checkout exists (dev, or an operator's
 machine) and reports a clean error if tools/ops/acceptance-test.sh is
-missing — the same FileNotFoundError handling _subprocess.run_tool always
-applies.
+missing — see _subprocess.run_tool's own docstring for why this needs an
+explicit existence check rather than relying on subprocess.run to raise.
 """
 
 from __future__ import annotations
@@ -38,6 +38,4 @@ def acceptance_test(
     env = dict(os.environ)
     if base_url:
         env["SASK_BASE_URL"] = base_url
-    run_tool(
-        ["bash", str(repo_root() / "tools" / "ops" / "acceptance-test.sh")], env=env
-    )
+    run_tool(["bash"], repo_root() / "tools" / "ops" / "acceptance-test.sh", env=env)
