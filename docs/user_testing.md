@@ -2706,15 +2706,26 @@ journald drop-in carries both size/retention caps" task.
 
 ---
 
-### SPEC-038 Results — 2026-07-22 (dev)
+### SPEC-038 Results — 2026-07-22 (dev), 2026-07-22 (prod)
 
 Dave ran the dev-host round (TC-038-01 through TC-038-08) manually and
 reported it satisfactory, no fixes needed. One unrelated finding surfaced
 along the way: `sask --lang es-ES help` (no topic) and Typer's own
 auto-generated `--help` text both stay in English regardless of `--lang`
 — filed as DEBT-0004 (not a SPEC-038 regression; a pre-existing DD-0022
-coverage gap, evaluation deferred). TC-038-09 through TC-038-12 remain
-pending the next deploy/redeploy round.
+coverage gap, evaluation deferred).
+
+TC-038-09 through TC-038-12 run after `deploy.sh`. TC-038-10 caught a real
+bug on the first pass: `logs verify` reported `well_formed_json: 0`
+against a production journal that plainly had well-formed app JSON —
+`journalctl`'s default output format prepends a syslog-style prefix
+("Jul 22 15:03:17 host gunicorn[PID]: ") that made every line fail
+`json.loads()`, a flag (`-o cat`) the retired `verify-logging.sh` always
+carried but `logs verify` had dropped. Fixed
+(`src/sask/cli/commands/logs.py`, commit 5bc888a), a regression test
+added, and re-deployed; TC-038-10 re-run and confirmed PASS
+(`well_formed_json: 20` of 50 lines — the rest are gunicorn's own
+restart/worker notices, expected).
 
 | TC | Result | Notes |
 |---|---|---|
@@ -2726,10 +2737,10 @@ pending the next deploy/redeploy round.
 | TC-038-06 | PASS | |
 | TC-038-07 | PASS | |
 | TC-038-08 | PASS | |
-| TC-038-09 | PENDING | requires prior deploy/redeploy |
-| TC-038-10 | PENDING | requires prior deploy/redeploy |
-| TC-038-11 | PENDING | requires prior deploy/redeploy |
-| TC-038-12 | PENDING | requires prior deploy/redeploy |
+| TC-038-09 | PASS | `host_info`/`validate_json` run clean on the droplet — confirms the psutil/jsonschema move |
+| TC-038-10 | PASS | required one fix first (`-o cat`) — see above |
+| TC-038-11 | PASS | no `Dev` panel in prod `--help`; `validate_specs` refuses cleanly |
+| TC-038-12 | PASS | "journald drop-in caps verified present" in both deploy runs |
 
 ---
 

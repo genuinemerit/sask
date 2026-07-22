@@ -1,5 +1,40 @@
 # Dev log
 
+## 2026-07-22 — SPEC-038 deployed to prod; `logs verify` -o cat fix
+
+Deployed SPEC-038 (`tools/ops/deploy.sh`, two runs) to `sask-droplet`.
+First run: 0 failed, journald-cap assertion passed
+("journald drop-in caps verified present"), `acceptance-test` all PASS.
+
+TC-038-10 (`logs verify` against the production journal) then caught a
+real bug: reported `well_formed_json: 0` against a journal that plainly
+had well-formed app JSON (`sudo journalctl -u sask -n 50` showed it
+directly). Root cause: `journalctl`'s default output format prepends a
+syslog-style prefix (`Jul 22 15:03:17 host gunicorn[PID]:`) before each
+line, so `json.loads()` failed on every line regardless of content. The
+retired `verify-logging.sh` always passed `-o cat` for exactly this
+reason; `logs_verify`'s argv (built from the shared
+`_build_journalctl_argv`, which `logs_query` deliberately keeps in the
+default format for human-readable display) had dropped it. This is why
+the earlier dev-host TC-038-03 pass didn't catch it either — the local
+dev journal has the same prefix, but nobody had looked closely at the
+`well_formed_json` count there.
+
+**Fixed** (`src/sask/cli/commands/logs.py`, commit 5bc888a): `logs_verify`
+now appends `-o cat` to its own argv, not the shared builder (`logs_query`
+is unaffected). Added a regression test asserting `-o cat` is in the
+actual captured `subprocess.run` argv — the existing predicate-level tests
+fed idealized unprefixed JSON strings directly and never exercised a
+realistic journalctl output shape, which is exactly how this slipped past
+the original test suite. Full suite: 858 passed (was 857). Pre-commit
+clean. Re-deployed; TC-038-10 re-run and confirmed PASS
+(`well_formed_json: 20` of 50 lines — the rest are gunicorn's own
+restart/worker notices, expected).
+
+All four `[after deploy]` UAT cases (TC-038-09 through TC-038-12) now
+PASS — `docs/user_testing.md` updated. SPEC-038 is fully verified in both
+dev and prod.
+
 ## 2026-07-22 — SPEC-038 dev-host UAT: PASS; DEBT-0004 filed (CLI locale gaps)
 
 Dave ran TC-038-01 through TC-038-08 manually on the dev host — all PASS,
