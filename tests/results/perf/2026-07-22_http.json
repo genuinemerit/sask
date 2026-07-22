@@ -1,0 +1,236 @@
+{
+  "timestamp": "2026-07-22",
+  "base_url": "http://127.0.0.1:8000",
+  "warmup": 1,
+  "repeats": 5,
+  "interactive": [
+    {
+      "label": "interactive_index",
+      "url": "http://127.0.0.1:8000/?pulse=104548096103",
+      "status": 200,
+      "repeats": 5,
+      "median_s": 0.0007847800002309668,
+      "min_s": 0.0006918349999978091,
+      "max_s": 0.0009375390000059269,
+      "payload_bytes": 3095
+    },
+    {
+      "label": "interactive_sky",
+      "url": "http://127.0.0.1:8000/sky?pulse=104548096103",
+      "status": 200,
+      "repeats": 5,
+      "median_s": 0.002301931000147306,
+      "min_s": 0.002178068999910465,
+      "max_s": 0.002571773999989091,
+      "payload_bytes": 11688
+    },
+    {
+      "label": "interactive_moons",
+      "url": "http://127.0.0.1:8000/moons?pulse=104548096103",
+      "status": 200,
+      "repeats": 5,
+      "median_s": 0.0012489000000641681,
+      "min_s": 0.0011407970000618661,
+      "max_s": 0.001477089999752934,
+      "payload_bytes": 8092
+    },
+    {
+      "label": "interactive_planets",
+      "url": "http://127.0.0.1:8000/planets?pulse=104548096103",
+      "status": 200,
+      "repeats": 5,
+      "median_s": 0.0013055459999122832,
+      "min_s": 0.0012395980002111173,
+      "max_s": 0.0017664890001469757,
+      "payload_bytes": 9105
+    }
+  ],
+  "ephemeris_preview": [
+    {
+      "label": "ephemeris_preview_1day_5min_scribal",
+      "url": "http://127.0.0.1:8000/ephemeris?start_pulse=104548096103&end_pulse=104548182503&step_minutes=5&profile=scribal",
+      "status": 200,
+      "repeats": 5,
+      "median_s": 0.0938680940002996,
+      "min_s": 0.08652943900005994,
+      "max_s": 0.10996298700001716,
+      "payload_bytes": 42807
+    },
+    {
+      "label": "ephemeris_preview_1day_5min_kinematic",
+      "url": "http://127.0.0.1:8000/ephemeris?start_pulse=104548096103&end_pulse=104548182503&step_minutes=5&profile=kinematic",
+      "status": 200,
+      "repeats": 5,
+      "median_s": 0.08414579400005096,
+      "min_s": 0.0829439550002462,
+      "max_s": 0.09212728000011339,
+      "payload_bytes": 21090
+    },
+    {
+      "label": "ephemeris_preview_1day_1hour_scribal",
+      "url": "http://127.0.0.1:8000/ephemeris?start_pulse=104548096103&end_pulse=104548182503&step_minutes=60&profile=scribal",
+      "status": 200,
+      "repeats": 5,
+      "median_s": 0.010926773999926809,
+      "min_s": 0.01084110600004351,
+      "max_s": 0.014278549999744428,
+      "payload_bytes": 41917
+    },
+    {
+      "label": "ephemeris_preview_1day_1hour_kinematic",
+      "url": "http://127.0.0.1:8000/ephemeris?start_pulse=104548096103&end_pulse=104548182503&step_minutes=60&profile=kinematic",
+      "status": 200,
+      "repeats": 5,
+      "median_s": 0.01086080300001413,
+      "min_s": 0.010556915000051958,
+      "max_s": 0.01123997100012275,
+      "payload_bytes": 21070
+    },
+    {
+      "label": "ephemeris_preview_7day_5min_scribal",
+      "url": "http://127.0.0.1:8000/ephemeris?start_pulse=104548096103&end_pulse=104548700903&step_minutes=5&profile=scribal",
+      "status": 200,
+      "repeats": 5,
+      "median_s": 0.6099207349998323,
+      "min_s": 0.5923554900000454,
+      "max_s": 0.6236888729999919,
+      "payload_bytes": 42807
+    },
+    {
+      "label": "ephemeris_preview_7day_5min_kinematic",
+      "url": "http://127.0.0.1:8000/ephemeris?start_pulse=104548096103&end_pulse=104548700903&step_minutes=5&profile=kinematic",
+      "status": 200,
+      "repeats": 5,
+      "median_s": 0.6188900809997904,
+      "min_s": 0.608681580999928,
+      "max_s": 0.6251232490003531,
+      "payload_bytes": 21090
+    },
+    {
+      "label": "ephemeris_preview_7day_1hour_scribal",
+      "url": "http://127.0.0.1:8000/ephemeris?start_pulse=104548096103&end_pulse=104548700903&step_minutes=60&profile=scribal",
+      "status": 200,
+      "repeats": 5,
+      "median_s": 0.05413927000017793,
+      "min_s": 0.05252760900020803,
+      "max_s": 0.060792032000335894,
+      "payload_bytes": 41917
+    },
+    {
+      "label": "ephemeris_preview_7day_1hour_kinematic",
+      "url": "http://127.0.0.1:8000/ephemeris?start_pulse=104548096103&end_pulse=104548700903&step_minutes=60&profile=kinematic",
+      "status": 200,
+      "repeats": 5,
+      "median_s": 0.05344130399998903,
+      "min_s": 0.05237759100009498,
+      "max_s": 0.05731406299992159,
+      "payload_bytes": 21070
+    },
+    {
+      "label": "ephemeris_preview_30day_5min_scribal",
+      "url": "http://127.0.0.1:8000/ephemeris?start_pulse=104548096103&end_pulse=104550688103&step_minutes=5&profile=scribal",
+      "status": 200,
+      "repeats": 5,
+      "median_s": 3.1769118649999655,
+      "min_s": 3.133737723000195,
+      "max_s": 3.3173571419997643,
+      "payload_bytes": 42808
+    },
+    {
+      "label": "ephemeris_preview_30day_5min_kinematic",
+      "url": "http://127.0.0.1:8000/ephemeris?start_pulse=104548096103&end_pulse=104550688103&step_minutes=5&profile=kinematic",
+      "status": 200,
+      "repeats": 5,
+      "median_s": 3.2092299809996803,
+      "min_s": 3.180565622999893,
+      "max_s": 3.2480246610002723,
+      "payload_bytes": 21091
+    },
+    {
+      "label": "ephemeris_preview_30day_1hour_scribal",
+      "url": "http://127.0.0.1:8000/ephemeris?start_pulse=104548096103&end_pulse=104550688103&step_minutes=60&profile=scribal",
+      "status": 200,
+      "repeats": 5,
+      "median_s": 0.256426306999856,
+      "min_s": 0.250102663999769,
+      "max_s": 0.26685552299977644,
+      "payload_bytes": 41918
+    },
+    {
+      "label": "ephemeris_preview_30day_1hour_kinematic",
+      "url": "http://127.0.0.1:8000/ephemeris?start_pulse=104548096103&end_pulse=104550688103&step_minutes=60&profile=kinematic",
+      "status": 200,
+      "repeats": 5,
+      "median_s": 0.2566272030003347,
+      "min_s": 0.2494704069999898,
+      "max_s": 0.2619757610000306,
+      "payload_bytes": 21071
+    }
+  ],
+  "ephemeris_download_worst_case": [
+    {
+      "label": "ephemeris_download_worst_case_scribal",
+      "url": "http://127.0.0.1:8000/ephemeris/download?start=104548096103&end=104550688103&step=300&profile=scribal",
+      "status": 200,
+      "repeats": 5,
+      "median_s": 3.9740494099996795,
+      "min_s": 3.957361573000071,
+      "max_s": 4.098713463999957,
+      "payload_bytes": 26965311
+    },
+    {
+      "label": "ephemeris_download_worst_case_kinematic",
+      "url": "http://127.0.0.1:8000/ephemeris/download?start=104548096103&end=104550688103&step=300&profile=kinematic",
+      "status": 200,
+      "repeats": 5,
+      "median_s": 4.095925141999942,
+      "min_s": 3.9934580170001936,
+      "max_s": 4.484600739000143,
+      "payload_bytes": 17347815
+    }
+  ],
+  "budget_checks": [
+    {
+      "label": "interactive_index",
+      "median_ms": 0.8,
+      "budget_ms": 500.0,
+      "pass": true
+    },
+    {
+      "label": "interactive_sky",
+      "median_ms": 2.3,
+      "budget_ms": 500.0,
+      "pass": true
+    },
+    {
+      "label": "interactive_moons",
+      "median_ms": 1.2,
+      "budget_ms": 500.0,
+      "pass": true
+    },
+    {
+      "label": "interactive_planets",
+      "median_ms": 1.3,
+      "budget_ms": 500.0,
+      "pass": true
+    },
+    {
+      "label": "ephemeris_download_worst_case_scribal",
+      "median_s": 3.974,
+      "budget_s": [
+        3.0,
+        5.0
+      ],
+      "pass": true
+    },
+    {
+      "label": "ephemeris_download_worst_case_kinematic",
+      "median_s": 4.096,
+      "budget_s": [
+        3.0,
+        5.0
+      ],
+      "pass": true
+    }
+  ]
+}
