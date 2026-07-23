@@ -9,6 +9,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+from ..calendar.pulse import format_civil_time
 from ..config_loader import I18nCatalog
 from ..i18n.catalog import resolve
 from ..message import BodyState, PulseInfo, SkyPosition
@@ -29,17 +30,14 @@ class PulseViewModel:
     orbital_position_pct: str  # "25.0000%" of AstroYear elapsed
 
 
-def to_pulse_view(info: PulseInfo) -> PulseViewModel:
+def to_pulse_view(info: PulseInfo, pulses_per_day: int = 86_400) -> PulseViewModel:
     """Translate a PulseInfo message unit into a PulseViewModel for the template."""
-    h = info.day_pulse_offset // 3600
-    m = (info.day_pulse_offset % 3600) // 60
-    s = info.day_pulse_offset % 60
     return PulseViewModel(
         pulse=info.pulse,
         astro_day=info.astro_day,
         day_pulse_offset=info.day_pulse_offset,
         orbital_position=info.orbital_position,
-        time_of_day=f"{h:02d}:{m:02d}:{s:02d}",
+        time_of_day=format_civil_time(info.day_pulse_offset, pulses_per_day),
         orbital_position_pct=f"{info.orbital_position * 100:.4f}%",
     )
 

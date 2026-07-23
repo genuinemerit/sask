@@ -1,0 +1,50 @@
+id        = "REQ-FUN-016"
+title     = "Optional civil time-of-day input on astro endpoints"
+category  = "FUN"
+priority  = "should"
+
+statement = """
+The Moons, Planets, Sky, and Ephemeris endpoints shall accept an OPTIONAL
+civil time-of-day (hour:minute:second, 24-hour, the same format currently
+displayed) alongside the Astro Day. When supplied, the time shall be converted
+to a within-day pulse offset via the inverse of the existing pulse-to-time
+display (one shared authoritative conversion), pinning the precise moment used
+for computation; for Ephemeris it shall pin the start of the sweep. When
+omitted, each endpoint shall behave exactly as it does today. An out-of-range or
+malformed time (e.g. 24:00:00, 12:60:00, non-numeric) shall raise a typed error
+handled by the adapter, consistent with existing calendar input-error handling.
+The value accepted shall be a standard Earth-style time, not a lore time.
+"""
+
+rationale = """
+Users reason in Earth-style clock time and currently can only read it back, not
+enter it. Making the displayed hh:mm:ss enterable lets them discover the
+corresponding civil/lore dates and astro conditions at a precise moment using a
+familiar measure (DD-0024). Defining the input as the inverse of the existing
+display, over one shared conversion, guarantees input and output cannot drift
+and that a displayed time re-entered round-trips to the same pulse. Making the
+field optional preserves all existing Astro-Day-only behavior. Accepting a
+standard time (not lore time) keeps lore overlays output-only.
+"""
+
+acceptance = """
+1. Each of the four endpoints (Moons, Planets, Sky, Ephemeris) accepts an
+   optional hh:mm:ss time-of-day input.
+2. When supplied, the time converts to a within-day pulse offset via the shared
+   inverse-of-display conversion; the computation uses that precise moment (for
+   Ephemeris, the sweep starts there).
+3. A time displayed by the system and then re-entered round-trips to the same
+   pulse (input is the exact inverse of output).
+4. When omitted, each endpoint's behavior is unchanged from today
+   (backward-compatible); existing Astro-Day-only requests and tests still pass.
+5. Out-of-range/malformed time raises a typed error surfaced by the adapter as
+   existing calendar input errors are.
+6. The accepted value is a standard Earth-style time; no lore time unit is
+   accepted as input.
+7. The ephemeris throttle (step floor 5 min, range cap 30 days) is unchanged.
+"""
+
+[links]
+implements   = ["DD-0024"]
+relates_to   = ["DD-0002", "DD-0003"]
+specified_by = ["SPEC-037"]

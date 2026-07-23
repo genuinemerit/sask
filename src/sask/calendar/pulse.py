@@ -4,6 +4,8 @@ SPEC-002: astro_day, day_pulse_offset, orbital_position, civil_day, pulse_info.
 SPEC-003: astro_to_fatunik, fatunik_to_pulse, astro_to_terpin, terpin_to_pulse,
           fatunik_turns_to_pulse_range, terpin_shell_of_turn,
           terpin_turn_within_shell, terpin_shell_to_turn.
+SPEC-037: offset_to_civil_time, civil_time_to_offset, format_civil_time,
+          parse_civil_time, resolve_moment.
 
 All functions are pure and stateless.
 """
@@ -73,6 +75,88 @@ def pulse_info(pulse: int, cfg: AppConfig) -> PulseInfo:
         day_pulse_offset=day_pulse_offset(pulse, tc.pulses_per_day),
         orbital_position=orbital_position(pulse, tc.astro_year_pulses),
     )
+
+
+# ── Civil time-of-day input/display (SPEC-037, DD-0024) ──────────────────────
+#
+# Civil clock time is Astro-midnight-based (offset 0 = 00:00:00), universal
+# across cultures; cultural day-start (Fatunik sunrise, etc. — see civil_day)
+# affects civil-date attribution only, never this clock reading. The two
+# pairs below are the single authoritative bidirectional conversion: every
+# pulse-offset -> hh:mm:ss display and every hh:mm:ss -> pulse-offset input
+# in the app goes through these, so the two cannot drift.
+
+
+def offset_to_civil_time(
+    offset: int, pulses_per_day: int = 86_400
+) -> tuple[int, int, int]:
+    """Return the (hour, minute, second) civil clock reading for a day offset."""
+    return offset // 3600, (offset % 3600) // 60, offset % 60
+
+
+def civil_time_to_offset(
+    hour: int, minute: int, second: int, pulses_per_day: int = 86_400
+) -> int:
+    """Return the within-day pulse offset for an hh:mm:ss civil clock time.
+
+    The exact inverse of offset_to_civil_time: a value it returns, passed
+    back in here, yields the same offset. Raises CalendarRangeError if hour
+    (0-23), minute (0-59), or second (0-59) is out of range.
+    """
+    if not (0 <= hour <= 23 and 0 <= minute <= 59 and 0 <= second <= 59):
+        raise CalendarRangeError(
+            f"Invalid civil time {hour:02d}:{minute:02d}:{second:02d} "
+            "(hour 0-23, minute 0-59, second 0-59)"
+        )
+    offset = hour * 3600 + minute * 60 + second
+    if offset >= pulses_per_day:
+        raise CalendarRangeError(
+            f"Civil time {hour:02d}:{minute:02d}:{second:02d} is outside the "
+            f"{pulses_per_day}-pulse day"
+        )
+    return offset
+
+
+def format_civil_time(offset: int, pulses_per_day: int = 86_400) -> str:
+    """Return the offset's HH:MM:SS civil-clock display string.
+
+    The single display call site all four endpoints share.
+    """
+    h, m, s = offset_to_civil_time(offset, pulses_per_day)
+    return f"{h:02d}:{m:02d}:{s:02d}"
+
+
+def parse_civil_time(text: str, pulses_per_day: int = 86_400) -> int:
+    """Parse an HH:MM:SS civil clock time into a within-day pulse offset.
+
+    The exact inverse of format_civil_time. Raises CalendarRangeError on
+    malformed shape (wrong number of parts, non-numeric) or out-of-range
+    values.
+    """
+    parts = text.strip().split(":")
+    if len(parts) != 3:
+        raise CalendarRangeError(f"Invalid civil time {text!r} (expected HH:MM:SS)")
+    try:
+        hour, minute, second = (int(p) for p in parts)
+    except ValueError as exc:
+        raise CalendarRangeError(f"Invalid civil time {text!r}: {exc}") from exc
+    return civil_time_to_offset(hour, minute, second, pulses_per_day)
+
+
+def resolve_moment(
+    day: int, time_of_day: str | None, pulses_per_day: int = 86_400
+) -> int:
+    """Return the absolute pulse for an Astro Day plus an optional civil time.
+
+    day_base = (day - 1) * pulses_per_day; time_of_day, when given, adds its
+    parsed within-day offset. Omitting it reproduces today's behaviour (the
+    day's base pulse) unchanged — shared by Moons, Planets, Sky, and
+    Ephemeris so their moment-selection behaviour is uniform.
+    """
+    day_base = (day - 1) * pulses_per_day
+    if not time_of_day:
+        return day_base
+    return day_base + parse_civil_time(time_of_day, pulses_per_day)
 
 
 # ── Fatunik calendar helpers ──────────────────────────────────────────────────

@@ -1,0 +1,137 @@
+id     = "DD-0024"
+title  = "Enterable civil time-of-day input for astro/calendrical endpoints"
+status = "accepted"
+date   = "2026-07-20"
+
+[context]
+summary = """
+The astro/calendrical endpoints currently accept an Astro Day and compute at
+that day's default within-day moment; the standard Earth-style 24-hour clock
+time (hour:minute:second) that corresponds to a moment is DISPLAY-ONLY (output).
+This enhancement makes that same time an OPTIONAL ENTERABLE input, so a user can
+pin a precise moment within an Astro Day by typing a time in a familiar Earth
+measure - making it easier to discover the corresponding civil/lore dates from a
+time-of-day. Scope: four endpoints - Moons, Planets, Sky, and Ephemeris. This is
+a calendar-engine feature, independent of the saskan-app-alt port work.
+"""
+
+problem = """
+Users think in Earth-style clock time (hh:mm:ss) but currently cannot ENTER it -
+they can only enter an Astro Day and read back the time. To explore "what are
+the moons/sky doing at 18:30:00 on Astro Day N," or "which civil/lore date does a
+given time-of-day fall in," they need a way to supply the sub-day time. The
+representation already exists (it is displayed); it needs an input path. The
+design must add this without breaking existing Astro-Day-only requests, without
+turning a lore time into an engine input (lore overlays remain output-only), and
+without letting the input convention drift from the display convention.
+"""
+
+[decision]
+summary = """
+Add an OPTIONAL civil time-of-day input (hh:mm:ss, 24-hour) to the Moons,
+Planets, Sky, and Ephemeris endpoints. The input is the MATHEMATICAL INVERSE of
+the existing display: it converts an entered clock time to a within-day pulse
+offset using the SAME authoritative conversion the display uses in reverse, so
+input and output cannot diverge. When omitted, behavior is unchanged
+(backward-compatible).
+"""
+
+inverse_of_display = """
+The core engine addition is a converter from civil clock time (hh:mm:ss) to a
+within-day pulse offset - the exact INVERSE of the existing pulse-offset ->
+hh:mm:ss display. Rather than independently deriving a time-to-pulse convention
+(which could drift from the display), the input and output share ONE
+authoritative bidirectional conversion (the single-authoritative-accessor
+pattern): the entered time maps to precisely the pulse whose display equals that
+time. Consequence: whatever convention the display already uses, the input
+mirrors it BY CONSTRUCTION - a value displayed and then re-entered round-trips to
+the same pulse. With the 86,400-pulse day (1 pulse = 1 second), hh:mm:ss maps
+exactly to a pulse offset with no rounding.
+"""
+
+optional_and_backward_compatible = """
+The time-of-day field is OPTIONAL on all four endpoints. When omitted, the
+endpoint behaves exactly as today (computes at the current default within-day
+moment for the given Astro Day). Existing requests, links, and tests that supply
+only an Astro Day continue to work unchanged. Supplying the time refines the
+moment; omitting it preserves current behavior.
+"""
+
+standard_time_not_lore_time = """
+The enterable value is a STANDARD Earth-style time (hh:mm:ss), NOT a lore time
+(watch/shur/keyt). This does NOT violate the rule that lore overlays are
+output-only translators never fed back as engine inputs: the engine accepts a
+standard time and converts it to a pulse; it does not accept lore time units as
+input. The lore time-of-day remains an output-only rendering. (A future,
+separate enhancement could consider lore-time input, but that is out of scope
+and would need its own treatment, since lore time-of-day differs by culture in
+its day-start.)
+"""
+
+convention_to_confirm = """
+CONFIRMED during SPEC-037 implementation, against the engine's actual
+behavior (calendar/pulse.py): civil clock time is midnight-based
+(00:00:00 = pulse-offset 0, i.e. Astro midnight), universal across
+cultures. Every pulse-offset -> hh:mm:ss display in the app computes
+`pulse % pulses_per_day` and formats that offset directly - entirely
+independent of a culture's day_start_offset (Fatunik sunrise = 21600
+pulses / 6h; Terpin/Astro = 0). civil_day() (the function that DOES apply
+day_start_offset) governs only which civil/lore DATE a pulse falls on, never
+the hh:mm:ss clock reading. So a Fatunik civil day start (pulse offset
+21600) reads as "06:00:00", not "00:00:00" - the clock is uniform; only
+date attribution shifts per culture. This is exactly the expected
+resolution anticipated below, now verified and encoded in
+offset_to_civil_time()/civil_time_to_offset() (calendar/pulse.py,
+SPEC-037), the single authoritative pair both display and the new input
+use. Test coverage: tests/test_spec_037.py::test_civil_clock_ignores_fatunik_day_start_offset,
+::test_civil_clock_matches_terpin_midnight_day_start.
+"""
+
+ephemeris_semantics = """
+For Ephemeris (a range/series), the entered time-of-day pins the START moment of
+the sweep (the sweep begins at the precise time within the start Astro Day rather
+than at the day's default moment). The existing ephemeris throttle is unchanged:
+step floor 5 minutes, range cap 30 days. The time-of-day only sets where the
+sweep begins.
+"""
+
+[consequences]
+positive = """
+- Users can enter time in a familiar Earth measure to discover civil/lore dates
+  and astro conditions at a precise moment.
+- Input/output cannot drift: one authoritative conversion, input is the inverse
+  of display, values round-trip.
+- Fully backward-compatible: the field is optional; Astro-Day-only requests are
+  unchanged.
+- No lore-overlay-as-input violation: a standard time is accepted, not lore time.
+- Exact mapping (1 pulse = 1 second); no rounding.
+"""
+
+negative_or_deferred = """
+- The civil-clock convention (midnight vs. cultural day-start) must be confirmed
+  and documented; flagged as an open item, expected to be midnight-based.
+- Lore-time INPUT is deferred (out of scope; standard time only).
+- Four endpoints gain an input field and its validation; a shared converter and
+  shared validation keep the addition uniform rather than four bespoke paths.
+"""
+
+out_of_scope = """
+- Lore-time-unit input (watch/shur/keyt as enterable) - future, separate.
+- Any change to the ephemeris throttle (step floor / range cap unchanged).
+- Endpoints other than Moons, Planets, Sky, Ephemeris.
+- Sub-second precision beyond hh:mm:ss (the day is 86,400 pulses = second
+  resolution; no finer input).
+"""
+
+[links]
+depends_on = ["DD-0002", "DD-0003"]
+relates_to = []
+implemented_by = ["REQ-FUN-016", "SPEC-037"]
+notes = """
+Reuses the message-unit seam (DD-0003) and the no-hardcoded-domain-data / config
+discipline (DD-0002). The core converter is the inverse of the existing
+pulse -> hh:mm:ss display, sharing one authoritative bidirectional conversion
+(calendar/pulse.py: offset_to_civil_time/civil_time_to_offset,
+format_civil_time/parse_civil_time, resolve_moment). Implemented and accepted
+under SPEC-037; see docs/devlog.md for the acceptance entry.
+"""

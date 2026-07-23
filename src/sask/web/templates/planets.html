@@ -20,6 +20,10 @@
     <label for="astro_day">{{ t("label.field.astro_day") }}</label>
     <input type="number" id="astro_day" name="astro_day" step="1" min="1"
            value="{{ queried_astro_day if queried_astro_day is not none else '' }}">
+    <label for="time_of_day" style="margin-left:.5rem">{{ t("label.field.time_of_day") }}</label>
+    <input type="text" id="time_of_day" name="time_of_day" placeholder="HH:MM:SS"
+           style="width:6rem"
+           value="{{ time_of_day if time_of_day is not none else '' }}">
     <button type="submit">{{ t("label.query_button") }}</button>
   </fieldset>
 </form>

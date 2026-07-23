@@ -29,7 +29,10 @@
       <label style="width:4rem">{{ t("label.field.start") }}</label>
       <input type="number" name="start_astro_day" step="1" min="1" style="width:9rem"
              value="{{ start_astro_day if start_astro_day is not none else '' }}">
-      {% if start_time_of_day %}&ensp;<span style="color:#555; font-size:.9rem;">{{ start_time_of_day }}</span>{% endif %}
+      <label style="margin-left:.5rem">{{ t("label.field.time_of_day") }}</label>
+      <input type="text" name="start_time_of_day" placeholder="HH:MM:SS"
+             style="width:6rem"
+             value="{{ start_time_of_day if start_time_of_day is not none else '' }}">
       {% if end_astro_day %}&ensp;&ensp;<span style="color:#555; font-size:.9rem;"><strong>{{ t("label.field.end") }}:</strong> {{ end_astro_day }} &middot; {{ end_time_of_day }}</span>{% endif %}
     </div>
   </fieldset>

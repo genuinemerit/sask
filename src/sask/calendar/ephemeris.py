@@ -21,6 +21,7 @@ import time
 from dataclasses import dataclass
 
 from sask.calendar.bodies import all_body_states
+from sask.calendar.pulse import format_civil_time
 from sask.calendar.scene import get_sky_scene, render_night_summary
 from sask.calendar.season import season_info
 from sask.calendar.sky import all_sky_positions
@@ -99,12 +100,6 @@ def _validate_throttle(
             f"range of {span} pulses exceeds the maximum of "
             f"{eph.range_cap_pulses} pulses (30 days)"
         )
-
-
-def _time_of_day_str(pulse: int, ppd: int) -> str:
-    """Format pulse offset within an Astro day as HH:MM:SS."""
-    secs = pulse % ppd
-    return f"{secs // 3600:02d}:{(secs % 3600) // 60:02d}:{secs % 60:02d}"
 
 
 # ── Public API ────────────────────────────────────────────────────────────────
@@ -233,7 +228,7 @@ def render_scribal_json(
             {
                 "pulse": step.pulse,
                 "astro_day": step.astro_day,
-                "time_of_day": _time_of_day_str(step.pulse, ppd),
+                "time_of_day": format_civil_time(step.pulse % ppd, ppd),
                 "bodies_up": [
                     {
                         "id": b.id,

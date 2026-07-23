@@ -265,6 +265,7 @@
 
 "label.field.pulse" = "Pulso"
 "label.field.astro_day" = "Día Astro"
+"label.field.time_of_day" = "Hora (HH:MM:SS)"
 "label.field.year" = "Año"
 "label.field.month" = "Mes"
 "label.field.day" = "Día"
@@ -400,10 +401,12 @@
 
 "error.invalid_pulse_value" = "Valor de pulso inválido: {value}; introduce un número."
 "error.invalid_astro_day" = "Día Astro inválido: {value}; introduce un entero."
+"error.invalid_time_of_day" = "Hora del día inválida: {value}; introduce HH:MM:SS (00:00:00–23:59:59)."
 "error.invalid_fatunik_date" = "Fecha Fatunik inválida: {detail}"
 "error.invalid_terpin_date" = "Fecha Terpin inválida: {detail}"
 "error.invalid_prefixed_pulse" = "{prefix}pulse inválido: {value}; introduce un número."
 "error.invalid_prefixed_astro_day" = "{prefix}astro_day inválido: {value}; introduce un entero."
+"error.invalid_prefixed_time_of_day" = "{prefix}time_of_day inválido: {value}; introduce HH:MM:SS (00:00:00–23:59:59)."
 "error.invalid_prefixed_fatunik_date" = "Fecha {prefix}Fatunik inválida: {detail}"
 "error.invalid_prefixed_terpin_date" = "Fecha {prefix}Terpin inválida: {detail}"
 "error.start_time_required" = "Se requiere la hora de inicio."

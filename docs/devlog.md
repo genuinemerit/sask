@@ -1,5 +1,55 @@
 # Dev log
 
+## 2026-07-23 — SPEC-037: enterable civil time-of-day input (DD-0024)
+
+New calendar-engine feature, independent of the port work. Moons, Planets,
+Sky, and Ephemeris previously only DISPLAYED the hh:mm:ss time-of-day
+corresponding to a moment; users could not enter one, only an Astro Day.
+Added an optional `time_of_day` (`start_time_of_day` for Ephemeris) query
+field to all four, letting a user pin a precise moment ("what's the sky doing
+at 18:30:00 on Astro Day 42?") using a familiar Earth measure.
+
+**Shared converter** (`src/sask/calendar/pulse.py`): added
+`offset_to_civil_time`/`civil_time_to_offset` (the authoritative numeric
+pair — hour/minute/second <-> within-day pulse offset) and
+`format_civil_time`/`parse_civil_time` (their string-boundary wrappers),
+plus `resolve_moment(day, time_of_day, pulses_per_day)` — the single place
+an Astro Day + optional time becomes an absolute pulse, shared by all four
+endpoints. Invalid input (hour/minute/second out of range, malformed shape)
+raises the existing `CalendarRangeError`, consistent with Fatunik/Terpin
+date validation.
+
+**Consolidated duplication found along the way**: the pulse-offset ->
+hh:mm:ss display logic turned out to be hand-rolled independently in four
+places (`web/translator.py::to_pulse_view`, `calendar/ephemeris.py`'s
+`_time_of_day_str`, and two spots in `web/routes.py`) — exactly the kind of
+drift DD-0024's "single-authoritative-accessor" language warns about. All
+four now call `format_civil_time`. `planets()` previously showed no
+time-of-day at all (an existing asymmetry with moons/sky); it now matches.
+
+**Wiring**: `_resolve_pulse`/`_resolve_endpoint` (`web/routes.py`) read the
+new field only on the Astro Day path (pulse/Fatunik/Terpin entry modes are
+unaffected — omitting the time reproduces exactly today's day-start
+default). New i18n error tags `error.invalid_time_of_day` /
+`error.invalid_prefixed_time_of_day` and a `label.field.time_of_day` label,
+in both `en-US.toml` and `es-ES.toml`. Added a `HH:MM:SS` text input next to
+Astro Day in the `moons`/`planets`/`sky` forms and next to Start Astro Day
+in the `ephemeris` form.
+
+**Convention confirmed** (DD-0024's flagged open item): civil clock time is
+midnight-based (`pulse % pulses_per_day`) universally — a culture's
+day-start offset (Fatunik sunrise = 21600 pulses/6 AM; Terpin = 0/midnight)
+shifts which civil/lore DATE a pulse falls on, never the clock reading
+itself. Documented in DD-0024/SPEC-037; verified by
+`tests/test_spec_037.py::test_civil_clock_ignores_fatunik_day_start_offset`
+and `::test_civil_clock_matches_terpin_midnight_day_start`.
+
+`tests/test_spec_037.py` (51 tests): converter boundary/round-trip/invalid
+cases, `resolve_moment` backward-compatibility, per-endpoint
+time-supplied-vs-omitted checks, ephemeris start-pin + throttle
+unaffected, malformed/out-of-range adapter errors. Full suite: 913 passed.
+Pre-commit clean. DD-0024 and SPEC-037 set to `accepted`.
+
 ## 2026-07-22 — SPEC-038: hide acceptance-test/run_perf where tools/ops/ is absent
 
 Dave asked the right question after the previous fix: why register

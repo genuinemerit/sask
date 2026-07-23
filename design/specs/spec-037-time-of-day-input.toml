@@ -1,0 +1,138 @@
+id     = "SPEC-037"
+title  = "Civil time-of-day input: shared inverse converter and four-endpoint wiring"
+status = "accepted"
+
+[implements]
+requirements = ["REQ-FUN-016"]
+decisions    = ["DD-0024"]
+notes = """
+Calendar-engine feature (independent of the port work). Adds an optional
+hh:mm:ss input to Moons, Planets, Sky, Ephemeris, converted via the inverse of
+the existing pulse-to-time display, over one shared authoritative conversion.
+Backward-compatible: omitting the time preserves current behavior. The
+display's civil-clock convention is confirmed midnight-based (see DD-0024).
+"""
+
+[scope]
+in = """
+A shared engine converter from civil hh:mm:ss to a within-day pulse offset (the
+inverse of the existing display), with validation; wiring the optional
+time-of-day input through the Moons, Planets, Sky, and Ephemeris request paths
+and their message units; adapter/form input handling and typed error surfacing;
+confirming/documenting the civil-clock convention; and tests including
+round-trip and backward-compatibility.
+"""
+
+out = """
+- Lore-time-unit input (watch/shur/keyt); standard time only.
+- Any change to the ephemeris throttle (step floor / range cap).
+- Endpoints beyond the four named.
+- Sub-second resolution (day = 86,400 pulses = second resolution).
+- Any change to the astro computations themselves (they run at the resolved
+  pulse; only the moment-selection input is new).
+"""
+
+[deliverables]
+shared_converter = """
+Add a converter in the calendar engine that maps a civil time (hours, minutes,
+seconds) to a within-day pulse offset, implemented as the exact INVERSE of the
+existing pulse-offset -> hh:mm:ss display and sharing one authoritative
+conversion with it (single-authoritative-accessor pattern) so the two cannot
+drift. With the 86,400-pulse day (1 pulse = 1 second) the mapping is exact.
+Provide/confirm the paired direction so a value can round-trip
+(time -> pulse -> time yields the input). The converter is Flask-free engine
+code and raises a typed error on invalid input (hours 0-23, minutes 0-59,
+seconds 0-59; reject out-of-range/malformed), consistent with existing converter
+error types (e.g. a ValueError/CalendarRangeError-style typed error).
+"""
+
+moment_resolution = """
+A helper that combines an Astro Day with an OPTIONAL time-of-day into the
+absolute pulse used for computation: day -> day's base pulse; + the converter's
+within-day offset when a time is supplied; the current default within-day moment
+when it is not. This is the single place Astro-Day + optional-time becomes a
+pulse, shared by all four endpoints so their behavior is uniform.
+"""
+
+endpoint_wiring = """
+Wire the optional time-of-day through all four endpoints:
+- Moons, Planets, Sky: single-moment endpoints - the resolved pulse (day +
+  optional time) is the moment computed.
+- Ephemeris: the resolved pulse (start day + optional start time) is the sweep
+  START; step floor and range cap unchanged.
+Each endpoint's request message unit gains an optional time-of-day field;
+omitting it yields today's behavior. The resolved/echoed time may be included in
+the response for confirmation (consistent with how the endpoints already echo
+inputs). Add the input field to the web forms for the four endpoints and to the
+corresponding CLI/API request paths where those endpoints are exposed, keeping
+the field optional everywhere.
+"""
+
+validation_and_errors = """
+Validate the entered time at the input boundary and in the converter: reject
+malformed (non-numeric, wrong shape) and out-of-range (24:00:00, 12:60:00, etc.)
+values with a typed error, surfaced by the adapter exactly as existing calendar
+input errors (e.g. the way routes already catch converter ValueErrors). Empty/
+absent time is valid (optional) and takes the default path.
+"""
+
+convention_confirmation = """
+CONFIRMED against the engine's actual behavior: civil time is midnight-based
+(00:00:00 = pulse-offset 0), universal across cultures. Every display site
+computes `pulse % pulses_per_day` directly, independent of a culture's
+day_start_offset (Fatunik 21600 pulses / 6 AM sunrise; Terpin 0 / midnight) -
+that offset only shifts civil_day()'s DATE attribution, never the hh:mm:ss
+clock reading. See DD-0024's convention_to_confirm field for the full note and
+tests/test_spec_037.py::test_civil_clock_ignores_fatunik_day_start_offset /
+::test_civil_clock_matches_terpin_midnight_day_start for the verifying tests.
+"""
+
+tests = """
+tests/test_spec_037.py:
+- Converter: representative times map to correct pulse offsets; boundary values
+  (00:00:00, 23:59:59) correct; ROUND-TRIP (display a pulse's time, re-enter it,
+  get the same pulse) holds; invalid times (24:00:00, 12:60:00, 00:00:60,
+  malformed) raise the typed error.
+- Moment resolution: day + time yields the expected absolute pulse; day alone
+  yields the current default moment (backward-compatibility assertion).
+- Each endpoint: supplying a time computes at the refined moment; omitting it
+  reproduces today's result (existing endpoint tests still pass unchanged).
+- Ephemeris: start time pins the sweep start; step floor and range cap
+  unaffected.
+- Adapter: malformed/out-of-range time surfaces the typed error like existing
+  calendar input errors.
+Full suite passes at the new count; pre-commit and validate_specs clean.
+"""
+
+design_doc_status = """
+On acceptance set DD-0024, SPEC-037 to "accepted" and add a devlog entry (the
+optional time-of-day input, the shared inverse-of-display converter, the four
+endpoints wired, and the confirmed/documented civil-clock convention).
+"""
+
+[acceptance]
+criteria = """
+1. A shared engine converter maps hh:mm:ss to a within-day pulse offset as the
+   exact inverse of the existing display, over one authoritative conversion;
+   round-trip holds; invalid input raises a typed error.
+2. Astro Day + optional time resolves to the computation pulse in one shared
+   helper used by all four endpoints; omitting the time reproduces current
+   behavior.
+3. Moons, Planets, Sky compute at the resolved moment; Ephemeris starts its
+   sweep there with the throttle unchanged.
+4. Each endpoint's request path (web form + CLI/API where exposed) accepts the
+   optional time; existing Astro-Day-only requests and tests are unaffected.
+5. Malformed/out-of-range times surface as typed calendar input errors.
+6. The civil-clock convention is confirmed and documented.
+7. Full suite passes at the new count; pre-commit and validate_specs clean.
+"""
+
+uat = """
+[manual] On each of the four endpoints: enter an Astro Day with a time (e.g.
+18:30:00) and confirm the moons/planets/sky/ephemeris reflect that precise
+moment and the echoed civil/lore date/time are correct; omit the time and
+confirm the prior behavior is unchanged; enter an invalid time (24:00:00) and
+confirm a clean input error. Confirm a displayed time re-entered yields the same
+result (round-trip). Confirm a civil time near a cultural day-start boundary
+attributes to the expected lore date(s).
+"""

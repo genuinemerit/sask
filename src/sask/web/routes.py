@@ -29,10 +29,13 @@ from sask.calendar.ephemeris import (
 from sask.calendar.lore import render_lore_date, render_lore_time
 from sask.calendar.lunar import get_lunar_date
 from sask.calendar.pulse import (
+    CalendarRangeError,
     astro_to_fatunik,
     astro_to_terpin,
     fatunik_to_pulse,
+    format_civil_time,
     pulse_info,
+    resolve_moment,
     terpin_to_pulse,
 )
 from sask.calendar.scene import get_sky_scene, render_image_prompt, render_night_summary
@@ -70,14 +73,15 @@ def _resolve_pulse(
 ) -> tuple[int | None, str | None]:
     """Parse request args into a pulse integer, or return an error string.
 
-    Priority: pulse > astro_day > fatunik date > terpin date.
-    Returns (pulse, None) on success; (None, error_msg) on bad input;
-    (None, None) when no input was given (form should render empty).
+    Priority: pulse > astro_day (+ optional time_of_day) > fatunik date >
+    terpin date. Returns (pulse, None) on success; (None, error_msg) on bad
+    input; (None, None) when no input was given (form should render empty).
     """
     i18n = cfg.i18n
     # treat empty strings (unset form fields) the same as absent
     pulse_p = request.args.get("pulse") or None
     astro_day_p = request.args.get("astro_day") or None
+    time_of_day_p = request.args.get("time_of_day") or None
     fat_y = request.args.get("fatunik_year") or None
     fat_m = request.args.get("fatunik_month") or None
     fat_d = request.args.get("fatunik_day") or None
@@ -96,10 +100,18 @@ def _resolve_pulse(
     if astro_day_p is not None:
         try:
             day = int(astro_day_p)
-            return (day - 1) * cfg.time_constants.pulses_per_day, None
         except ValueError:
             return None, _msg(
                 "error.invalid_astro_day", locale, i18n, value=repr(astro_day_p)
+            )
+        try:
+            return (
+                resolve_moment(day, time_of_day_p, cfg.time_constants.pulses_per_day),
+                None,
+            )
+        except CalendarRangeError:
+            return None, _msg(
+                "error.invalid_time_of_day", locale, i18n, value=repr(time_of_day_p)
             )
 
     if fat_y and fat_m and fat_d:
@@ -130,11 +142,13 @@ def _resolve_endpoint(
 ) -> tuple[int | None, str | None]:
     """Like _resolve_pulse but with prefixed query param names (e.g. 'start_').
 
-    Priority: {prefix}pulse > {prefix}astro_day > fatunik date > terpin date.
+    Priority: {prefix}pulse > {prefix}astro_day (+ optional
+    {prefix}time_of_day) > fatunik date > terpin date.
     """
     i18n = cfg.i18n
     pulse_p = request.args.get(f"{prefix}pulse") or None
     astro_day_p = request.args.get(f"{prefix}astro_day") or None
+    time_of_day_p = request.args.get(f"{prefix}time_of_day") or None
     fat_y = request.args.get(f"{prefix}fatunik_year") or None
     fat_m = request.args.get(f"{prefix}fatunik_month") or None
     fat_d = request.args.get(f"{prefix}fatunik_day") or None
@@ -157,7 +171,6 @@ def _resolve_endpoint(
     if astro_day_p is not None:
         try:
             day = int(astro_day_p)
-            return (day - 1) * cfg.time_constants.pulses_per_day, None
         except ValueError:
             return None, _msg(
                 "error.invalid_prefixed_astro_day",
@@ -165,6 +178,19 @@ def _resolve_endpoint(
                 i18n,
                 prefix=prefix,
                 value=repr(astro_day_p),
+            )
+        try:
+            return (
+                resolve_moment(day, time_of_day_p, cfg.time_constants.pulses_per_day),
+                None,
+            )
+        except CalendarRangeError:
+            return None, _msg(
+                "error.invalid_prefixed_time_of_day",
+                locale,
+                i18n,
+                prefix=prefix,
+                value=repr(time_of_day_p),
             )
 
     if fat_y and fat_m and fat_d:
@@ -218,7 +244,7 @@ def index() -> str:
         try:
             pulse = round(float(pulse_param))
             info: PulseInfo = pulse_info(pulse, cfg)
-            view = to_pulse_view(info)
+            view = to_pulse_view(info, cfg.time_constants.pulses_per_day)
         except ValueError:
             error = _msg(
                 "error.invalid_pulse_value",
@@ -249,9 +275,7 @@ def moons() -> str:
     if pulse is not None and error is None:
         ppd = cfg.time_constants.pulses_per_day
         queried_astro_day = pulse // ppd + 1
-        day_offset = pulse % ppd
-        h, rem = day_offset // 3600, day_offset % 3600
-        time_of_day = f"{h:02d}:{rem // 60:02d}:{rem % 60:02d}"
+        time_of_day = format_civil_time(pulse % ppd, ppd)
         all_states = all_body_states(pulse, cfg)
         all_positions = all_sky_positions(pulse, all_states, cfg)
         fatune_pos = fatune_sky_position(pulse, cfg.gavor, cfg.time_constants)
@@ -293,9 +317,12 @@ def planets() -> str:
     fatune_pos = None
     fatunik_date = terpin_date = None
     queried_astro_day = None
+    time_of_day = None
 
     if pulse is not None and error is None:
-        queried_astro_day = pulse // cfg.time_constants.pulses_per_day + 1
+        ppd = cfg.time_constants.pulses_per_day
+        queried_astro_day = pulse // ppd + 1
+        time_of_day = format_civil_time(pulse % ppd, ppd)
         all_states = all_body_states(pulse, cfg)
         all_positions = all_sky_positions(pulse, all_states, cfg)
         fatune_pos = fatune_sky_position(pulse, cfg.gavor, cfg.time_constants)
@@ -322,6 +349,7 @@ def planets() -> str:
         fatune_pos=fatune_pos,
         fatunik_date=fatunik_date,
         terpin_date=terpin_date,
+        time_of_day=time_of_day,
         error=error,
         queried_pulse=pulse,
         queried_astro_day=queried_astro_day,
@@ -354,9 +382,7 @@ def sky() -> str:
 
     if pulse is not None and error is None:
         queried_astro_day = pulse // ppd + 1
-        day_offset = pulse % ppd
-        h, m, s = day_offset // 3600, (day_offset % 3600) // 60, day_offset % 60
-        time_of_day = f"{h:02d}:{m:02d}:{s:02d}"
+        time_of_day = format_civil_time(pulse % ppd, ppd)
 
         fatunik_date = astro_to_fatunik(pulse, cfg)
         terpin_date = astro_to_terpin(pulse, cfg)
@@ -431,12 +457,6 @@ def sky() -> str:
     )
 
 
-def _pulse_time_of_day(pulse: int, ppd: int) -> str:
-    off = pulse % ppd
-    h, m, s = off // 3600, (off % 3600) // 60, off % 60
-    return f"{h:02d}:{m:02d}:{s:02d}"
-
-
 @bp.route("/ephemeris")
 def ephemeris() -> str:
     cfg: AppConfig = current_app.config["SASK_CONFIG"]
@@ -482,7 +502,7 @@ def ephemeris() -> str:
 
     if start_pulse is not None:
         start_astro_day = start_pulse // ppd + 1
-        start_time_of_day = _pulse_time_of_day(start_pulse, ppd)
+        start_time_of_day = format_civil_time(start_pulse % ppd, ppd)
         start_fatunik_date = astro_to_fatunik(start_pulse, cfg)
         start_terpin_date = astro_to_terpin(start_pulse, cfg)
 
@@ -568,7 +588,7 @@ def ephemeris() -> str:
     # Compute end cross-calendar display after end_pulse is finalised.
     if end_pulse is not None:
         end_astro_day = end_pulse // ppd + 1
-        end_time_of_day = _pulse_time_of_day(end_pulse, ppd)
+        end_time_of_day = format_civil_time(end_pulse % ppd, ppd)
         end_fatunik_date = astro_to_fatunik(end_pulse, cfg)
         end_terpin_date = astro_to_terpin(end_pulse, cfg)
 
