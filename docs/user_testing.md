@@ -2532,10 +2532,44 @@ sunrise day-start (e.g. `05:59:00` and `06:01:00` on the same Astro Day).
 
 ---
 
-### SPEC-037 Results — 2026-07-23 (dev)
+#### TC-037-07 — [after deploy] Production behaves identically, survives full rebuild
+
+**Precondition:** deployed via `tools/ops/deploy.sh`, then verified with a
+full `tools/ops/redeploy.sh -y` teardown/rebuild.
+
+**Action:**
+
+```bash
+curl -s "https://sask.davidstitt.net/moons?astro_day=1&time_of_day=18:30:00"
+curl -s "https://sask.davidstitt.net/planets?astro_day=1"
+curl -s "https://sask.davidstitt.net/sky?astro_day=1&time_of_day=18:30:00"
+curl -s "https://sask.davidstitt.net/moons?astro_day=1&time_of_day=24:00:00"
+curl -s "https://sask.davidstitt.net/moons?astro_day=1&time_of_day=24:00:00&locale=es-ES"
+curl -s "https://sask.davidstitt.net/ephemeris?start_astro_day=1&start_time_of_day=06:00:00&duration_days=1&step_minutes=5&profile=scribal"
+bash tools/ops/connect.sh 'sask logs verify'
+```
+
+**Pass criteria:**
+
+- A valid time refines the moment on `/moons` and `/sky`; `/planets` now
+  shows time-of-day at parity with the others; an invalid time returns a
+  clean localized error in both `en-US` and `es-ES`; `start_time_of_day`
+  pins the Ephemeris sweep start — all matching dev behavior exactly.
+- After a full `redeploy.sh -y` teardown/rebuild (not just an incremental
+  `deploy.sh`), every check above still passes against the freshly
+  recreated droplet, and `sask logs verify` reports well-formed JSON with
+  no secret hits.
+
+---
+
+### SPEC-037 Results — 2026-07-23 (dev), 2026-07-23 (prod)
 
 TC-037-01 through TC-037-06 tested manually on the dev host per this
-SPEC's acceptance UAT criteria. All pass, no fixes identified.
+SPEC's acceptance UAT criteria. All pass, no fixes identified. TC-037-07
+confirmed manually against the live production droplet
+(`sask.davidstitt.net`) after `deploy.sh`, and again after a full
+`redeploy.sh -y` teardown/rebuild — all checks passed identically both
+times.
 
 | TC | Result | Notes |
 |---|---|---|
@@ -2545,6 +2579,7 @@ SPEC's acceptance UAT criteria. All pass, no fixes identified.
 | TC-037-04 | PASS | |
 | TC-037-05 | PASS | |
 | TC-037-06 | PASS | |
+| TC-037-07 | PASS | verified after `deploy.sh` and again after `redeploy.sh -y` |
 
 ---
 

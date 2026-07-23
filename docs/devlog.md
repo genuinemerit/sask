@@ -1,5 +1,21 @@
 # Dev log
 
+## 2026-07-23 — SPEC-037 deployed to prod, full redeploy verified
+
+`tools/ops/deploy.sh` (ok=42, changed=5), then `tools/ops/acceptance-test.sh`
+— all pass. Feature-verified live: valid `time_of_day` refines the moment
+(`/moons`, `/sky`), `planets()` now shows time-of-day at parity, invalid
+time gives the clean localized error in both `en-US` and `es-ES`, and
+`start_time_of_day` pins the Ephemeris sweep start — all confirmed via
+direct `curl` against `sask.davidstitt.net`.
+
+Since all tests passed, followed with a full `tools/ops/redeploy.sh -y`
+teardown/rebuild (`ok=47, changed=39, failed=0`) to prove the feature
+survives a from-scratch droplet recreation, not just an incremental sync.
+Re-ran every feature check above against the freshly recreated droplet —
+all pass, plus `sask logs verify` (50/50 well-formed, 0 secret hits). SPEC-037
+is now fully verified in both dev and prod.
+
 ## 2026-07-23 — SPEC-037: enterable civil time-of-day input (DD-0024)
 
 New calendar-engine feature, independent of the port work. Moons, Planets,

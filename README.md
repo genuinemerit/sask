@@ -56,8 +56,13 @@ Five browser pages are available locally or live at
 
 All pages accept four equivalent input forms: pulse number, Astro day,
 Fatunik date, or Terpin date. After any query all four input fields are
-cross-populated with the resolved equivalents. The `/ephemeris` page also
-accepts a Duration (Days) field for date-mode ranges.
+cross-populated with the resolved equivalents. The Astro day form also
+accepts an optional civil time (`HH:MM:SS`, 24-hour) to pin a precise
+moment within that day — e.g. Astro day 42 at `18:30:00` — instead of the
+day's default moment; omitting it preserves prior behavior (SPEC-037).
+The `/ephemeris` page also accepts a Duration (Days) field for date-mode
+ranges, and the same optional civil time alongside its start Astro day to
+pin the sweep's starting moment.
 
 A language toggle sets the locale (en-US/es-ES) for tagged interface text,
 localized engine results (e.g. season names), and parallel-translated help
