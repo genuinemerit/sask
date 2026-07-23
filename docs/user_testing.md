@@ -2420,6 +2420,140 @@ were interrupted (`git status` should show it unmodified).
 
 ---
 
+## SPEC-037 — Civil time-of-day input: shared inverse converter and four-endpoint wiring
+
+SPEC-037 adds an optional civil `HH:MM:SS` time-of-day input to the
+Moons, Planets, Sky, and Ephemeris endpoints, alongside the existing Astro
+Day field. Entering a time pins the precise within-day moment computed
+(for Ephemeris, the sweep start); omitting it reproduces today's
+day-start default. Automated tests (`tests/test_spec_037.py`) cover the
+converter, `resolve_moment`, and each endpoint directly; this UAT checks
+what a human actually experiences: does entering a time genuinely refine
+the result, does a displayed time re-entered round-trip, does an invalid
+time fail cleanly, and does a civil time near a cultural day-start
+boundary attribute to the expected lore date(s) per culture — the
+headline discovery this feature enables.
+
+### SPEC-037 Setup
+
+**In a terminal on the dev host:**
+
+```bash
+cd ~/Code/sask
+PYTHONPATH=src poetry run flask --app sask.web run
+```
+
+Open a browser to `http://localhost:5000/moons` (tunnel first if needed,
+as in earlier UAT sections), then `/planets`, `/sky`, and `/ephemeris` in
+turn.
+
+---
+
+### SPEC-037 Test cases
+
+#### TC-037-01 — Astro Day + time refines the moment (Moons/Planets/Sky)
+
+**Action:** On each of `/moons`, `/planets`, `/sky`, enter an Astro Day
+(e.g. `1`) with a time (e.g. `18:30:00`) in the new **Time (HH:MM:SS)**
+field next to Astro Day, and submit.
+
+**Pass criteria:**
+
+- The page computes at the precise moment entered — the echoed time
+  field shows `18:30:00`, and the moon/planet/sky state shown matches
+  that moment, not the day's default (midnight).
+- The echoed Fatunik/Terpin civil dates are correct for that precise
+  pulse.
+
+---
+
+#### TC-037-02 — Ephemeris start time pins the sweep start
+
+**Action:** On `/ephemeris`, enter a Start Astro Day (e.g. `1`) with a
+start time (e.g. `06:00:00`), a Duration (Days), and Step, then submit.
+
+**Pass criteria:**
+
+- The sweep begins at the entered time within the start day, not at the
+  day's default moment — the echoed start time shows `06:00:00`.
+- Step floor (5 min) and range cap (30 days) still apply unchanged.
+
+---
+
+#### TC-037-03 — Omitting the time reproduces today's behavior
+
+**Action:** On each of the four endpoints, enter only an Astro Day (leave
+the new time field blank) and submit.
+
+**Pass criteria:**
+
+- Behavior is unchanged from before SPEC-037: the day's default (midnight)
+  moment is used, exactly as it was prior to this feature.
+
+---
+
+#### TC-037-04 — Invalid time fails cleanly
+
+**Action:** On any of the four endpoints, enter an Astro Day with an
+invalid time (`24:00:00`, or `12:60:00`, or a malformed value like
+`abc`).
+
+**Pass criteria:**
+
+- The page returns 200 (not a 500/crash) with a clear, localized input
+  error — no raw Python traceback or unhandled exception.
+
+---
+
+#### TC-037-05 — Round-trip: a displayed time re-entered yields the same result
+
+**Action:** Query any endpoint with just an Astro Day, note the displayed
+time-of-day, then re-submit with that exact same time entered explicitly.
+
+**Pass criteria:**
+
+- The result is identical either way — the displayed time, re-entered,
+  round-trips to the same moment.
+
+---
+
+#### TC-037-06 — Cross-culture day-start boundary
+
+**Action:** On `/sky`, enter an Astro Day with a time near Fatunik's
+sunrise day-start (e.g. `05:59:00` and `06:01:00` on the same Astro Day).
+
+**Pass criteria:**
+
+- The Fatunik civil/lore date attribution shifts across the `06:00:00`
+  boundary (the two times fall on different Fatunik civil days), while
+  the Terpin date (midnight-based) does not shift at that boundary — the
+  civil clock reading itself stays consistent; only date attribution
+  differs per culture.
+
+---
+
+### SPEC-037 Results — 2026-07-23 (dev)
+
+TC-037-01 through TC-037-06 tested manually on the dev host per this
+SPEC's acceptance UAT criteria. All pass, no fixes identified.
+
+| TC | Result | Notes |
+|---|---|---|
+| TC-037-01 | PASS | |
+| TC-037-02 | PASS | |
+| TC-037-03 | PASS | |
+| TC-037-04 | PASS | |
+| TC-037-05 | PASS | |
+| TC-037-06 | PASS | |
+
+---
+
+### SPEC-037 Teardown
+
+Stop the Flask dev server (`Ctrl+C`).
+
+---
+
 ## SPEC-038 — CLI Round Two: dev tier, expanded admin surface, rich presentation
 
 SPEC-038 adds eleven commands to the CLI — admin (`logs verify`,
