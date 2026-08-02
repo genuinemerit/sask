@@ -14,11 +14,22 @@ from flask import (
     Response,
     current_app,
     g,
+    jsonify,
     make_response,
     render_template,
     request,
 )
 
+from sask.api.json_render import (
+    body_entry_json,
+    error_json,
+    ephemeris_json,
+    lunar_entry_json,
+    scene_json,
+    season_json,
+    sky_position_json,
+    temporal_json,
+)
 from sask.asset.retrieval import AssetNotFoundError, fetch_payload, resolve_descriptor
 from sask.calendar.bodies import all_body_states
 from sask.calendar.ephemeris import (
@@ -56,6 +67,20 @@ from .translator import (
 bp = Blueprint("main", __name__)
 
 
+# ── Content negotiation (DD-0026, SPEC-039) ─────────────────────────────────
+
+
+def _wants_json() -> bool:
+    """?format=json wins outright; otherwise Accept: application/json vs.
+    text/html quality, ties (incl. a bare */*) resolved to HTML (the
+    default)."""
+    fmt = (request.args.get("format") or "").lower()
+    if fmt:
+        return fmt == "json"
+    accept = request.accept_mimetypes
+    return accept["application/json"] > accept["text/html"]
+
+
 # ── Pulse resolution ───────────────────────────────────────────────────────────
 
 
@@ -67,15 +92,27 @@ def _msg(tag: str, locale: str, i18n: I18nCatalog, **kwargs: str) -> str:
     return text
 
 
+def _err(tag: str, locale: str, i18n: I18nCatalog, **kwargs: str) -> tuple[str, str]:
+    """Resolve tag to (code, localized message) for an error response.
+
+    code is the tag's stable, English, locale-invariant suffix — the same
+    identifier _msg() already keys off internally — shared by the HTML path
+    (which only needs the message) and the JSON error envelope (DD-0026),
+    which needs the code too.
+    """
+    return tag.removeprefix("error."), _msg(tag, locale, i18n, **kwargs)
+
+
 def _resolve_pulse(
     cfg: AppConfig,
     locale: str,
-) -> tuple[int | None, str | None]:
-    """Parse request args into a pulse integer, or return an error string.
+) -> tuple[int | None, str | None, str | None]:
+    """Parse request args into a pulse integer, or return an error.
 
     Priority: pulse > astro_day (+ optional time_of_day) > fatunik date >
-    terpin date. Returns (pulse, None) on success; (None, error_msg) on bad
-    input; (None, None) when no input was given (form should render empty).
+    terpin date. Returns (pulse, None, None) on success; (None, code, msg)
+    on bad input; (None, None, None) when no input was given (form should
+    render empty).
     """
     i18n = cfg.i18n
     # treat empty strings (unset form fields) the same as absent
@@ -91,59 +128,65 @@ def _resolve_pulse(
 
     if pulse_p is not None:
         try:
-            return int(round(float(pulse_p))), None
+            return int(round(float(pulse_p))), None, None
         except ValueError:
-            return None, _msg(
+            code, msg = _err(
                 "error.invalid_pulse_value", locale, i18n, value=repr(pulse_p)
             )
+            return None, code, msg
 
     if astro_day_p is not None:
         try:
             day = int(astro_day_p)
         except ValueError:
-            return None, _msg(
+            code, msg = _err(
                 "error.invalid_astro_day", locale, i18n, value=repr(astro_day_p)
             )
+            return None, code, msg
         try:
             return (
                 resolve_moment(day, time_of_day_p, cfg.time_constants.pulses_per_day),
                 None,
+                None,
             )
         except CalendarRangeError:
-            return None, _msg(
+            code, msg = _err(
                 "error.invalid_time_of_day", locale, i18n, value=repr(time_of_day_p)
             )
+            return None, code, msg
 
     if fat_y and fat_m and fat_d:
         try:
             date = CalendarDate("fatunik", int(fat_y), int(fat_m), int(fat_d))
-            return fatunik_to_pulse(date, cfg), None
+            return fatunik_to_pulse(date, cfg), None, None
         except (ValueError, KeyError) as exc:
-            return None, _msg(
+            code, msg = _err(
                 "error.invalid_fatunik_date", locale, i18n, detail=str(exc)
             )
+            return None, code, msg
 
     if ter_y and ter_m and ter_d:
         try:
             date = CalendarDate("terpin", int(ter_y), int(ter_m), int(ter_d))
-            return terpin_to_pulse(date, cfg), None
+            return terpin_to_pulse(date, cfg), None, None
         except (ValueError, KeyError) as exc:
-            return None, _msg(
-                "error.invalid_terpin_date", locale, i18n, detail=str(exc)
-            )
+            code, msg = _err("error.invalid_terpin_date", locale, i18n, detail=str(exc))
+            return None, code, msg
 
-    return None, None
+    return None, None, None
 
 
 def _resolve_endpoint(
     prefix: str,
     cfg: AppConfig,
     locale: str,
-) -> tuple[int | None, str | None]:
+) -> tuple[int | None, str | None, str | None]:
     """Like _resolve_pulse but with prefixed query param names (e.g. 'start_').
 
     Priority: {prefix}pulse > {prefix}astro_day (+ optional
-    {prefix}time_of_day) > fatunik date > terpin date.
+    {prefix}time_of_day) > fatunik date > terpin date. Returns
+    (pulse, None, None) / (None, code, msg) / (None, None, None) — see
+    _resolve_pulse.
     """
     i18n = cfg.i18n
     pulse_p = request.args.get(f"{prefix}pulse") or None
@@ -158,68 +201,74 @@ def _resolve_endpoint(
 
     if pulse_p is not None:
         try:
-            return int(round(float(pulse_p))), None
+            return int(round(float(pulse_p))), None, None
         except ValueError:
-            return None, _msg(
+            code, msg = _err(
                 "error.invalid_prefixed_pulse",
                 locale,
                 i18n,
                 prefix=prefix,
                 value=repr(pulse_p),
             )
+            return None, code, msg
 
     if astro_day_p is not None:
         try:
             day = int(astro_day_p)
         except ValueError:
-            return None, _msg(
+            code, msg = _err(
                 "error.invalid_prefixed_astro_day",
                 locale,
                 i18n,
                 prefix=prefix,
                 value=repr(astro_day_p),
             )
+            return None, code, msg
         try:
             return (
                 resolve_moment(day, time_of_day_p, cfg.time_constants.pulses_per_day),
                 None,
+                None,
             )
         except CalendarRangeError:
-            return None, _msg(
+            code, msg = _err(
                 "error.invalid_prefixed_time_of_day",
                 locale,
                 i18n,
                 prefix=prefix,
                 value=repr(time_of_day_p),
             )
+            return None, code, msg
 
     if fat_y and fat_m and fat_d:
         try:
             date = CalendarDate("fatunik", int(fat_y), int(fat_m), int(fat_d))
-            return fatunik_to_pulse(date, cfg), None
+            return fatunik_to_pulse(date, cfg), None, None
         except (ValueError, KeyError) as exc:
-            return None, _msg(
+            code, msg = _err(
                 "error.invalid_prefixed_fatunik_date",
                 locale,
                 i18n,
                 prefix=prefix,
                 detail=str(exc),
             )
+            return None, code, msg
 
     if ter_y and ter_m and ter_d:
         try:
             date = CalendarDate("terpin", int(ter_y), int(ter_m), int(ter_d))
-            return terpin_to_pulse(date, cfg), None
+            return terpin_to_pulse(date, cfg), None, None
         except (ValueError, KeyError) as exc:
-            return None, _msg(
+            code, msg = _err(
                 "error.invalid_prefixed_terpin_date",
                 locale,
                 i18n,
                 prefix=prefix,
                 detail=str(exc),
             )
+            return None, code, msg
 
-    return None, None
+    return None, None, None
 
 
 # ── Routes ─────────────────────────────────────────────────────────────────────
@@ -238,6 +287,8 @@ def index() -> str:
 
     view = None
     error = None
+    error_code = None
+    pulse = None
     pulse_param = request.args.get("pulse")
 
     if pulse_param is not None:
@@ -246,12 +297,20 @@ def index() -> str:
             info: PulseInfo = pulse_info(pulse, cfg)
             view = to_pulse_view(info, cfg.time_constants.pulses_per_day)
         except ValueError:
-            error = _msg(
+            error_code, error = _err(
                 "error.invalid_pulse_value",
                 g.sask_locale,
                 cfg.i18n,
                 value=repr(pulse_param),
             )
+
+    if _wants_json():
+        if error is not None:
+            return jsonify(error_json(error_code, error)), 400
+        if pulse is None:
+            code, msg = _err("error.missing_moment_query", g.sask_locale, cfg.i18n)
+            return jsonify(error_json(code, msg)), 400
+        return jsonify(temporal_json(pulse, cfg, g.sask_locale)), 200
 
     return render_template(
         "index.html",
@@ -264,13 +323,14 @@ def index() -> str:
 @bp.route("/moons")
 def moons() -> str:
     cfg: AppConfig = current_app.config["SASK_CONFIG"]
-    pulse, error = _resolve_pulse(cfg, g.sask_locale)
+    pulse, error_code, error = _resolve_pulse(cfg, g.sask_locale)
 
     moon_views = None
     fatune_pos = None
     fatunik_date = terpin_date = None
     queried_astro_day = None
     time_of_day = None
+    all_states = all_positions = body_cfg_map = None
 
     if pulse is not None and error is None:
         ppd = cfg.time_constants.pulses_per_day
@@ -295,6 +355,29 @@ def moons() -> str:
         fatunik_date = astro_to_fatunik(pulse, cfg)
         terpin_date = astro_to_terpin(pulse, cfg)
 
+    if _wants_json():
+        if error is not None:
+            return jsonify(error_json(error_code, error)), 400
+        if pulse is None:
+            code, msg = _err("error.missing_moment_query", g.sask_locale, cfg.i18n)
+            return jsonify(error_json(code, msg)), 400
+        payload = {
+            "query": temporal_json(pulse, cfg, g.sask_locale),
+            "fatune": sky_position_json(fatune_pos, g.sask_locale, cfg.i18n),
+            "bodies": [
+                body_entry_json(
+                    state,
+                    pos,
+                    locale=g.sask_locale,
+                    i18n=cfg.i18n,
+                    albedo=body_cfg_map[state.name].albedo,
+                )
+                for state, pos in zip(all_states, all_positions)
+                if state.body_type == "moon"
+            ],
+        }
+        return jsonify(payload), 200
+
     return render_template(
         "moons.html",
         moon_views=moon_views,
@@ -311,13 +394,14 @@ def moons() -> str:
 @bp.route("/planets")
 def planets() -> str:
     cfg: AppConfig = current_app.config["SASK_CONFIG"]
-    pulse, error = _resolve_pulse(cfg, g.sask_locale)
+    pulse, error_code, error = _resolve_pulse(cfg, g.sask_locale)
 
     planet_views = None
     fatune_pos = None
     fatunik_date = terpin_date = None
     queried_astro_day = None
     time_of_day = None
+    all_states = all_positions = body_cfg_map = None
 
     if pulse is not None and error is None:
         ppd = cfg.time_constants.pulses_per_day
@@ -343,6 +427,30 @@ def planets() -> str:
         fatunik_date = astro_to_fatunik(pulse, cfg)
         terpin_date = astro_to_terpin(pulse, cfg)
 
+    if _wants_json():
+        if error is not None:
+            return jsonify(error_json(error_code, error)), 400
+        if pulse is None:
+            code, msg = _err("error.missing_moment_query", g.sask_locale, cfg.i18n)
+            return jsonify(error_json(code, msg)), 400
+        payload = {
+            "query": temporal_json(pulse, cfg, g.sask_locale),
+            "fatune": sky_position_json(fatune_pos, g.sask_locale, cfg.i18n),
+            "bodies": [
+                body_entry_json(
+                    state,
+                    pos,
+                    locale=g.sask_locale,
+                    i18n=cfg.i18n,
+                    rings=body_cfg_map[state.name].rings,
+                    visible_moons=body_cfg_map[state.name].visible_moons,
+                )
+                for state, pos in zip(all_states, all_positions)
+                if state.body_type == "planet"
+            ],
+        }
+        return jsonify(payload), 200
+
     return render_template(
         "planets.html",
         planet_views=planet_views,
@@ -360,7 +468,7 @@ def planets() -> str:
 def sky() -> str:
     cfg: AppConfig = current_app.config["SASK_CONFIG"]
     ppd = cfg.time_constants.pulses_per_day
-    pulse, error = _resolve_pulse(cfg, g.sask_locale)
+    pulse, error_code, error = _resolve_pulse(cfg, g.sask_locale)
 
     scene = None
     lunar_entries = None
@@ -429,6 +537,47 @@ def sky() -> str:
             0, (scene.next_co_fullness.pulse - pulse + ppd - 1) // ppd
         )
 
+    if _wants_json():
+        if error is not None:
+            return jsonify(error_json(error_code, error)), 400
+        if pulse is None:
+            code, msg = _err("error.missing_moment_query", g.sask_locale, cfg.i18n)
+            return jsonify(error_json(code, msg)), 400
+        lore = None
+        if cfg.lore_time.enabled:
+            lore = {
+                "fatunik_time": fatunik_lore_time,
+                "terpin_time": terpin_lore_time,
+                "fatunik_date": fatunik_lore_date,
+                "terpin_date": terpin_lore_date,
+                "lunar_dates": [
+                    {
+                        "calendar": {
+                            "id": cal.id,
+                            "label": resolve_i18n(
+                                f"calendar.{cal.id}_name", g.sask_locale, cfg.i18n
+                            ),
+                        },
+                        "lore_date": lore_str,
+                    }
+                    for cal, _ld, lore_str in lore_lunar_dates
+                ],
+            }
+        payload = {
+            "query": temporal_json(pulse, cfg, g.sask_locale),
+            "season": season_json(si, g.sask_locale, cfg.i18n),
+            "scene": scene_json(scene, g.sask_locale, cfg.i18n),
+            "days_until_next_cofullness": cofullness_days,
+            "lunar_calendars": [
+                lunar_entry_json(cal, ld, g.sask_locale, cfg.i18n)
+                for cal, ld in lunar_entries
+            ],
+            "lore": lore,
+            "night_summary": night_summary,
+            "image_prompt": image_prompt,
+        }
+        return jsonify(payload), 200
+
     return render_template(
         "sky.html",
         error=error,
@@ -463,8 +612,7 @@ def ephemeris() -> str:
     ppd = cfg.time_constants.pulses_per_day
 
     # Start resolves from whichever input type is supplied (pulse priority).
-    start_pulse, start_err = _resolve_endpoint("start_", cfg, g.sask_locale)
-    error = start_err
+    start_pulse, error_code, error = _resolve_endpoint("start_", cfg, g.sask_locale)
 
     # End mode:
     #   Pulse mode  — end_pulse supplied directly via "end_pulse" param.
@@ -482,13 +630,14 @@ def ephemeris() -> str:
         try:
             end_pulse = int(round(float(end_pulse_raw)))  # type: ignore[arg-type]
         except ValueError:
-            error = error or _msg(
-                "error.invalid_prefixed_pulse",
-                g.sask_locale,
-                cfg.i18n,
-                prefix="end_",
-                value=repr(end_pulse_raw),
-            )
+            if error is None:
+                error_code, error = _err(
+                    "error.invalid_prefixed_pulse",
+                    g.sask_locale,
+                    cfg.i18n,
+                    prefix="end_",
+                    value=repr(end_pulse_raw),
+                )
 
     profile = request.args.get("profile", "scribal")
     step_pulses = None
@@ -516,14 +665,16 @@ def ephemeris() -> str:
 
     if error is None and any_input:
         if start_pulse is None:
-            error = _msg("error.start_time_required", g.sask_locale, cfg.i18n)
+            error_code, error = _err(
+                "error.start_time_required", g.sask_locale, cfg.i18n
+            )
         elif step_min_p is None:
-            error = _msg("error.step_required", g.sask_locale, cfg.i18n)
+            error_code, error = _err("error.step_required", g.sask_locale, cfg.i18n)
         else:
             try:
                 step_pulses = int(step_min_p) * 60
             except ValueError:
-                error = _msg(
+                error_code, error = _err(
                     "error.invalid_step_minutes",
                     g.sask_locale,
                     cfg.i18n,
@@ -533,23 +684,25 @@ def ephemeris() -> str:
             if error is None:
                 if pulse_mode:
                     if end_pulse is None:
-                        error = _msg(
+                        error_code, error = _err(
                             "error.end_pulse_required", g.sask_locale, cfg.i18n
                         )
                 else:
                     if duration_days_p is None:
-                        error = _msg("error.duration_required", g.sask_locale, cfg.i18n)
+                        error_code, error = _err(
+                            "error.duration_required", g.sask_locale, cfg.i18n
+                        )
                     else:
                         try:
                             duration_days = int(duration_days_p)
                             if duration_days < 1:
-                                error = _msg(
+                                error_code, error = _err(
                                     "error.duration_min", g.sask_locale, cfg.i18n
                                 )
                             else:
                                 end_pulse = start_pulse + duration_days * ppd
                         except ValueError:
-                            error = _msg(
+                            error_code, error = _err(
                                 "error.invalid_duration_days",
                                 g.sask_locale,
                                 cfg.i18n,
@@ -561,7 +714,7 @@ def ephemeris() -> str:
             if step_pulses >= span:
                 step_min = step_pulses // 60
                 span_min = span // 60
-                error = _msg(
+                error_code, error = _err(
                     "error.step_exceeds_duration",
                     g.sask_locale,
                     cfg.i18n,
@@ -570,7 +723,9 @@ def ephemeris() -> str:
                 )
             else:
                 try:
-                    series = get_sky_series(start_pulse, end_pulse, step_pulses, cfg)
+                    series = get_sky_series(
+                        start_pulse, end_pulse, step_pulses, cfg, locale=g.sask_locale
+                    )
                     preview_end = min(end_pulse, start_pulse + 4 * step_pulses)
                     preview_series = get_sky_series(
                         start_pulse, preview_end, step_pulses, cfg
@@ -582,7 +737,12 @@ def ephemeris() -> str:
                     if profile in ("kinematic", "both"):
                         kinematic_preview = render_kinematic_json(preview_series, cfg)
                 except ValueError as exc:
-                    error = str(exc)
+                    error_code, error = _err(
+                        "error.ephemeris_range_invalid",
+                        g.sask_locale,
+                        cfg.i18n,
+                        detail=str(exc),
+                    )
                     series = None
 
     # Compute end cross-calendar display after end_pulse is finalised.
@@ -591,6 +751,23 @@ def ephemeris() -> str:
         end_time_of_day = format_civil_time(end_pulse % ppd, ppd)
         end_fatunik_date = astro_to_fatunik(end_pulse, cfg)
         end_terpin_date = astro_to_terpin(end_pulse, cfg)
+
+    if _wants_json():
+        if error is not None:
+            return jsonify(error_json(error_code, error)), 400
+        if series is None:
+            code, msg = _err("error.missing_ephemeris_query", g.sask_locale, cfg.i18n)
+            return jsonify(error_json(code, msg)), 400
+        payload = ephemeris_json(
+            series=series,
+            cfg=cfg,
+            locale=g.sask_locale,
+            i18n=cfg.i18n,
+            profile=profile,
+            start_pulse=start_pulse,
+            end_pulse=end_pulse,
+        )
+        return jsonify(payload), 200
 
     return render_template(
         "ephemeris.html",

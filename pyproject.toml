@@ -24,6 +24,7 @@ sask = "sask.cli:main"
 ruff = "*"
 pytest = "*"
 pytest-benchmark = "^5.2.3"
+pytest-cov = "^7.1.0"
 pymarkdownlnt = "*"
 
 [tool.poetry.group.acceptance.dependencies]
@@ -41,3 +42,14 @@ target-version = "py312"
 testpaths      = ["tests"]
 pythonpath     = ["src", "tools/ops", "tools/dev"]
 norecursedirs  = ["tests/perf", "tests/acceptance"]
+
+# Informational only — not wired into pre-commit-check.sh or CI as a gate.
+# Run explicitly: poetry run pytest --cov (see CLAUDE.md).
+[tool.coverage.run]
+source = ["src/sask"]
+branch = true
+
+[tool.coverage.report]
+skip_covered = false
+show_missing = true
+exclude_lines = ["pragma: no cover", "if TYPE_CHECKING:"]

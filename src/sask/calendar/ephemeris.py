@@ -110,6 +110,7 @@ def get_sky_series(
     end_pulse: int,
     step_pulses: int,
     config: AppConfig,
+    locale: str = "en-US",
 ) -> EphemerisSeries:
     """Validate throttle and build the ephemeris series.
 
@@ -118,6 +119,14 @@ def get_sky_series(
 
     Per-day context (season, body rise/transit/set) is computed once per
     distinct Astro day and referenced by all steps within that day.
+
+    locale defaults to the base locale (matching every prior caller's
+    behavior unchanged) and is forwarded to get_sky_scene, which is the
+    only place body direction/color/phase text is baked in at composition
+    time (SPEC-036/scene.py). render_scribal_json's own "summary" field
+    already took a separate locale argument for its prose sentence; this
+    lets a caller (SPEC-039's JSON adapter) get a fully locale-consistent
+    scene per step too, without changing any existing caller's output.
     """
     _validate_throttle(start_pulse, end_pulse, step_pulses, config)
     started = time.perf_counter()
@@ -135,6 +144,7 @@ def get_sky_series(
             config,
             body_states=step_body_states,
             sky_positions=step_sky_positions,
+            locale=locale,
         )
 
         if aday not in day_contexts:

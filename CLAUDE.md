@@ -28,6 +28,16 @@ python3 tools/dev/validate_specs.py
 poetry run pytest tests/test_validate_specs.py -q
 ```
 
+## Test coverage
+
+Informational only — not a pre-commit or CI gate. Run on demand:
+
+```bash
+poetry run pytest --cov
+```
+
+Config lives in `pyproject.toml` under `[tool.coverage.*]`.
+
 ## Design docs
 
 Design documents live under `design/` as TOML. After any change to a design

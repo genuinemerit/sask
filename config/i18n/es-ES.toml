@@ -419,6 +419,9 @@
 "error.step_exceeds_duration" = "El paso ({step_min} min) iguala o supera la duración total ({span_min} min); reduce el paso o aumenta la duración (días)."
 "error.step_exceeds_range_download" = "el paso de {steps} pulsos iguala o supera el rango de {span} pulsos; no se generarían pasos intermedios."
 "error.no_help_topic" = "No existe un tema de ayuda llamado \"{topic}\"."
+"error.missing_moment_query" = "Se requiere un parámetro de pulso, astro_day o fecha de calendario."
+"error.missing_ephemeris_query" = "Se requieren los parámetros de hora de inicio y paso."
+"error.ephemeris_range_invalid" = "Rango de efemérides inválido: {detail}"
 
 "statement.ephemeris_intro" = "Introduce una <strong>hora de inicio</strong> usando cualquiera de los tipos de entrada de abajo. Para las entradas de día Astro, Fatunik o Terpin, la duración del rango la fija la <strong>Duración (días)</strong> en la sección Paso y Perfil. Usa <strong>Pulso</strong> para un inicio y fin precisos. Haz clic en <strong>Restablecer</strong> para borrar todos los campos antes de cambiar de tipo de entrada."
 

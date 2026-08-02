@@ -1,0 +1,176 @@
+id     = "SPEC-039"
+title  = "JSON output: content negotiation and message-unit serialization"
+status = "accepted"
+
+[implements]
+requirements = ["REQ-FUN-018"]
+decisions    = ["DD-0026"]
+notes = """
+Adds JSON output to / (Pulse), /moons, /planets, /sky, /ephemeris as a thin
+second renderer over the existing message units (populating the api/ adapter
+home). Output-only; input unchanged. Reuses the DD-0022/DD-0023 value-
+localization seam. Several verification points are called out because this
+SPEC was drafted from the established architecture, not from reading the
+calendar source - Claude Code must confirm them against the actual code
+before/while implementing.
+
+Correction (2026-08-02): / (Pulse) was omitted from the original draft's
+endpoint list by mistake - it is a functional endpoint like the other four
+(SPEC-002) and was always intended to be in scope. Added after a live UAT
+request against /?pulse=...&format=json surfaced the gap; five endpoints
+throughout this document, not four.
+"""
+
+[scope]
+in = """
+Content negotiation (?format=json and/or Accept header) on the five functional
+routes; a JSON adapter/renderer over the existing message units; the message-
+unit -> JSON serialization mapping (consistent across endpoints); value-only
+localization with English-invariant keys/ids; the {id, label} shape for
+localizable domain values; the always-present pulse/atomic-time (and lore-time)
+contract; null for absent optionals; a consistent JSON error envelope; and tests.
+"""
+
+out = """
+- An /api/ namespace (content negotiation on existing routes instead).
+- JSON request bodies / REST (input stays HTTP parameters).
+- JSON for help endpoints (HTML-only).
+- Any engine or computation change (JSON renders existing message units).
+- Any change to HTML output behavior (HTML remains the default and is unchanged).
+- The future graph/LLM API surface.
+"""
+
+[deliverables]
+verification_points = """
+Confirm against the actual calendar source BEFORE finalizing the mapping (these
+were assumed from architecture, not read):
+1. The message-unit definitions for each of the five endpoints - exact fields,
+   nesting, and which values are localizable domain identifiers vs. raw data.
+2. That the HTML adapter is a thin renderer over those units, so the JSON adapter
+   is a genuine peer (not a reimplementation); if any endpoint logic lives in the
+   HTML path, it must be shared, not duplicated.
+3. The value-localization seam (DD-0022/DD-0023) - where locale binds and where a
+   value is localized - so the JSON localizes VALUES at the same seam while
+   keeping keys/ids English.
+4. That the engine already resolves and can surface the Pulse + atomic date/time
+   for every query (and lore-time where elaborated), so the temporal contract is
+   a serialization concern, not a new computation.
+Report any mismatch with these assumptions before proceeding.
+"""
+
+content_negotiation = """
+On / (Pulse), /moons, /planets, /sky, /ephemeris, select output by a
+?format=json query parameter and/or an Accept: application/json header;
+default to HTML. One route
+per endpoint, with the endpoint logic shared and only the final render branching
+HTML vs. JSON. Define precedence if both the param and header are present
+(recommend: explicit ?format param wins over Accept header) and the default/
+fallback (HTML). An unsupported/!json Accept with no param yields HTML.
+"""
+
+json_adapter = """
+A JSON renderer in the api/ adapter that serializes a message unit to JSON per
+the mapping rules below. It is a thin adapter (like the HTML adapter): it renders
+an already-computed message unit; it contains no domain logic. Shared output-
+formatting helpers live in the adapter layer, not the engine.
+"""
+
+serialization_mapping = """
+The message-unit -> JSON mapping, applied CONSISTENTLY across all five endpoints:
+- Follow the message-unit DATA shape; nested units -> nested JSON objects.
+- Represent the COMPLETE unit, never a subset (ephemeris: include parameters and
+  summary, with the per-step series as a structured array inside the object -
+  not a bare top-level array).
+- Keys and ids: English, language-invariant, in every locale.
+- Localizable domain value -> { "id": <invariant English identifier>,
+  "label": <localized display> }. The key stays English; "id" is switch-on-able;
+  "label" localizes per the language param.
+- Absent optional field -> null (never omitted).
+- Confirm enum/domain-type serialization uses the stable identifier for "id"
+  and the localized string for "label", sourced from the same catalog the HTML
+  path uses.
+"""
+
+localization = """
+Localize VALUES only, at the DD-0022/DD-0023 value-localization seam, driven by
+the language parameter (es-ES when not en-US default). Keys and ids never
+localize. The value of any field (including one named "label") localizes; the
+field NAME does not. Operator-facing content is not relevant here (this is user-
+facing data output).
+"""
+
+temporal_contract = """
+Every JSON response includes the resolved Pulse and the atomic (Astro) date and
+time the answer corresponds to, regardless of the query's date format; endpoints
+that elaborate a lore date also include the lore-language time (shurs/keyts).
+This is a serialization guarantee over data the engine already resolves - surface
+it explicitly in the JSON so a civic-date query's assumed/resolved moment is
+never left implicit for a program.
+"""
+
+error_envelope = """
+A consistent JSON error envelope (e.g. { "error": { "code": ..., "message": ...,
+... } }) with stable machine-usable codes, driven where possible by the
+underlying message-unit error format so HTML and JSON share one error source.
+Applies uniformly across the five endpoints; validation/throttle errors (e.g.
+ephemeris step floor / range cap, malformed input) surface through it. HTTP
+status codes set appropriately alongside the envelope.
+"""
+
+tests = """
+tests/test_spec_039.py:
+- Negotiation: ?format=json and Accept header each yield JSON; default is HTML;
+  precedence (param over header) and fallback behave as specified.
+- Shape per endpoint: JSON matches the message-unit data shape; the COMPLETE unit
+  is present (ephemeris includes parameters + summary + series-as-array).
+- Schema invariance: keys/ids are identical English in en-US and es-ES; only
+  values differ; a field named "label" has a localized VALUE but an English key.
+- {id, label}: localizable domain values render as invariant id + localized
+  label.
+- null: absent optionals are null, not omitted.
+- Temporal contract: every response includes resolved pulse + atomic date/time;
+  lore-elaborating endpoints include lore-time; a civic-date query yields an
+  explicit resolved moment.
+- Error envelope: malformed input and ephemeris throttle violations return the
+  consistent JSON error shape with appropriate status.
+- Parity: for a given query, the JSON carries the same underlying data the HTML
+  renders (no data only in one format).
+Full suite passes at the new count; pre-commit and validate_specs clean.
+"""
+
+design_doc_status = """
+On acceptance set DD-0026, SPEC-039 to "accepted" and add a devlog entry (JSON
+output via content negotiation, the serialization mapping, the {id, label} shape,
+the language-invariant schema, the always-present temporal contract, and the JSON
+error envelope).
+"""
+
+[acceptance]
+criteria = """
+1. The five endpoints return JSON when negotiated (param and/or Accept), HTML by
+   default, with defined precedence/fallback; endpoint logic is shared (JSON is a
+   peer renderer, not a reimplementation).
+2. JSON follows the message-unit data shape and includes the complete unit
+   (ephemeris includes non-series data).
+3. Keys/ids are English in every locale; only values localize (language by
+   param); localizable domain values use the {id, label} shape.
+4. Every response includes resolved pulse + atomic date/time (+ lore-time where
+   elaborated).
+5. Absent optionals are null; errors use a consistent JSON envelope.
+6. Input is unchanged (HTTP parameters only).
+7. The four verification points were confirmed against the source (or mismatches
+   reported and resolved).
+8. Full suite passes at the new count; pre-commit and validate_specs clean.
+"""
+
+uat = """
+[manual] For each of the five endpoints: request with ?format=json and with an
+Accept: application/json header; confirm JSON matches the page's data, keys/ids
+are English, and values are English. Repeat with the es-ES language param; confirm
+keys/ids UNCHANGED and values localized, with localizable domain values showing
+{id, label}. Confirm every response carries pulse + atomic date/time (and lore-
+time where shown on the page). Query by a civic date and confirm the resolved
+moment is explicit in the JSON. Trigger an error (e.g. ephemeris over the range
+cap) and confirm the JSON error envelope. Confirm absent optionals are null and
+HTML output is unchanged when JSON is not requested.
+"""

@@ -12,6 +12,11 @@ venv/
 # pytest-benchmark default storage (redirected to tests/results/perf/ — see tools/ops/run_perf.sh)
 .benchmarks/
 
+# pytest-cov output (informational only — see CLAUDE.md "Test coverage")
+.coverage
+.coverage.*
+htmlcov/
+
 # Nix
 result
 result-*

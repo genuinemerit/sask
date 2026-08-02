@@ -1,0 +1,57 @@
+id        = "REQ-FUN-018"
+title     = "JSON output for functional endpoints"
+category  = "FUN"
+priority  = "should"
+
+statement = """
+The / (Pulse), /moons, /planets, /sky, and /ephemeris endpoints shall produce
+JSON output as an alternative to HTML, selected by content negotiation on the
+existing routes
+(a ?format=json parameter and/or an Accept: application/json header), with HTML
+as the default. The JSON shall be rendered from the same message units the HTML
+adapter renders and shall follow the message-unit DATA shape (not the HTML
+display shape), representing the COMPLETE message unit (never a subset). JSON
+keys and ids shall be language-invariant English regardless of requested
+language; only content values shall localize (language by parameter). Localizable
+domain values shall render as {id, label} (invariant English id + localized
+label). Every response shall include the resolved Pulse and atomic date/time
+(and, where the endpoint elaborates a lore date, the lore-language time). Absent
+optional fields shall render as null. Errors shall return a consistent JSON error
+envelope. Input remains HTTP parameters (no JSON request bodies).
+"""
+
+rationale = """
+Other Saskan tools need programmatic access to calendar/astronomy data; HTML is
+for humans. JSON output over the existing message units realizes the API-ready
+seam (DD-0003, DD-0026) as a thin second renderer, with no engine change. A
+language-invariant schema gives consuming code a stable contract across locales;
+{id, label} serves both program-switching and display; always-present pulse/
+atomic-time makes the resolved moment explicit for programs; null-not-omitted and
+a consistent error envelope give predictable, machine-handleable responses.
+Content negotiation on existing routes keeps this lean and leaves a future
+specialized (graph/LLM) API surface as a separate decision.
+"""
+
+acceptance = """
+1. Each of / (Pulse), /moons, /planets, /sky, /ephemeris returns JSON when
+   negotiated (?format=json and/or Accept: application/json); HTML by default.
+2. The JSON is rendered from the same message unit as the HTML, follows the data
+   shape, and includes the COMPLETE unit (e.g. ephemeris JSON includes
+   parameters and summary, not only the series array).
+3. JSON keys/ids are English in every locale; only content values localize;
+   language selected by parameter.
+4. Localizable domain values render as {id, label} (invariant id + localized
+   label); the value of a field named "label" localizes while the key stays
+   English.
+5. Every response includes resolved Pulse + atomic date/time; lore-elaborating
+   endpoints also include lore-language time (shurs/keyts).
+6. Absent optional fields render as null.
+7. Errors return a consistent JSON error envelope with stable codes.
+8. Input is unchanged (HTTP parameters; no JSON request bodies).
+9. Full suite passes at the new count; pre-commit and validate_specs clean.
+"""
+
+[links]
+implements   = ["DD-0026"]
+relates_to   = ["DD-0003", "DD-0017", "DD-0022", "DD-0024"]
+specified_by = ["SPEC-039"]

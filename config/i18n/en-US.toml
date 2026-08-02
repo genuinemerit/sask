@@ -437,6 +437,9 @@
 "error.step_exceeds_duration" = "Step ({step_min} min) equals or exceeds the total duration ({span_min} min) — reduce Step or increase Duration (Days)."
 "error.step_exceeds_range_download" = "step {steps} pulses equals or exceeds range {span} pulses — no intermediate steps would be generated."
 "error.no_help_topic" = "No help topic named \"{topic}\"."
+"error.missing_moment_query" = "A pulse, astro_day, or calendar date parameter is required."
+"error.missing_ephemeris_query" = "Start time and step parameters are required."
+"error.ephemeris_range_invalid" = "Invalid ephemeris range: {detail}"
 
 "statement.ephemeris_intro" = "Enter a <strong>start time</strong> using any one input type below. For Astro Day, Fatunik, or Terpin inputs the range length is set by <strong>Duration (Days)</strong> in the Step &amp; Profile section. Use <strong>Pulse</strong> for a precise start and end. Click <strong>Reset</strong> to clear all fields before switching input type."
 

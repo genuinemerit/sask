@@ -96,3 +96,33 @@ operator/developer-facing tooling (unlike the player-facing web UI DD-0022
 targeted)? If yes, decide the mechanism before implementing. (1) has no open
 subquestion -- it is a same-mechanism fix, just not made this round.
 """
+
+[[debt]]
+id      = "DEBT-0005"
+title   = "Review test coverage gaps now that pytest-cov is available"
+status  = "open"
+raised  = "2026-08-02"
+source  = "pytest-cov (informational-only) added to the dev toolchain 2026-08-02; see CLAUDE.md 'Test coverage' and pyproject.toml [tool.coverage.*]"
+area    = "testing"
+summary = """
+`poetry run pytest --cov` is now available but purely informational (no
+threshold, not wired into pre-commit-check.sh or CI). Baseline run at
+introduction: 91% overall (line+branch) across src/sask. The lowest-covered
+modules, worth a deliberate look rather than chasing the percentage itself:
+- src/sask/cli/_subprocess.py (56%) and src/sask/cli/formatting.py (55%) --
+  thin subprocess/echo wrappers; gaps may be acceptable glue code, or may
+  hide untested error paths (e.g. a missing-script or non-zero-exit branch).
+- src/sask/cli/commands/logs.py (71%) and .../asset.py (72%).
+- src/sask/i18n/catalog.py (78%) -- the shared locale-resolution seam every
+  adapter depends on; worth checking what specific branches are untested.
+- src/sask/config_loader.py (87%) -- large and mostly validation/error
+  branches for malformed config, plausibly acceptable to leave thin.
+- src/sask/calendar/scene.py (86%) and src/sask/calendar/lore.py (91%).
+No specific fix is prescribed here -- this entry is the pointer to go look,
+not a commitment that every gap is a real defect.
+"""
+trigger = """
+Next dedicated testing/quality round, or before coverage is ever considered
+for promotion to a pre-commit/CI gate (at which point every module below
+whatever threshold is chosen must be triaged first, not surprised by).
+"""

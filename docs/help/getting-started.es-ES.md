@@ -51,3 +51,26 @@ visibles arriba de este resumen al cargar la página tú mismo.
 Consulta la página **Efemérides** para generar una serie temporal de
 escenas celestes a lo largo de un rango de fechas en vez de un solo
 momento.
+
+## Obtener los datos en JSON
+
+Las páginas Pulso, Lunas, Planetas, Cielo y Efemérides también pueden
+darte los datos en formato JSON, no solo como página web. Usa esto si
+quieres los datos en tu propio programa.
+
+Para obtener JSON, añade `format=json` a la URL. Por ejemplo:
+
+```text
+http://127.0.0.1:5000/moons?pulse=104548096103&format=json
+```
+
+También puedes pedir los datos en español. Añade `locale=es-ES`:
+
+```text
+http://127.0.0.1:5000/sky?pulse=104548096103&format=json&locale=es-ES
+```
+
+Los nombres de los campos en el JSON siempre quedan en inglés, incluso en
+español. Solo cambian de idioma los valores de texto (como el nombre de
+una estación). Así los datos son fáciles de leer en código, sin importar
+el idioma que pidas.

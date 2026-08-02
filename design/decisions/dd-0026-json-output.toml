@@ -1,0 +1,170 @@
+id     = "DD-0026"
+title  = "JSON output for functional endpoints via content negotiation"
+status = "accepted"
+date   = "2026-07-21"
+
+[context]
+summary = """
+The functional HTTP endpoints (/ (Pulse), /moons, /planets, /sky, /ephemeris)
+currently produce HTML only. This enhancement adds JSON as an alternative
+OUTPUT format, so sask can serve as a simple data-retrieval API for other
+Saskan tools already under development. It is the intended payoff of the
+message-unit seam (DD-0003):
+the engine already returns typed message units, and the HTML adapter is a thin
+renderer over them, so JSON is a SECOND thin renderer over the same units - not
+a new computation and not an engine change. (Help endpoints stay HTML-only;
+localization is handled separately by DD-0022/DD-0023.)
+"""
+
+problem = """
+Other Saskan-related tools want to consume calendar/astronomy data
+programmatically, but HTML is for human reading, not machine consumption. The
+enhancement must expose the same data as JSON without: reshaping it to HTML's
+DISPLAY structure (JSON needs the DATA shape); making the schema locale-
+dependent (consuming code must not deal with field names in multiple languages);
+losing temporal precision that a human reader would infer but a program cannot;
+or drifting into a REST/JSON-input architecture (input stays HTTP parameters).
+It should also leave room for a future, more sophisticated API surface (graph/
+LLM-assisted) that is explicitly NOT this.
+"""
+
+[decision]
+summary = """
+Add JSON output to / (Pulse), /moons, /planets, /sky, /ephemeris via CONTENT
+NEGOTIATION on the existing routes (a ?format=json parameter and/or an Accept: application/json
+header), rendered by a thin JSON adapter over the SAME message units the HTML
+adapter renders. The JSON follows the message-unit DATA shape; its schema (keys/
+ids) is language-invariant English while content values localize; and every
+response carries the resolved pulse and atomic date/time so the moment is never
+ambiguous.
+"""
+
+content_negotiation = """
+JSON is selected on the EXISTING routes (Option A), not via a separate /api/
+namespace: a ?format=json query parameter and/or an Accept: application/json
+request header; HTML remains the default. One route, one place the endpoint
+logic lives, two output renderers. Rationale for not using /api/: these
+endpoints are simple, near-pure data retrieval and do not warrant a distinct API
+surface. A FUTURE, more sophisticated and specialized API surface (graph-
+database and LLM-assisted calls, some already being prototyped) is anticipated
+and will be its OWN separate architectural decision - possibly its own namespace
+- when it arrives; this decision deliberately does not pre-build for it.
+"""
+
+json_follows_message_unit = """
+The JSON maps to the message-unit DATA shape, NOT the HTML display shape. Both
+HTML and JSON are renderings of the SAME message unit (the source of truth), so
+they correspond naturally, but the JSON follows the unit's data structure - not
+HTML's presentational nesting/ordering. Nested message units become nested JSON
+objects. The JSON represents the COMPLETE message unit, never a subset: e.g. the
+ephemeris response includes the full set of data the /ephemeris page carries
+(request parameters, summary, AND the per-step series), not only the series
+array. This "complete message unit, not a subset" rule applies to every endpoint.
+"""
+
+language_invariant_schema = """
+The JSON SCHEMA is a language-invariant contract: keys and ids are ALWAYS English
+regardless of requested language. Only content VALUES localize. Consuming code
+must be able to read a field (e.g. response["season"]) identically in any locale;
+locale-dependent field names would break every consumer on a language switch.
+Language is selected by parameter (es-ES when not the en-US default). NOTE the
+precise distinction: a JSON KEY (e.g. "label":) is schema and stays English; the
+VALUE of a field that happens to be named "label" is content and DOES localize.
+This must be stated unambiguously in implementation and docs.
+"""
+
+localizable_values_shape = """
+A localizable domain value renders as an object with an invariant identifier AND
+a localized display string:
+  "season": { "id": "HARVEST", "label": "Cosecha" }
+- keys ("season", "id", "label") are English schema;
+- "id" is the language-invariant domain identifier a program switches on;
+- "label" is the localized display value (English or es-ES per the language
+  param).
+This serves both needs at once: programs switch on the stable id, humans see the
+localized label. It maps directly onto DD-0022's three-layer model (domain
+identifier -> tag -> localized text), exposing the identifier and the localized
+text together. This richer shape (not a bare localized string) is chosen
+deliberately for the anticipated graph/LLM tools, which will want stable
+identifiers to switch on.
+"""
+
+temporal_contract = """
+Every JSON response ALWAYS includes the resolved Pulse and the atomic (Astro)
+date AND time the answer corresponds to - regardless of what date format the
+query used. On endpoints that also elaborate a fully-detailed date IN THE LORE
+LANGUAGE, the JSON additionally includes the lore-language time (shurs/keyts).
+This makes the moment explicit and self-describing: a civic-date query (which
+carries no time of its own) still yields a response stating the exact pulse/
+atomic time it resolved to, so a program never has to infer an assumed time.
+(This is the machine-consumable counterpart to what a human reader would infer
+from an HTML page; a program needs it stated.) Pulse and atomic date/time always
+carry a time component; civic dates do not, and the resolved pulse/atomic time is
+how the response makes the assumed moment explicit.
+"""
+
+null_not_omitted = """
+Absent optional fields render as null, consistently - never omitted. A stable,
+predictable response shape (every documented field always present, null when
+empty) is preferred over variable-shape objects, for the benefit of consuming
+code.
+"""
+
+error_envelope = """
+Errors return a consistent JSON error envelope (a structured {error: ...} shape
+with stable, machine-usable codes), driven where possible by the underlying
+message-unit error format so the HTML and JSON error paths share one source. A
+program must be able to detect and handle failures structurally, not parse an
+HTML error page.
+"""
+
+input_unchanged = """
+This adds JSON OUTPUT only. All queries remain HTTP/S with request PARAMETERS;
+there are no JSON request bodies and no REST semantics. (A future port toward a
+more client-server architecture is possible but is a separate, out-of-scope
+decision; nothing here forecloses it.)
+"""
+
+[consequences]
+positive = """
+- Populates the api/ adapter home (SPEC-028) with a JSON renderer over existing
+  message units; the engine and computations are unchanged.
+- A second consumer of the same message units further proves the transport-
+  neutral seam (after web and CLI).
+- Language-invariant schema gives consuming code a stable contract across
+  locales.
+- The {id, label} shape serves both program-switching and display, and is
+  future-friendly for the graph/LLM tools.
+- Complete-message-unit + always-present pulse/atomic-time make responses
+  self-describing and unambiguous.
+- null-not-omitted gives a predictable response shape.
+"""
+
+negative_or_deferred = """
+- A message-unit -> JSON serialization mapping must be defined and kept
+  CONSISTENT across all five endpoints (it is a small spec of its own).
+- The future specialized graph/LLM API surface is explicitly deferred (separate
+  decision).
+- No JSON input / REST (deliberate); a client-server port is a separate future
+  possibility.
+"""
+
+out_of_scope = """
+- An /api/ namespace (content negotiation on existing routes instead).
+- JSON request bodies / REST semantics (input stays HTTP parameters).
+- JSON for help endpoints (HTML-only).
+- The future graph/LLM-assisted API surface (its own later architecture).
+- Localization design itself (DD-0022/DD-0023); this only consumes the existing
+  value-localization seam.
+"""
+
+[links]
+depends_on = ["DD-0003", "DD-0017", "DD-0022"]
+relates_to = ["DD-0023", "DD-0024"]
+implemented_by = ["REQ-FUN-018", "SPEC-039"]
+notes = """
+DD-0003 = the message-unit/API-ready seam; DD-0017 created the api/ adapter home
+this populates; DD-0022/DD-0023 own the value-localization the JSON reuses (keys
+stay English, values localize). Numbering (DD-0026 / REQ-FUN-018 / SPEC-039) to
+be confirmed against the live design/ tree.
+"""

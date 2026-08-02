@@ -1,5 +1,96 @@
 # Dev log
 
+## 2026-08-02 — SPEC-039: JSON output for functional endpoints (DD-0026)
+
+New feature: `/` (Pulse), `/moons`, `/planets`, `/sky`, and `/ephemeris` now
+produce JSON as an alternative to HTML, selected by content negotiation on
+the existing routes — a `?format=json` query parameter and/or an
+`Accept: application/json` header (param wins on conflict; a bare `*/*` or
+no header at all still yields HTML, the unchanged default). One route per
+endpoint; only the final render branches HTML vs. JSON, so the JSON adapter
+is a genuine peer of the HTML adapter, not a reimplementation — it reuses
+the exact same already-computed message units.
+
+**`src/sask/api/json_render.py`** (new — populates the api/ adapter home
+SPEC-028 reserved): pure message-unit -> dict serializers, Flask-free, same
+discipline as `web/translator.py`. Follows the message-unit DATA shape, not
+HTML's display shape — e.g. `/moons`/`/planets` JSON carries full raw
+`BodyState`/`SkyPosition` fields (`sidereal_fraction`, `ecliptic_lon_deg`,
+`geocentric_dist`, ...) that the HTML table never shows, per DD-0026's
+"complete message unit, never a subset" rule. Every response also carries
+the resolved Pulse and atomic (Astro) date/time (`temporal_json()`, reusing
+`pulse_info`/`astro_to_fatunik`/`astro_to_terpin` — no new computation), so
+a civil-date query's assumed moment is always explicit, never left for a
+program to infer.
+
+**Schema**: keys/ids are English in every locale; only content VALUES
+localize. A localizable domain value (body name, eclipse type, season,
+near-event, house, star, lunar-calendar id) renders as
+`{"id": <invariant>, "label": <localized>}`; free-text prose the engine
+already resolved to a display string (notes, rings description, lore
+date/time, night summary, `BodyInScene.direction/color/phase` — locale-baked
+at `SkyScene` composition time) passes through as a plain localized string
+rather than an invented `{id, label}` pair. One verification-point finding
+worth flagging: Fatunik/Terpin `calendar_id` has no i18n label in the
+catalog at all (only lunar-calendar ids do) — kept as a plain invariant
+string, not `{id, label}`, confirmed against `config/i18n/en-US.toml` rather
+than assumed.
+
+**`/ephemeris`** got one small, deliberately additive engine change:
+`get_sky_series()`/`get_sky_scene()` gained an optional `locale` parameter
+(default `en-US`, so every existing caller — HTML preview, `/ephemeris/
+download` — is byte-for-byte unchanged) so the new JSON path can be fully
+localized like the other four endpoints instead of the older, deliberately
+locale-invariant `render_scribal_json`/`render_kinematic_json` export
+contract. Along the way, found and normalized a pre-existing off-by-one:
+`EphemerisSeries` tracks `astro_day` 0-indexed internally while every other
+endpoint's temporal contract is 1-indexed — the new JSON serializer adds 1
+so `astro_day` means the same thing everywhere in the API; the internal
+engine field and the existing download export are untouched.
+
+**Errors**: a consistent `{"error": {"code": ..., "message": ...}}` envelope
+with HTTP 400, sharing the existing localized-message machinery (`_msg`) via
+a new `_err()` helper that also surfaces the message's stable i18n-tag
+suffix as the machine-usable `code`.
+
+**Mid-round correction**: the original DD-0026/REQ-FUN-018/SPEC-039 drafts
+omitted `/` (Pulse) from the endpoint list by mistake — caught via live UAT
+(`/?pulse=...&format=json` 404/HTML'd instead of returning data). All three
+design docs corrected (five endpoints throughout, not four) and `/`'s JSON
+implemented to match: since its message unit (`PulseInfo` + Fatunik/Terpin
+dates) has no separate body/scene data to nest under, its response is
+`temporal_json(...)` directly at the top level rather than wrapped in a
+`"query"` key like the other four.
+
+**Docs**: `docs/help_src/getting-started.md` (the DD-0023 base source, both
+locales built/reviewed through the existing page-builder pipeline — not
+hand-edited served output) gained a "Getting data as JSON" / "Obtener los
+datos en JSON" section at A2/B1 reading level, with two URL examples and one
+sentence on why keys stay English while values localize.
+
+`tests/test_spec_039.py` (58 tests): negotiation precedence/fallback, shape
+and completeness per endpoint, schema invariance across `en-US`/`es-ES`,
+`{id, label}` correctness, null-not-omitted, the temporal contract
+(including a civil-date query's explicit resolved moment), the error
+envelope, and parity with HTML and the existing `/ephemeris/download`
+export. Full suite: 971 passed. Pre-commit and `validate_specs.py` clean.
+DD-0026 and SPEC-039 set to `accepted`.
+
+## 2026-08-02 — Tooling: informational pytest-cov + DEBT-0005
+
+Added `pytest-cov` to the dev dependency group and minimal
+`[tool.coverage.*]` config in `pyproject.toml` (branch coverage, `src/sask`
+as source). Deliberately informational only: `poetry run pytest --cov`
+exits 0 regardless of percentage, not wired into `pre-commit-check.sh` or
+any gate. Documented under a new "Test coverage" section in `CLAUDE.md`.
+
+Filed `DEBT-0005` (`design/debt/tech-debt.toml`) recording the baseline
+(91% overall) and the specific lowest-covered modules worth a deliberate
+look (`cli/_subprocess.py` 56%, `cli/formatting.py` 55%, `cli/commands/
+logs.py` 71%, `cli/commands/asset.py` 72%, `i18n/catalog.py` 78%,
+`config_loader.py` 87%) — triage before this is ever promoted to a gate, not
+a claim that every gap is a real defect.
+
 ## 2026-07-23 — SPEC-037 deployed to prod, full redeploy verified
 
 `tools/ops/deploy.sh` (ok=42, changed=5), then `tools/ops/acceptance-test.sh`

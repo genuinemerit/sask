@@ -48,3 +48,25 @@ summary when you load the page yourself.
 
 See the **Ephemeris** page to generate a time-series of sky scenes over a
 date range instead of a single moment.
+
+## Getting data as JSON
+
+The Pulse, Moons, Planets, Sky, and Ephemeris pages can also send you the
+data as JSON, not just as a web page. Use this if you want the data in
+your own program.
+
+To get JSON, add `format=json` to the URL. For example:
+
+```text
+http://127.0.0.1:5000/moons?pulse=104548096103&format=json
+```
+
+You can also ask for the data in Spanish. Add `locale=es-ES`:
+
+```text
+http://127.0.0.1:5000/sky?pulse=104548096103&format=json&locale=es-ES
+```
+
+The field names in the JSON always stay in English, even in Spanish. Only
+the text values (like a season name) change language. This keeps the data
+easy to read in code, no matter which language you ask for.
