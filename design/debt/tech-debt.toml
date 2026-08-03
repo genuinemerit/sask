@@ -126,3 +126,48 @@ Next dedicated testing/quality round, or before coverage is ever considered
 for promotion to a pre-commit/CI gate (at which point every module below
 whatever threshold is chosen must be triaged first, not surprised by).
 """
+
+[[debt]]
+id               = "DEBT-0006"
+title            = "Structured API reference page for /moons /planets /sky /ephemeris JSON (developer/AI-assistant audience)"
+status           = "open"
+raised           = "2026-08-03"
+source           = "User recommendation during SPEC-039 prod acceptance testing"
+area             = "api"
+summary          = """
+SPEC-039 (DD-0026) added JSON output to /, /moons, /planets, /sky, and
+/ephemeris, but the only place their contract is documented in prose is
+docs/help_src/getting-started.md's "Getting data as JSON" section -- a
+brief, A2/B1-level pointer for a casual human reader, explicitly NOT an
+endpoint/parameter reference. Recommended: a new help URL, linked from
+https://sask.davidstitt.net/help, giving a COMPLETE structured guide for a
+technical/developer or AI-coding-assistant audience: every JSON-capable
+endpoint, every valid query parameter (per-endpoint resolution params --
+pulse/astro_day/time_of_day/fatunik_*/terpin_*/start_*/end_pulse/
+duration_days/step_minutes/profile -- plus the shared format=json/
+Accept-header negotiation and locale param), the response shape per
+endpoint (or a precise pointer into it), the {id, label} convention, the
+temporal contract, and the error envelope/code catalog. The page itself
+should be requestable as JSON (structured, machine-parseable), not just
+prose HTML -- matching its stated audience.
+"""
+trigger          = """
+Next API-surface round, or before any external tool/AI assistant is
+expected to integrate against the JSON endpoints using this page (rather
+than reading src/sask/api/json_render.py and tests/test_spec_039.py
+directly, the only complete reference that exists today).
+"""
+open_subquestion = """
+(1) Where does it live? Under /help/<topic> extends the existing HTML-only
+help-page family, but DD-0026 explicitly scoped "JSON for help endpoints"
+OUT (HTML-only) -- serving this one help page as JSON would need its own
+small decision, or it could live under a distinct path (e.g. /api/reference)
+outside the help family entirely.
+(2) Hand-written prose (drifts from the code over time, same risk class as
+any other doc) vs. generated/derived from json_render.py's own serializer
+signatures and this SPEC's schema rules (more work up front, harder to let
+go stale) -- worth deciding before writing it, not after.
+(3) Does the future graph/LLM-assisted API surface DD-0026 deferred change
+what this reference page should look like, or is it a strictly separate,
+earlier concern?
+"""
