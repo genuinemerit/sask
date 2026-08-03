@@ -1,5 +1,32 @@
 # Dev log
 
+## 2026-08-03 — SPEC-039 deployed to prod, full redeploy verified
+
+`tools/ops/deploy.sh` initially failed: the DO cloud firewall's SSH rule
+was still pinned to a stale developer IP (`188.26.195.77`) from a prior
+session, so `sask-droplet` timed out on port 22 even though the site
+itself was serving fine over HTTPS. `tools/ops/provision.sh -y` (`tofu
+apply`) picked up the current IP (`188.26.195.69`) via `data.http.
+developer_ip` and updated just that one firewall rule in place (0 added,
+1 changed, 0 destroyed — droplet untouched), matching the runbook's
+"any provision/redeploy/recreate run refreshes the firewall automatically"
+note.
+
+With SSH restored, `deploy.sh` (`ok=42, changed=6`) then
+`acceptance-test.sh` — all pass. Feature-verified live: `/`, `/moons`
+(`es-ES` labels localize correctly, e.g. `Endor` -> `Éndor`), `/ephemeris`
+(`parameters`/`summary`/`series` all present, both profiles), and the JSON
+error envelope (400 + `{"error": {...}}`) all confirmed via direct `curl`
+against `sask.davidstitt.net`; the new "Getting data as JSON" help section
+renders too.
+
+Followed with a full `tools/ops/redeploy.sh -y` teardown/rebuild
+(new `droplet_id` 586959259 -> 589569903, reserved IP `46.101.68.21`
+unchanged; site play `ok=47, changed=39, failed=0`) to prove the feature
+survives a from-scratch droplet recreation. Re-ran every check above
+against the freshly recreated droplet — all pass, plus `sask logs verify`
+(0 secret hits). SPEC-039 is now fully verified in both dev and prod.
+
 ## 2026-08-02 — SPEC-039: JSON output for functional endpoints (DD-0026)
 
 New feature: `/` (Pulse), `/moons`, `/planets`, `/sky`, and `/ephemeris` now
