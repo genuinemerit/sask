@@ -110,6 +110,37 @@ def test_help_unknown_topic_reports_error_not_crash():
     assert result.exception is None or isinstance(result.exception, SystemExit)
 
 
+def test_help_index_honors_lang_es_es(monkeypatch):
+    # DEBT-0004(1) regression: _render_help's topic-is-None branch previously
+    # called index_path() directly and never consulted discover_parallel_docs(),
+    # unlike its own per-topic branch and the web /help route (which fixed the
+    # same bug for the web adapter -- see test_spec_036.py's
+    # test_help_index_serves_es_es_translation).
+    monkeypatch.setattr(help_module, "default_help_dir", lambda: REAL_HELP_DIR)
+    result = runner.invoke(cli_app, ["--lang", "es-ES", "help"])
+    assert result.exit_code == 0
+    expected_text = (REAL_HELP_DIR / "index.es-ES.md").read_text(encoding="utf-8")
+    assert expected_text in result.output
+
+
+def test_help_index_falls_back_to_base_when_locale_index_absent(tmp_path, monkeypatch):
+    # Isolated synthetic help dir (real content now has an es-ES index) to
+    # exercise the fallback path itself, mirroring
+    # test_spec_035.py::test_parallel_doc_falls_back_to_base_when_locale_doc_absent.
+    (tmp_path / "index.md").write_text("# Base index only\n", encoding="utf-8")
+    monkeypatch.setattr(help_module, "default_help_dir", lambda: tmp_path)
+    result = runner.invoke(cli_app, ["--lang", "es-ES", "help"])
+    assert result.exit_code == 0
+    assert "Base index only" in result.output
+
+
+def test_help_index_en_us_unaffected_by_locale_fix():
+    result = runner.invoke(cli_app, ["help"])
+    assert result.exit_code == 0
+    expected_text = index_path(REAL_HELP_DIR).read_text(encoding="utf-8")
+    assert expected_text in result.output
+
+
 # ── convert ───────────────────────────────────────────────────────────────
 
 
@@ -166,6 +197,22 @@ def test_asset_info_unknown_reports_not_found_not_crash():
     result = runner.invoke(cli_app, ["asset", "info", "image", "does-not-exist"])
     assert result.exit_code == 1
     assert "no such asset" in result.output
+
+
+def test_asset_list_reports_empty_catalog_message(monkeypatch):
+    # DEBT-0005 triage: the empty-catalog branch (distinct user-visible
+    # message vs. the populated-table path) was never exercised — the real
+    # config's catalog is never empty, so a fake config is substituted here.
+    class _EmptyCatalog:
+        entries: dict = {}
+
+    class _FakeConfig:
+        asset_catalog = _EmptyCatalog()
+
+    monkeypatch.setattr(asset_module, "resolve_and_load_config", lambda: _FakeConfig())
+    result = runner.invoke(cli_app, ["asset", "list"])
+    assert result.exit_code == 0
+    assert "No assets in the catalog." in result.output
 
 
 # ── config check ────────────────────────────────────────────────────────────

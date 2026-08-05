@@ -37,6 +37,7 @@ from typer.testing import CliRunner
 from sask.cli import _paths as paths_module
 from sask.cli import _subprocess as subprocess_module
 from sask.cli import app as cli_app
+from sask.cli import formatting as formatting_module
 from sask.cli.commands import (
     acceptance_test as acceptance_test_module,
     dev_tools,
@@ -326,6 +327,30 @@ def test_run_tool_reports_clean_error_for_missing_script(tmp_path, capsys):
     assert "full sask checkout" in captured.err
 
 
+def test_run_tool_propagates_exit_code_of_the_real_subprocess(tmp_path):
+    # DEBT-0005 triage: run_tool's actual subprocess.run() call and exit-code
+    # propagation (the success path, not the missing-script early exit) were
+    # entirely untested -- every command test monkeypatches run_tool away.
+    script = tmp_path / "exits-nonzero.sh"
+    script.write_text("#!/bin/bash\nexit 3\n")
+    script.chmod(0o755)
+    with pytest.raises(typer.Exit) as exc_info:
+        subprocess_module.run_tool(["bash"], script)
+    assert exc_info.value.exit_code == 3
+
+
+def test_run_tool_reports_clean_error_when_launcher_not_found(tmp_path, capsys):
+    script = tmp_path / "exists.sh"
+    script.write_text("#!/bin/bash\nexit 0\n")
+    script.chmod(0o755)
+    with pytest.raises(typer.Exit) as exc_info:
+        subprocess_module.run_tool(["no-such-launcher-xyz"], script)
+    assert exc_info.value.exit_code == 1
+    captured = capsys.readouterr()
+    assert "no-such-launcher-xyz" in captured.err
+    assert "not found" in captured.err
+
+
 # ── logs verify: reuses logs query's argv machinery ─────────────────────────
 
 
@@ -419,6 +444,53 @@ def test_logs_verify_passes_clean_window(monkeypatch):
     assert "PASS" in result.output
 
 
+def test_logs_query_reports_journalctl_nonzero_exit(monkeypatch):
+    # DEBT-0005 triage: logs_query's own subprocess.run() call, its non-zero-
+    # exit handling, and the FileNotFoundError branch were untested -- every
+    # other logs_query test exercises only the pure argv-building helpers.
+    class FakeResult:
+        returncode = 1
+        stdout = ""
+        stderr = "No journal files were found.\n"
+
+    monkeypatch.setattr(logs_module.subprocess, "run", lambda *a, **k: FakeResult())
+    result = runner.invoke(cli_app, ["logs", "query"])
+    assert result.exit_code == 1
+    assert "No journal files were found." in result.output
+
+
+def test_logs_query_reports_clean_error_when_journalctl_missing(monkeypatch):
+    def fake_run(*_a, **_k):
+        raise FileNotFoundError
+
+    monkeypatch.setattr(logs_module.subprocess, "run", fake_run)
+    result = runner.invoke(cli_app, ["logs", "query"])
+    assert result.exit_code == 1
+    assert "journalctl not found" in result.output
+
+
+def test_logs_verify_reports_journalctl_nonzero_exit(monkeypatch):
+    class FakeResult:
+        returncode = 1
+        stdout = ""
+        stderr = "No journal files were found.\n"
+
+    monkeypatch.setattr(logs_module.subprocess, "run", lambda *a, **k: FakeResult())
+    result = runner.invoke(cli_app, ["logs", "verify"])
+    assert result.exit_code == 1
+    assert "No journal files were found." in result.output
+
+
+def test_logs_verify_reports_clean_error_when_journalctl_missing(monkeypatch):
+    def fake_run(*_a, **_k):
+        raise FileNotFoundError
+
+    monkeypatch.setattr(logs_module.subprocess, "run", fake_run)
+    result = runner.invoke(cli_app, ["logs", "verify"])
+    assert result.exit_code == 1
+    assert "journalctl not found" in result.output
+
+
 def test_logs_verify_reuses_query_argv_builder():
     """logs_verify calls the exact same _build_journalctl_argv logs query
     uses — no separate argv-building function exists in this module, so any
@@ -500,6 +572,19 @@ def test_validate_json_missing_file_reports_error_not_crash(tmp_path):
     )
     assert result.exit_code == 2
     assert "not found" in result.output.lower()
+
+
+# ── formatting: echo_dict edge cases ────────────────────────────────────────
+
+
+def test_echo_dict_empty_data_does_not_crash(capsys):
+    # DEBT-0005 triage: the non-terminal empty-data branch (formatting.py:31)
+    # guards `max(len(str(key)) for key in data)` a few lines below — without
+    # the early return, an empty dict would raise ValueError. Every real
+    # caller always has non-empty data, so this guard was never exercised.
+    formatting_module.echo_dict("Empty", {})
+    captured = capsys.readouterr()
+    assert "(none)" in captured.out
 
 
 # ── rich: piped output has no escape sequences ──────────────────────────────

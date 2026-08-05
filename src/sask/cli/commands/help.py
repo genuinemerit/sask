@@ -29,9 +29,10 @@ _console = Console()
 def _render_help(topic: str | None, locale: str, help_dir: Path) -> str:
     """Resolve topic to its raw Markdown text; raises typer.Exit(1) if unavailable."""
     topics = discover_topics(help_dir)
+    parallel_docs = discover_parallel_docs(help_dir)
 
     if topic is None:
-        index = index_path(help_dir)
+        index = parallel_docs.get(("index", locale)) or index_path(help_dir)
         if index is None:
             typer.echo("No help index available.", err=True)
             raise typer.Exit(1)
@@ -40,7 +41,6 @@ def _render_help(topic: str | None, locale: str, help_dir: Path) -> str:
             text += "\n\nTopics: " + ", ".join(sorted(topics))
         return text
 
-    parallel_docs = discover_parallel_docs(help_dir)
     path = parallel_docs.get((topic, locale)) or topics.get(topic)
     if path is None:
         available = ", ".join(sorted(topics)) if topics else "(none)"

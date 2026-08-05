@@ -51,6 +51,15 @@ entries to see whether their `trigger` condition has now been met — close
 those with `status = "resolved"` and a `resolved_by` citing the DD/SPEC/devlog
 entry that closed them, rather than leaving them to accumulate unreviewed.
 
+## CLI `--help` is not localized
+
+Typer's auto-generated `--help` output (command list, command descriptions,
+option help text) is intentionally English-only, not covered by `--lang`/
+`SASK_LOCALE` (DD-0022). It is operator/developer-facing tooling chrome, the
+same category as logs — not the message-unit RESULTS a command prints. See
+DD-0022's `origin_based_boundary` and DEBT-0004(2) for the full reasoning.
+`sask help [topic]` (the separate Markdown-docs command) IS localized.
+
 ## Infrastructure split
 
 - `tools/dev/init-dev-host.sh` — dev-host bootstrap (apt prereqs, pyenv, Python

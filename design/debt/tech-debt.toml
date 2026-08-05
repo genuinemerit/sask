@@ -65,7 +65,7 @@ resolved_by = "SPEC-038"
 [[debt]]
 id               = "DEBT-0004"
 title            = "CLI --lang/SASK_LOCALE coverage gaps: help index, Typer's own --help text"
-status           = "open"
+status           = "resolved"
 raised           = "2026-07-22"
 source           = "manual UAT during SPEC-038 CLI Round Two acceptance testing"
 area             = "i18n"
@@ -91,16 +91,26 @@ Typer's rich-based help formatter -- a real design question, not a quick fix.
 """
 trigger          = "Next i18n or CLI round that revisits locale coverage."
 open_subquestion = """
-For (2): is localizing Typer's own --help worth the cost at all, given it is
-operator/developer-facing tooling (unlike the player-facing web UI DD-0022
-targeted)? If yes, decide the mechanism before implementing. (1) has no open
-subquestion -- it is a same-mechanism fix, just not made this round.
+RESOLVED. (1) fixed: _render_help's topic-is-None branch now resolves
+("index", locale) via discover_parallel_docs() before falling back to
+index_path(), mirroring its own per-topic branch and the web index route
+exactly -- same mechanism, no new abstraction.
+(2) declined (WONTFIX), not deferred: DD-0022's origin_based_boundary is
+ORIGIN-based -- localize what the end USER reads, not what the OPERATOR
+reads. Typer's --help chrome is the operator/developer's interface to the
+tool itself, the same category as logs, not a message-unit RESULT a command
+prints. DD-0022's text was narrowed (origin_based_boundary) to name this
+explicitly, so the two decisions no longer read as in tension. Recorded in
+CLAUDE.md's "CLI --help is not localized" section. Revisit only if a real
+population of non-developer, non-English-native users ever makes the CLI
+--help a primary interface (not the current audience).
 """
+resolved_by      = "devlog 2026-08-05 FIX round entry"
 
 [[debt]]
 id      = "DEBT-0005"
 title   = "Review test coverage gaps now that pytest-cov is available"
-status  = "open"
+status  = "resolved"
 raised  = "2026-08-02"
 source  = "pytest-cov (informational-only) added to the dev toolchain 2026-08-02; see CLAUDE.md 'Test coverage' and pyproject.toml [tool.coverage.*]"
 area    = "testing"
@@ -126,10 +136,19 @@ Next dedicated testing/quality round, or before coverage is ever considered
 for promotion to a pre-commit/CI gate (at which point every module below
 whatever threshold is chosen must be triaged first, not surprised by).
 """
+resolved_by = """
+devlog 2026-08-05 FIX round entry; full triage in
+design/analysis/debt-0005-coverage-triage.md -- all 8 named modules reviewed,
+11 targeted tests added for genuine untested error/behavior paths
+(catalog.py, _subprocess.py, logs.py, formatting.py, asset.py), remaining
+gaps (config_loader.py, scene.py, lore.py, formatting.py's/asset.py's
+rich-terminal-styling branches) confirmed trivial/cosmetic and left thin by
+deliberate decision. Coverage remains informational, no gate added.
+"""
 
 [[debt]]
 id               = "DEBT-0006"
-title            = "Structured API reference page for /moons /planets /sky /ephemeris JSON (developer/AI-assistant audience)"
+title            = "Structured API reference page for /moons /planets /sky /ephemeris /(index) JSON (developer/AI-assistant audience)"
 status           = "open"
 raised           = "2026-08-03"
 source           = "User recommendation during SPEC-039 prod acceptance testing"
@@ -145,6 +164,7 @@ technical/developer or AI-coding-assistant audience: every JSON-capable
 endpoint, every valid query parameter (per-endpoint resolution params --
 pulse/astro_day/time_of_day/fatunik_*/terpin_*/start_*/end_pulse/
 duration_days/step_minutes/profile -- plus the shared format=json/
+and examples.
 Accept-header negotiation and locale param), the response shape per
 endpoint (or a precise pointer into it), the {id, label} convention, the
 temporal contract, and the error envelope/code catalog. The page itself
@@ -167,7 +187,4 @@ outside the help family entirely.
 any other doc) vs. generated/derived from json_render.py's own serializer
 signatures and this SPEC's schema rules (more work up front, harder to let
 go stale) -- worth deciding before writing it, not after.
-(3) Does the future graph/LLM-assisted API surface DD-0026 deferred change
-what this reference page should look like, or is it a strictly separate,
-earlier concern?
 """

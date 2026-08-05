@@ -102,14 +102,19 @@ oversight. (Completeness is enforced separately, at deploy - see validation.)
 origin_based_boundary = """
 What gets localized is decided by ORIGIN/AUDIENCE, consistently across all
 adapters:
-- LOCALIZED (sask-generated, user-facing): prompts, labels, hints, help
-  documents, and engine/app message RESULTS (astronomy engine output, asset
-  inventory) - on both the web and CLI surfaces. The CLI's own interface text
-  (command help, descriptions, results, usage) is localized.
+- LOCALIZED (sask-generated, user-facing): prompts, labels, hints, the `sask
+  help [topic]` documents (the parallel-per-locale Markdown pages, DD-0018),
+  and engine/app message RESULTS (astronomy engine output, asset inventory) -
+  on both the web and CLI surfaces.
 - NOT LOCALIZED (operator-facing): logs, the journal, stack traces, internal
-  diagnostics, and operator content the CLI merely RELAYS (raw journalctl lines
-  from a log-query command stay their source language). Operator-facing text
-  stays one stable language for searchability/correlation.
+  diagnostics, operator content the CLI merely RELAYS (raw journalctl lines
+  from a log-query command stay their source language), and Typer's own
+  auto-generated `--help` chrome (the command list, each command's
+  description, and option help text, all sourced from Python
+  docstrings/help= strings). That chrome is the operator/developer's
+  interface to the tool itself - the same category as logs, not the message-
+  unit RESULTS a command prints - so it stays English (DEBT-0004(2)).
+Operator-facing text stays one stable language for searchability/correlation.
 One rule across web, CLI, and future api: localize what the end USER reads, not
 what the OPERATOR reads. Because the engine's user-facing results are message
 units flowing to every adapter, the catalog is a SHARED-SPINE resource both web

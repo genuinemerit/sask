@@ -72,6 +72,16 @@ def test_resolve_never_raises_on_any_miss():
     assert resolve("x.y", "fr-FR", cat) == "x.y"
 
 
+def test_resolve_against_base_locale_directly_skips_redundant_fallback():
+    # DEBT-0005 triage: resolve()'s `if locale != catalog.base_locale` guard
+    # (catalog.py:32) was never exercised with locale == base_locale -- every
+    # existing test resolves against a non-base locale. Calling resolve()
+    # directly against the base locale for a missing tag must still land on
+    # the raw-tag fallback, not raise or loop back into itself.
+    cat = _catalog({"en-US": {"a": "A"}})
+    assert resolve("nav.missing", "en-US", cat) == "nav.missing"
+
+
 def test_resolve_distinguishes_empty_string_from_absent():
     """The legacy `fallback or i18n_id` bug, deliberately not repeated:
     an intentionally-empty catalog value must not be treated as a miss.
@@ -220,6 +230,23 @@ def test_web_locale_defaults_from_accept_language():
     cfg = load_config(REAL_CONFIG)
     locale = best_locale(None, "es-ES,es;q=0.9,en;q=0.8", cfg.i18n)
     assert locale == "es-ES"
+
+
+def test_best_locale_loose_language_only_match():
+    # DEBT-0005 triage: the language-only prefix match (catalog.py:63-65,
+    # e.g. bare "es" matching declared "es-ES") was never hit -- the only
+    # existing Accept-Language test leads with an exact "es-ES" match, which
+    # resolves before the loose-match loop is ever reached.
+    cfg = load_config(REAL_CONFIG)
+    assert best_locale(None, "es;q=0.9", cfg.i18n) == "es-ES"
+
+
+def test_best_locale_falls_back_to_base_when_header_matches_nothing():
+    # DEBT-0005 triage: catalog.py:58->67 -- an Accept-Language header that's
+    # present but matches no declared locale (exact or loose) must still
+    # land on catalog.base_locale, not raise or return an unbound locale.
+    cfg = load_config(REAL_CONFIG)
+    assert best_locale(None, "fr-FR,de;q=0.8", cfg.i18n) == cfg.i18n.base_locale
 
 
 def test_web_toggle_overrides_accept_language():

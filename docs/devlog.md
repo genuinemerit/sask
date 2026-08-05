@@ -1,5 +1,58 @@
 # Dev log
 
+## 2026-08-05 — FIX round: DEBT-0004 & DEBT-0005 closed
+
+Lightweight fix-and-analyze round per `design/debt/000-FIX-and-analyze-instruction.md`
+(no numbered SPEC — DEBT-0006, the structured API reference page, stays a separate
+round).
+
+**DEBT-0004(1), fixed:** `sask help` with no topic ignored `--lang`/`SASK_LOCALE`
+entirely, always rendering the base `docs/help/index.md` even when
+`docs/help/index.es-ES.md` exists (the web `/help` route already got this right).
+Root cause: `help.py::_render_help`'s topic-is-None branch called `index_path()`
+directly and never consulted `discover_parallel_docs()`, unlike its own per-topic branch
+and the web index route. Fixed by hoisting `discover_parallel_docs()` above the branch
+and resolving `("index", locale)` the same way both of those already do — same
+mechanism, no new abstraction. Added locale-index and fallback tests to
+`tests/test_spec_034.py`.
+
+**DEBT-0004(2), WONTFIX:** declined localizing Typer's own auto-generated `--help`
+chrome (command list, descriptions, option help). DD-0022's origin-based boundary
+localizes what the end USER reads, not what the OPERATOR reads; `--help` chrome is
+operator/developer tooling, the same category as logs, not a message-unit RESULT a
+command prints. DD-0022's `origin_based_boundary` text was narrowed to name this
+explicitly (it previously read ambiguously enough to look like it contradicted this
+WONTFIX). Recorded in CLAUDE.md's new "CLI `--help` is not localized" section.
+
+**DEBT-0005, coverage triage:** reviewed all 8 modules named in the debt entry against
+the 2026-08-02 baseline (91% overall). Full writeup:
+`design/analysis/debt-0005-coverage-triage.md`. Added 11 targeted tests for genuine
+untested error/behavior paths:
+
+- `i18n/catalog.py` (78% → 100%): `resolve()`'s base-locale branch, `best_locale()`'s
+  loose language-prefix match and no-match fallback.
+- `cli/_subprocess.py` (56% → 100%): `run_tool()`'s real subprocess execution, exit-code
+  propagation, and launcher-not-found path — previously only the missing-script guard
+  was tested, every command test monkeypatches `run_tool` away.
+- `cli/commands/logs.py` (71% → 91%): same gap shape as `_subprocess.py`, reclassified up
+  from the round's initial "likely thin" guess once inspected — `logs query`/`logs
+  verify`'s own subprocess call, non-zero exit, and missing-journalctl handling.
+- `cli/formatting.py` (55% → 62%): `echo_dict`'s empty-data guard (prevents a `max()`
+  crash on an empty dict).
+- `cli/commands/asset.py` (72% → 79%): `asset list`'s empty-catalog message.
+
+Left thin by deliberate decision (documented in the triage file, not silently skipped):
+`formatting.py`'s and `asset.py`'s rich-terminal-styling branches (cosmetic, systemic
+gap shared with `help.py` — no test anywhere sets `is_terminal`, since `CliRunner` never
+presents a tty); `config_loader.py` (spot-checked ~15 of 47 missing lines, uniformly
+`raise ConfigError` shape-validation guards); `calendar/scene.py` and `calendar/lore.py`
+(spot-checked — domain edge branches already well-covered, plus a couple of defensive
+`ValueError` invariant guards on internally-validated `calendar_id`). Coverage moved to
+92% as a byproduct, not chased; still informational, no gate added.
+
+Full suite: 985 passed (up from 971). `validate_specs.py` and
+`pre-commit-check.sh` both clean.
+
 ## 2026-08-03 — SPEC-039 deployed to prod, full redeploy verified
 
 `tools/ops/deploy.sh` initially failed: the DO cloud firewall's SSH rule
