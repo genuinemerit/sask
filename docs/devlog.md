@@ -1,5 +1,31 @@
 # Dev log
 
+## 2026-08-07 — Prod CSP fix: inline `<style>` blocks were unstyled everywhere
+
+Found during SPEC-040/041 prod UAT (browser visual check, not caught by any
+automated test — Caddy's CSP header only applies in prod, never in local
+dev): every page rendered with no CSS applied, in Brave, Chrome, and
+Firefox alike — not browser-specific. Root cause: Caddy's
+`Content-Security-Policy` header (`default-src 'self'; frame-ancestors
+'none'`, unchanged since SPEC-026, months before this round) has no
+`style-src` directive, so it falls back to `default-src 'self'` — which
+permits same-origin *external* stylesheets but not inline `<style>`
+blocks or `style=""` attributes (those need `'unsafe-inline'` or a
+nonce/hash). Every page's CSS, including the new `/api/reference` page, is
+a single inline `<style>` block (`base.html` and
+`build_api_reference.py`'s renderer) — so this has silently broken styling
+in production since SPEC-026, unnoticed until now.
+
+Fixed: `ansible/roles/caddy/templates/Caddyfile.j2` now sends
+`style-src 'self' 'unsafe-inline'` explicitly (script-src etc. still fall
+back to `default-src 'self'` — no untrusted/user-generated HTML exists
+anywhere in this app, so the loosening is scoped to styles only). Deployed
+via `deploy.sh` (Caddy config change only, no droplet rebuild needed) and
+confirmed fixed by the user in both Brave and Firefox. `acceptance-test.sh`
+still all-PASS.
+
+**Next:** none queued.
+
 ## 2026-08-07 — SPEC-041 + SPEC-040 prod deploy verified, full redeploy rebuild confirmed
 
 Deployed both rounds (single-source param declaration, DD-0028; the API

@@ -11,7 +11,17 @@
 		X-Content-Type-Options "nosniff"
 		X-Frame-Options "DENY"
 		Referrer-Policy "no-referrer-when-downgrade"
-		Content-Security-Policy "default-src 'self'; frame-ancestors 'none'"
+		# style-src needs 'unsafe-inline': every page's CSS is a single
+		# inline <style> block (base.html and the built API reference,
+		# DD-0027) — 'self' alone (the default-src fallback) permits only
+		# same-origin external stylesheets, not inline ones, so without
+		# this every page rendered unstyled in any CSP-compliant browser
+		# (found during SPEC-040/041 prod UAT — pre-existing since
+		# SPEC-026, not introduced by that round). No untrusted/user-
+		# generated HTML exists anywhere in this app, so the loosening is
+		# scoped to styles only; script-src etc. still fall back to
+		# default-src 'self'.
+		Content-Security-Policy "default-src 'self'; style-src 'self' 'unsafe-inline'; frame-ancestors 'none'"
 	}
 
 	rate_limit {
