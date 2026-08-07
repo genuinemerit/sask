@@ -1,5 +1,43 @@
 # Dev log
 
+## 2026-08-07 — SPEC-041 + SPEC-040 prod deploy verified, full redeploy rebuild confirmed
+
+Deployed both rounds (single-source param declaration, DD-0028; the API
+reference, DD-0027) to sask.davidstitt.net.
+
+**Deploy-time bug found and fixed**: `bash tools/ops/deploy.sh`'s first run
+synced everything except `docs/api_reference/` — the Ansible `app` role
+only had a sync task for `docs/help/` (SPEC-030's content tree), never
+extended for the new `docs/api_reference/` artifacts SPEC-040 added. Same
+failure shape SPEC-030 itself hit once before (documented inline in
+`ansible/roles/app/tasks/main.yml`): the route and its default path
+resolution were deployed (they live under `src/sask/`), but the static
+files the route reads at request time were not, so `/api/reference` would
+have 500'd in prod. Caught before any prod traffic hit it. Fixed by adding
+`app_api_reference_dir` (`ansible/group_vars/all.yml`) and a "Sync the
+docs/api_reference/ content tree" task, mirroring the `docs/help/` task
+exactly. Re-ran `deploy.sh`; confirmed synced and served correctly before
+proceeding.
+
+**Verified on the live droplet** (both after the code-sync deploy and again
+after a full `redeploy.sh -y` teardown/recreate):
+
+- `/api/reference` (HTML) and `/api/reference?format=json` both 200,
+  correct content-type; JSON covers all five endpoints and the full
+  25-code error catalog; no `generated_by` dev-chrome key present.
+- Strict unknown-param rejection (`error.unknown_param`), invalid
+  `locale`/`profile` rejection, and valid `es-ES` localization all work
+  identically to local testing.
+- `docs/help/getting-started`'s new `/api/reference` pointer renders in
+  both `en-US` and `es-ES`.
+- `bash tools/ops/acceptance-test.sh`: all PASS, both times.
+- `sask logs verify` on the droplet: clean JSON, no secret leaks.
+
+Full local suite: 1067, all passing. Pre-commit clean throughout.
+
+**Next:** none queued — DD-0027/SPEC-040 and DD-0028/SPEC-041 fully closed
+out (implemented, tested, deployed, redeploy-verified).
+
 ## 2026-08-07 — SPEC-040 follow-up: getting-started pointer, trim dev chrome
 
 Two small refinements after local UAT of the API reference:

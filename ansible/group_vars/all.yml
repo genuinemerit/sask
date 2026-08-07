@@ -41,6 +41,12 @@ app_assets_dir: "{{ app_root }}/assets/{{ assets_version }}"
 # plus the app role's sync task.
 app_help_dir: "{{ app_root }}/docs/help"
 
+# docs/api_reference/ (the built, committed API reference artifacts,
+# DD-0027/SPEC-040) — same walk-up-depth resolution pattern as app_help_dir
+# above (src/sask/web/__init__.py's create_app() default), so it must land
+# at exactly app_root/docs/api_reference.
+app_api_reference_dir: "{{ app_root }}/docs/api_reference"
+
 # --- network / domain -------------------------------------------------------
 domain: "sask.davidstitt.net"
 

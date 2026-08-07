@@ -85,6 +85,22 @@
       - "--no-group"
   notify: Restart sask service
 
+# docs/api_reference/ (DD-0027/SPEC-040): the built, committed API
+# reference (index.html + reference.json), read fresh per-request by the
+# /api/reference route — same one-level rsync limitation and same
+# "was missing until wired up here" risk the docs/help/ task above already
+# hit once (SPEC-030's deferred-sync bug), so this is added at the same
+# time the route ships rather than deferred separately.
+- name: Sync the docs/api_reference/ content tree
+  ansible.posix.synchronize:
+    src: "{{ repo_root }}/docs/api_reference/"
+    dest: "{{ app_api_reference_dir }}/"
+    delete: true
+    rsync_opts:
+      - "--no-owner"
+      - "--no-group"
+  notify: Restart sask service
+
 # wsgi.py lives at the repo root, not inside src/sask/, so it needs its own
 # explicit task — the rsync above doesn't carry it.
 - name: Copy wsgi.py to the app root
