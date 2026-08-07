@@ -441,6 +441,12 @@
 "error.missing_ephemeris_query" = "Start time and step parameters are required."
 "error.ephemeris_range_invalid" = "Invalid ephemeris range: {detail}"
 
+# --- SPEC-041 (DD-0028): single-source param declaration ---
+"error.unknown_param" = "Unknown parameter: {param}."
+"error.invalid_profile" = "Invalid profile {value} — use 'scribal', 'kinematic', or 'both'."
+"error.invalid_format" = "Invalid format {value} — use 'json'."
+"error.invalid_locale" = "Invalid locale {value} — use one of: {values}."
+
 "statement.ephemeris_intro" = "Enter a <strong>start time</strong> using any one input type below. For Astro Day, Fatunik, or Terpin inputs the range length is set by <strong>Duration (Days)</strong> in the Step &amp; Profile section. Use <strong>Pulse</strong> for a precise start and end. Click <strong>Reset</strong> to clear all fields before switching input type."
 
 "sentence.horizon_above" = "above"

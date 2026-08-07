@@ -1,0 +1,138 @@
+id     = "DD-0028"
+title  = "Single-source parameter declaration for functional endpoints"
+status = "accepted"
+date   = "2026-08-05"
+
+[context]
+summary = """
+The JSON-capable functional endpoints (/, /moons, /planets, /sky, /ephemeris)
+parse their query parameters via scattered request.args.get() calls inside route
+functions. Query parameters are the one API contract in the codebase NOT declared
+in a single authoritative source - unlike message units, config, the i18n
+catalog, the glossary, the design docs, and the debt register, all of which are
+declared once and consumed. DD-0027 (the API reference) needs to GENERATE its
+per-endpoint parameter facts from a source; the chosen approach (option (a)) is a
+structured per-endpoint parameter declaration that BOTH the routes and the
+reference draw from. This DD establishes that parameter layer. It is sequenced
+BEFORE the reference (SPEC-041 before SPEC-040).
+"""
+
+problem = """
+Scattered request.args.get() means: there is no single place that states what
+each endpoint accepts, so the reference cannot generate param facts and cannot be
+kept honest; param validation/error behavior is defined per-route and may be
+inconsistent across endpoints; and the same param appearing on several endpoints
+is handled in several places. Centralizing must be BEHAVIOR-PRESERVING - the
+endpoints are live, deployed, and already integrated against - so it must
+reproduce today's accepted params, validation, and errors exactly, and surface
+(not silently "fix") any inconsistency it uncovers.
+"""
+
+[decision]
+summary = """
+Declare each functional endpoint's query parameters once, in TOML, as a single
+source of truth: names, types, required/optional, defaults, constraints, and a
+human-readable English description. The routes parse and validate parameters FROM
+this declaration (behavior-preserving); the API reference GENERATES its parameter
+facts FROM it; and param-validation errors are produced through the DD-0026 error
+envelope, driven by the declaration. One declaration, three consumers.
+"""
+
+single_source_toml = """
+A TOML parameter declaration (consistent with the config / design-doc / i18n
+TOML discipline, loaded via config_loader) that is a RUNTIME artifact, not a
+design doc. Per the codebase's config conventions for exact location. Structure
+(to be finalized against the observed param usage - see SPEC-041): shared
+parameter definitions declared ONCE (e.g. pulse, astro_day, time_of_day, locale,
+format - the params common across endpoints) and composed per-endpoint, plus
+endpoint-specific parameters (e.g. ephemeris's start_*, end_pulse, duration_days,
+step_minutes, profile), with per-endpoint override of a shared param's
+constraints where the code actually differs. Each parameter declares: name, type,
+required/optional, default, constraints (range/enum/pattern as the code
+enforces), and a human-readable English description (for the reference).
+"""
+
+three_consumers = """
+- ROUTES: a shared param-parse/validate helper reads the declaration and parses +
+  validates request args accordingly, REPLACING the scattered request.args.get()
+  calls. Behavior-preserving (see below).
+- API REFERENCE (DD-0027/SPEC-040): the reference build generates its per-endpoint
+  parameter facts (names, types, ranges, descriptions) directly from this
+  declaration - the source that resolves DD-0027's parameter-introspection
+  feasibility risk.
+- ERROR ENVELOPE (DD-0026): invalid parameters (wrong type, out of range, and -
+  if adopted - unknown) produce consistent DD-0026 error-envelope responses
+  driven by the declaration's constraints, rather than per-route ad hoc handling.
+"""
+
+behavior_preserving = """
+The refactor MUST NOT change which parameters are accepted, their validation, or
+their errors. The existing endpoint tests must pass UNCHANGED. If centralizing
+surfaces an INCONSISTENCY - e.g. two endpoints validate a shared param
+differently today, or an endpoint's real behavior differs from what seemed
+intended - it is SURFACED for the owner's decision, never silently normalized.
+Silent uniforming is a behavior change wearing a refactor's clothes; measure
+twice.
+"""
+
+unknown_param_handling = """
+DECISION TO SURFACE (default behavior-preserving): today, scattered
+request.args.get() silently IGNORES unknown/misspelled params. The declaration
+COULD reject unknown params (strict) - genuinely valuable for an API audience
+(a consumer who types step_minute instead of step_minutes currently gets silently
+wrong behavior; strict tells them), but a BEHAVIOR CHANGE. Default: preserve
+current lenient behavior (ignore unknown) unless the owner opts into strict
+rejection as a deliberate improvement. Flag this for an explicit decision during
+implementation.
+"""
+
+descriptions_english = """
+The human-readable parameter descriptions are English, consistent with DD-0027's
+developer-facing English-only reference and DD-0022's origin boundary (developer-
+facing text is not localized). The declaration carries the description so the
+prose lives in a declared artifact, not buried in route code.
+"""
+
+[consequences]
+positive = """
+- Closes the one un-declared contract in the codebase; params join the single-
+  source-of-truth discipline applied everywhere else.
+- The reference generates params from a real source (resolves DD-0027's
+  feasibility risk) and stays honest via the same build+staleness pattern.
+- Uniform param parsing/validation across the five endpoints; consistent param
+  errors through the DD-0026 envelope.
+- The declaration is simultaneously the runtime spec AND the reference's param
+  doc source - one file, the project's idiom.
+- Sets up the future graph/LLM API surface with a declared-param precedent.
+"""
+
+negative_or_deferred = """
+- A behavior-preserving route refactor is real work and carries regression risk;
+  mitigated by requiring existing tests to pass unchanged and surfacing
+  inconsistencies rather than fixing them.
+- The exact TOML shape and param inventory must be designed against the ACTUAL
+  code (SPEC-041's first step), not assumed.
+- Strict unknown-param rejection is a deliberate, deferred opt-in (default
+  lenient).
+"""
+
+out_of_scope = """
+- Changing input transport (still HTTP query parameters; no JSON input/REST).
+- The JSON output itself (DD-0026) or the reference content (DD-0027).
+- Adding new parameters or changing endpoint behavior (declaration reproduces
+  current behavior).
+- Localizing parameter descriptions (English, developer-facing).
+"""
+
+[links]
+depends_on = ["DD-0003", "DD-0026"]
+relates_to = ["DD-0024"]
+implemented_by = ["REQ-FUN-020", "SPEC-041"]
+enables = ["DD-0027", "SPEC-040"]
+notes = """
+Applies the single-source-of-truth discipline (precedent: DD-0003 message-unit
+seam) to query parameters. Feeds the DD-0026 error envelope and the DD-0027
+reference. Sequenced before the reference: SPEC-041 lands the param layer, then
+SPEC-040 generates the reference from it. Numbering (DD-0028 / REQ-FUN-020 /
+SPEC-041) to be confirmed against the live design/ tree.
+"""

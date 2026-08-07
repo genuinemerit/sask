@@ -1,0 +1,133 @@
+id     = "SPEC-041"
+title  = "Parameter declaration: inventory, TOML source, shared parse/validate, route refactor"
+status = "accepted"
+
+[implements]
+requirements = ["REQ-FUN-020"]
+decisions    = ["DD-0028"]
+notes = """
+Lands the single-source parameter layer that SPEC-040 (the API reference) then
+generates from - so SPEC-041 comes FIRST. A behavior-preserving refactor: it must
+reproduce today's param behavior exactly. Begins with a code inventory because the
+current param handling must be read from the source (not assumed) to design a TOML
+declaration that reproduces it.
+"""
+
+[scope]
+in = """
+An inventory of current per-endpoint param handling; a TOML parameter declaration
+(single source of truth); a shared param-parse/validate helper the routes use; a
+behavior-preserving refactor of the five endpoints to use it; integration of
+param errors with the DD-0026 error envelope; surfacing the unknown-param and any
+inconsistency decisions; and tests.
+"""
+
+out = """
+- Changing input transport (HTTP query params only).
+- The JSON output (DD-0026) or reference content (DD-0027/SPEC-040).
+- Adding or removing parameters, or changing endpoint behavior.
+- Localizing param descriptions (English).
+- Strict unknown-param rejection unless the owner opts in (default lenient).
+"""
+
+[deliverables]
+inventory_first = """
+FIRST, before designing the TOML: inventory the CURRENT parameter handling across
+/, /moons, /planets, /sky, /ephemeris by reading the route code. For every
+parameter record: name, endpoint(s), type, required/optional, default, the exact
+validation/constraints enforced today, and the current error behavior (including
+how out-of-range/malformed is handled, and whether unknown params are ignored).
+Write this to analysis/param-inventory.md. This inventory is the behavior contract
+the refactor must reproduce; flag any parameter whose current handling is unclear
+or inconsistent across endpoints for owner decision.
+"""
+
+toml_declaration = """
+Design the TOML parameter declaration to REPRODUCE the inventory exactly: shared
+parameter definitions declared once (the params common across endpoints) composed
+per-endpoint, plus endpoint-specific params, with per-endpoint constraint override
+where the code actually differs. Each param carries name, type, required/optional,
+default, constraints (range/enum/pattern as observed), and a human-readable
+English description. Loaded via config_loader; located per the codebase's config
+conventions. Add it to validate_specs / the config validation so the declaration
+itself is checked (well-formed, no unknown types, constraints coherent).
+"""
+
+parse_validate_helper = """
+A shared helper (spine/adapter-level, not in the engine) that, given an endpoint
+and the incoming request args, parses and validates each parameter per the
+declaration - applying defaults, enforcing constraints, and producing typed
+validation errors. The routes call this helper instead of scattered
+request.args.get(). One code path for param handling across all five endpoints.
+"""
+
+route_refactor = """
+Refactor the five endpoints to obtain their parameters from the shared helper
+reading the declaration. BEHAVIOR-PRESERVING: accepted params, validation, and
+errors unchanged; the existing endpoint tests must pass UNCHANGED. Do not alter
+endpoint computation or output. If the refactor surfaces an inconsistency (a
+shared param validated differently on different endpoints, etc.), STOP and surface
+it to the owner with the options - do not silently normalize.
+"""
+
+error_integration = """
+Param-validation failures emit the DD-0026 JSON error envelope (consistent code +
+message), driven by the declaration's constraints, replacing any per-route ad hoc
+error handling - without changing the errors an existing consumer already
+receives (behavior-preserving). If the DD-0026 error codes are not centralized,
+surface that (it also affects SPEC-040's error catalog).
+"""
+
+decisions_to_surface = """
+- Unknown-param handling: default LENIENT (ignore, behavior-preserving); present
+  STRICT rejection as an opt-in improvement for the owner to choose.
+- Any inconsistency from inventory_first / route_refactor: present with options;
+  owner decides; no silent normalization.
+"""
+
+tests = """
+tests/test_spec_041.py:
+- The declaration loads and validates; a malformed declaration is rejected.
+- The shared helper: applies defaults, enforces each constraint, and emits the
+  DD-0026 error envelope on invalid input, for representative params.
+- Behavior preservation: the EXISTING endpoint tests pass unchanged; add
+  parity assertions that each endpoint accepts exactly the inventoried params
+  with the inventoried validation.
+- Unknown-param behavior matches the chosen policy (lenient by default).
+- The declaration is consumable as a param source (a shape SPEC-040 can read).
+Full suite passes at the new count; pre-commit and validate_specs clean.
+"""
+
+design_doc_status = """
+On acceptance set DD-0028, SPEC-041 to "accepted" and add a devlog entry (the
+param inventory, the TOML declaration, the shared helper, the behavior-preserving
+refactor, the error-envelope integration, and the surfaced decisions - unknown-
+param policy and any inconsistencies). SPEC-040 then depends on this landing.
+"""
+
+[acceptance]
+criteria = """
+1. analysis/param-inventory.md captures current per-endpoint param handling; any
+   unclear/inconsistent handling is flagged.
+2. A TOML parameter declaration reproduces the inventory (shared + per-endpoint,
+   types/constraints/defaults/descriptions), loads via config_loader, and is
+   validated.
+3. A shared helper parses/validates from the declaration; the five endpoints use
+   it in place of scattered request.args.get().
+4. Behavior is preserved: existing endpoint tests pass unchanged; accepted
+   params, validation, and errors are identical to before.
+5. Param errors emit the DD-0026 envelope; unknown-param policy is the chosen
+   default (lenient) or the owner's opted-in strict.
+6. Surfaced inconsistencies were decided by the owner, not silently normalized.
+7. The declaration is consumable by SPEC-040 as its parameter source.
+8. Full suite passes at the new count; pre-commit and validate_specs clean.
+"""
+
+uat = """
+[manual] For each endpoint, confirm every previously-accepted param still works
+identically (valid values compute the same result; invalid values now return the
+consistent DD-0026 error envelope rather than any prior ad hoc error, with no
+change to WHICH inputs are rejected). Confirm unknown params behave per the chosen
+policy. Confirm the declaration file reads clearly as the one place documenting
+what each endpoint accepts.
+"""

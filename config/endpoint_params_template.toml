@@ -1,0 +1,27 @@
+# /config/endpoint_params_template.toml - meta-schema for endpoint_params.toml (DD-0028).
+
+# Top-level "globals" key: a list of param names (each declared under
+# [params.*]) available on every endpoint, in addition to that endpoint's own
+# scalars/moment_group.
+# globals = ["format", "locale"]
+
+title = "endpoint_param"
+[fields]
+type        = { required = true,  type = "string", enum = ["int", "float", "string", "enum"] }
+values      = { required = false, type = "list" }   # required when type = "enum"
+default     = { required = false, type = "any" }
+min         = { required = false, type = "number" }
+max         = { required = false, type = "number" }
+pattern     = { required = false, type = "string" }
+description = { required = true,  type = "string" }
+
+title = "moment_group"
+[moment_group_fields]
+priority = { required = true, type = "list" }   # ordered branch names, first populated wins
+fields   = { required = true, type = "table" }   # branch name -> ordered list of param names
+
+title = "endpoint"
+[endpoint_fields]
+scalars              = { required = false, type = "list" }     # declared param names, no moment resolution
+moment_group         = { required = false, type = "string" }   # name of a [moment_groups.*] table
+moment_group_prefix  = { required = false, type = "string" }   # e.g. "start_" -- prefixes every moment-group field name

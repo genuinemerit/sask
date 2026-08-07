@@ -1,0 +1,116 @@
+# /config/endpoint_params.toml - single-source query-param declaration for
+# the JSON-capable functional endpoints (DD-0028). See design/analysis/
+# param-inventory.md for the behavior this reproduces, and
+# config/endpoint_params_template.toml for the meta-schema.
+#
+# `globals` lists params available on every endpoint below, in addition to
+# each endpoint's own scalars/moment_group -- format (DD-0026 negotiation,
+# checked in routes.py's _wants_json()) and locale (DD-0022, resolved in
+# web/__init__.py's before_request). Declared and enforced here: an invalid
+# value for either is now a DD-0026 error envelope (400), driven by this
+# file's constraints.
+
+globals = ["format", "locale"]
+
+[params.pulse]
+type = "float"
+description = "Raw pulse count. Rounded to the nearest integer pulse."
+
+[params.astro_day]
+type = "int"
+description = "1-indexed Astro Day."
+
+[params.time_of_day]
+type = "string"
+pattern = "HH:MM:SS"
+description = "Civil time-of-day within an Astro Day, paired with astro_day. Range 00:00:00-23:59:59."
+
+[params.fatunik_year]
+type = "int"
+description = "Fatunik calendar year, paired with fatunik_month and fatunik_day."
+
+[params.fatunik_month]
+type = "int"
+description = "Fatunik calendar month, paired with fatunik_year and fatunik_day."
+
+[params.fatunik_day]
+type = "int"
+description = "Fatunik calendar day, paired with fatunik_year and fatunik_month."
+
+[params.terpin_year]
+type = "int"
+description = "Terpin calendar year, paired with terpin_month and terpin_day."
+
+[params.terpin_month]
+type = "int"
+description = "Terpin calendar month, paired with terpin_year and terpin_day."
+
+[params.terpin_day]
+type = "int"
+description = "Terpin calendar day, paired with terpin_year and terpin_month."
+
+[params.end_pulse]
+type = "float"
+description = "Ephemeris range end, as a raw pulse count (selects pulse mode; mutually exclusive with duration_days)."
+
+[params.duration_days]
+type = "int"
+min = 1
+description = "Ephemeris range length in days from start (selects date mode; mutually exclusive with end_pulse)."
+
+[params.step_minutes]
+type = "int"
+description = "Ephemeris series step size, in Astro minutes. Required whenever any ephemeris field is submitted. Subject to the ephemeris throttle's step floor (config/ephemeris_data.toml)."
+
+[params.profile]
+type = "enum"
+values = ["scribal", "kinematic", "both"]
+default = "scribal"
+description = "Which series to render: lore-language scenes (scribal), compact per-body numeric data (kinematic), or both."
+
+[params.format]
+type = "enum"
+values = ["json"]
+description = "Content-negotiation override (DD-0026): format=json forces a JSON response regardless of the Accept header."
+
+[params.locale]
+type = "enum"
+# Keep in sync by hand with the locale files under config/i18n/*.toml
+# (DD-0016-style: no auto-discovery of the live locale set by design).
+values = ["en-US", "es-ES"]
+description = "Locale toggle (DD-0022): must name a locale sask serves (see /help)."
+
+# ── Moment groups: reusable priority-resolved composite ─────────────────────
+# First populated branch (in priority order) wins. "astro_day" pairs with an
+# optional "time_of_day"; the two date branches require all three of their
+# fields together.
+
+[moment_groups.full]
+priority = ["pulse", "astro_day", "fatunik_date", "terpin_date"]
+
+[moment_groups.full.fields]
+pulse = ["pulse"]
+astro_day = ["astro_day", "time_of_day"]
+fatunik_date = ["fatunik_year", "fatunik_month", "fatunik_day"]
+terpin_date = ["terpin_year", "terpin_month", "terpin_day"]
+
+# ── Per-endpoint composition ─────────────────────────────────────────────────
+# "/" is intentionally pulse-only (no moment_group) -- existing, deployed
+# asymmetry vs. the other four, preserved exactly (see param-inventory.md).
+
+[endpoints."/"]
+scalars = ["pulse"]
+
+[endpoints."/moons"]
+moment_group = "full"
+
+[endpoints."/planets"]
+moment_group = "full"
+
+[endpoints."/sky"]
+moment_group = "full"
+
+[endpoints."/ephemeris"]
+moment_group = "full"
+moment_group_prefix = "start_"
+scalars = ["end_pulse", "duration_days", "step_minutes", "profile"]

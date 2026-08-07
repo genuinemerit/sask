@@ -4,7 +4,8 @@ The config directory must contain:
   time_constants.toml, calendars.toml, seasons.toml, timeline.toml,
   body_data.toml, observation_data.toml,
   star_data.toml, house_data.toml, ephemeris_data.toml,
-  asset_catalog_data.toml, i18n/en-US.toml (+ other locale files, DD-0022/SPEC-035)
+  asset_catalog_data.toml, endpoint_params.toml (DD-0028, SPEC-041),
+  i18n/en-US.toml (+ other locale files, DD-0022/SPEC-035)
 
 All validation is done at load time; callers receive a typed AppConfig or
 a ConfigError is raised.
@@ -14,7 +15,7 @@ from __future__ import annotations
 
 import re
 import tomllib
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 
 from sask.logsetup import get_logger
@@ -383,6 +384,62 @@ class I18nCatalog:
 
 
 @dataclass(frozen=True)
+class ParamSpec:
+    """One declared query parameter (DD-0028, SPEC-041).
+
+    constraints holds whichever of min/max/pattern/values applies to `type`
+    (see endpoint_params_template.toml) — kept as a single dict rather than
+    all-optional fields since which keys are meaningful varies by type.
+    """
+
+    name: str
+    type: str  # "int" | "float" | "string" | "enum"
+    description: str
+    required: bool = False
+    default: object | None = None
+    constraints: dict[str, object] = field(default_factory=dict)
+
+
+@dataclass(frozen=True)
+class MomentGroupSpec:
+    """A reusable priority-resolved composite param group (DD-0028).
+
+    priority lists branch names in resolution order (first populated wins);
+    fields maps each branch name to its ordered list of param names.
+    """
+
+    name: str
+    priority: tuple[str, ...]
+    fields: dict[str, tuple[str, ...]]
+
+
+@dataclass(frozen=True)
+class EndpointParamSpec:
+    """One endpoint's param composition: declared scalars plus, optionally,
+    a moment group applied under an optional prefix (e.g. "start_")."""
+
+    path: str
+    scalars: tuple[str, ...] = ()
+    moment_group: str | None = None
+    moment_group_prefix: str = ""
+
+
+@dataclass(frozen=True)
+class EndpointParamsConfig:
+    """The full single-source parameter declaration (DD-0028, SPEC-041).
+
+    globals lists param names (each a key in `params`) available on every
+    endpoint in addition to that endpoint's own scalars/moment_group — e.g.
+    format and locale.
+    """
+
+    params: dict[str, ParamSpec]
+    moment_groups: dict[str, MomentGroupSpec]
+    endpoints: dict[str, EndpointParamSpec]
+    globals: tuple[str, ...] = ()
+
+
+@dataclass(frozen=True)
 class AppConfig:
     time_constants: TimeConstants
     astro: CalendarConfig
@@ -409,6 +466,7 @@ class AppConfig:
     ]  # 6 calendar lore overlays (SPEC-017)
     asset_catalog: AssetCatalogConfig  # asset retrieval catalog (DD-0016, SPEC-026)
     i18n: I18nCatalog  # localization catalog (DD-0022, SPEC-035)
+    endpoint_params: EndpointParamsConfig  # query-param declaration (DD-0028, SPEC-041)
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
@@ -838,6 +896,144 @@ def _load_i18n_catalog(i18n_dir: Path) -> I18nCatalog:
     )
 
 
+_PARAM_TYPES = ("int", "float", "string", "enum")
+
+
+def _load_param_spec(name: str, raw: dict, src: str) -> ParamSpec:
+    ns = f"{src} params.{name}"
+    if not isinstance(raw, dict):
+        raise ConfigError(f"{ns}: must be a table")
+    ptype = str(_require(raw, "type", ns))
+    if ptype not in _PARAM_TYPES:
+        raise ConfigError(f"{ns}: type {ptype!r} must be one of {_PARAM_TYPES}")
+    description = str(_require(raw, "description", ns))
+    required = bool(raw.get("required", False))
+    default = raw.get("default")
+
+    constraints: dict[str, object] = {}
+    if ptype == "enum":
+        values = raw.get("values")
+        if not isinstance(values, list) or not values:
+            raise ConfigError(f"{ns}: type 'enum' requires a non-empty values list")
+        constraints["values"] = list(values)
+        if default is not None and default not in values:
+            raise ConfigError(f"{ns}: default {default!r} not in values {values}")
+    for key in ("min", "max", "pattern"):
+        if key in raw:
+            constraints[key] = raw[key]
+
+    return ParamSpec(
+        name=name,
+        type=ptype,
+        description=description,
+        required=required,
+        default=default,
+        constraints=constraints,
+    )
+
+
+def _load_moment_group(
+    name: str, raw: dict, src: str, param_names: set
+) -> MomentGroupSpec:
+    ns = f"{src} moment_groups.{name}"
+    if not isinstance(raw, dict):
+        raise ConfigError(f"{ns}: must be a table")
+    priority_raw = _require(raw, "priority", ns)
+    if not isinstance(priority_raw, list) or not priority_raw:
+        raise ConfigError(f"{ns}: priority must be a non-empty list")
+    priority = tuple(str(b) for b in priority_raw)
+
+    fields_raw = _require(raw, "fields", ns)
+    if not isinstance(fields_raw, dict):
+        raise ConfigError(f"{ns}: fields must be a table")
+    fields: dict[str, tuple[str, ...]] = {}
+    for branch in priority:
+        branch_fields = fields_raw.get(branch)
+        if not isinstance(branch_fields, list) or not branch_fields:
+            raise ConfigError(f"{ns}: fields.{branch} must be a non-empty list")
+        for f in branch_fields:
+            if f not in param_names:
+                raise ConfigError(f"{ns}: fields.{branch} names undeclared param {f!r}")
+        fields[branch] = tuple(str(f) for f in branch_fields)
+
+    return MomentGroupSpec(name=name, priority=priority, fields=fields)
+
+
+def _load_endpoint_param_spec(
+    path: str, raw: dict, src: str, param_names: set, moment_group_names: set
+) -> EndpointParamSpec:
+    ns = f"{src} endpoints.{path!r}"
+    if not isinstance(raw, dict):
+        raise ConfigError(f"{ns}: must be a table")
+
+    scalars_raw = raw.get("scalars", [])
+    if not isinstance(scalars_raw, list):
+        raise ConfigError(f"{ns}: scalars must be a list")
+    for name in scalars_raw:
+        if name not in param_names:
+            raise ConfigError(f"{ns}: scalars names undeclared param {name!r}")
+    scalars = tuple(str(name) for name in scalars_raw)
+
+    moment_group = raw.get("moment_group")
+    if moment_group is not None and moment_group not in moment_group_names:
+        raise ConfigError(f"{ns}: moment_group {moment_group!r} not declared")
+    moment_group_prefix = str(raw.get("moment_group_prefix", ""))
+    if moment_group_prefix and moment_group is None:
+        raise ConfigError(f"{ns}: moment_group_prefix set without a moment_group")
+
+    return EndpointParamSpec(
+        path=path,
+        scalars=scalars,
+        moment_group=moment_group,
+        moment_group_prefix=moment_group_prefix,
+    )
+
+
+def _load_endpoint_params(raw: dict, src: str) -> EndpointParamsConfig:
+    """DD-0028/SPEC-041: the single-source query-param declaration."""
+    params_raw = _require(raw, "params", src)
+    if not isinstance(params_raw, dict) or not params_raw:
+        raise ConfigError(f"{src}: [params] must be a non-empty table")
+    params = {
+        name: _load_param_spec(name, spec, src) for name, spec in params_raw.items()
+    }
+    param_names = set(params)
+
+    moment_groups_raw = raw.get("moment_groups", {})
+    if not isinstance(moment_groups_raw, dict):
+        raise ConfigError(f"{src}: [moment_groups] must be a table")
+    moment_groups = {
+        name: _load_moment_group(name, group, src, param_names)
+        for name, group in moment_groups_raw.items()
+    }
+    moment_group_names = set(moment_groups)
+
+    endpoints_raw = _require(raw, "endpoints", src)
+    if not isinstance(endpoints_raw, dict) or not endpoints_raw:
+        raise ConfigError(f"{src}: [endpoints] must be a non-empty table")
+    endpoints = {
+        path: _load_endpoint_param_spec(
+            path, spec, src, param_names, moment_group_names
+        )
+        for path, spec in endpoints_raw.items()
+    }
+
+    globals_raw = raw.get("globals", [])
+    if not isinstance(globals_raw, list):
+        raise ConfigError(f"{src}: globals must be a list")
+    for name in globals_raw:
+        if name not in param_names:
+            raise ConfigError(f"{src}: globals names undeclared param {name!r}")
+    globals_ = tuple(str(name) for name in globals_raw)
+
+    return EndpointParamsConfig(
+        params=params,
+        moment_groups=moment_groups,
+        endpoints=endpoints,
+        globals=globals_,
+    )
+
+
 def _load_spark(raw: dict, src: str) -> SparkConfig:
     s = _require(raw, "spark", src)
     if not isinstance(s, dict):
@@ -1107,6 +1303,9 @@ def load_config(config_dir: Path, assets_dir: Path | None = None) -> AppConfig:
     tc = _load_time_constants(
         _load_toml(config_dir / "time_constants.toml"), "time_constants.toml"
     )
+    endpoint_params = _load_endpoint_params(
+        _load_toml(config_dir / "endpoint_params.toml"), "endpoint_params.toml"
+    )
     astro, fatunik, terpin = _load_calendars(
         _load_toml(config_dir / "calendars.toml"), "calendars.toml"
     )
@@ -1181,6 +1380,7 @@ def load_config(config_dir: Path, assets_dir: Path | None = None) -> AppConfig:
         lore_calendars=lore_calendars,
         asset_catalog=asset_catalog,
         i18n=i18n,
+        endpoint_params=endpoint_params,
     )
     logger.info(
         "config loaded",

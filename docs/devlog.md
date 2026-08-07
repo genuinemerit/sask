@@ -1,5 +1,75 @@
 # Dev log
 
+## 2026-08-07 — SPEC-041: single-source parameter declaration (DD-0028)
+
+Closes the one API contract that wasn't declared in a single authoritative
+source: query params for the five JSON-capable endpoints (`/`, `/moons`,
+`/planets`, `/sky`, `/ephemeris`), previously scattered `request.args.get()`
+calls inside `web/routes.py`. Lands ahead of SPEC-040 (the API reference),
+which will generate its per-endpoint param facts from this declaration.
+
+- **Inventory first**: read the current param handling straight from the
+  route code before designing anything — `design/analysis/param-inventory.md`
+  (filed there, not the SPEC's literal `analysis/` path, following the
+  existing `design/analysis/*.md` convention). Found two pre-existing
+  asymmetries, preserved exactly: `/` only accepts bare `pulse` (no
+  astro_day/fatunik/terpin), and `/ephemeris`'s `end` only accepts raw
+  `end_pulse` or `duration_days` — never a full moment group, unlike `start_`.
+- **`config/endpoint_params.toml`** (+ `endpoint_params_template.toml`,
+  matching the existing `config/*_template.toml` meta-schema convention):
+  scalar param defs (type/required/default/constraints/description), a
+  reusable `moment_groups.full` composite (the pulse > astro_day > fatunik >
+  terpin priority chain, optionally prefixed), and per-endpoint composition.
+  Loaded via `config_loader._load_endpoint_params` into a new
+  `AppConfig.endpoint_params`, validated at load time (`ConfigError`) like
+  every other config file — no hook into `validate_specs.py` (design-doc-only
+  scope, confirmed by reading it).
+- **`src/sask/web/params.py`** (new, Flask-free): `resolve_moment_group()`
+  collapses the old `_resolve_pulse`/`_resolve_endpoint` into one
+  declaration-driven function (branch→error-tag naming kept as explicit data,
+  not derived — the unprefixed pulse tag is irregularly
+  `invalid_pulse_value`, not `invalid_pulse`); `parse_scalar()` centralizes
+  type coercion per the declaration; `check_params()` is the new strict
+  unknown-param/value-constraint enforcement. `routes.py`'s five route bodies
+  now read from the declaration instead of raw `request.args.get()` —
+  `/ephemeris`'s cross-field mode-selection/required-cascade logic
+  deliberately stayed as route orchestration (genuine per-endpoint business
+  logic, not a static constraint) rather than being forced into TOML.
+- **Two owner-approved behavior changes** (both explicitly surfaced, not
+  silently normalized, per DD-0028): (1) unknown/misspelled query params now
+  400 with a new `error.unknown_param` envelope, replacing today's
+  silent-ignore; (2) `/ephemeris`'s `profile` becomes a validated enum
+  (`scribal`/`kinematic`/`both`) — an invalid value now 400s with a new
+  `error.invalid_profile`, instead of silently producing null series
+  (matching `/ephemeris/download`'s existing stricter behavior). New tags
+  added to both `en-US.toml` and `es-ES.toml`.
+- **Follow-up refinement, same day**: `format`/`locale` were initially only
+  documented in the TOML, with "available on every endpoint" hardcoded as a
+  Python literal in `known_param_names()`. Owner asked for these to be
+  properly declared: added a top-level `globals = ["format", "locale"]` key
+  to `endpoint_params.toml` (`EndpointParamsConfig.globals`, validated same
+  as everything else), which `known_param_names()` now reads instead of a
+  hardcoded set. `locale` became a declared enum (`["en-US", "es-ES"]`, kept
+  in sync by hand with `config/i18n/*.toml`, DD-0016-style — no
+  auto-discovery). **Third owner-approved behavior change**: both value
+  constraints are now enforced — `format` not `json` or `locale` not a
+  declared locale → 400 with new `error.invalid_format`/`error.invalid_locale`
+  tags. One wrinkle worth recording: `_wants_json()` treats any non-empty,
+  non-`"json"` `format` value as "wants HTML" outright (ignoring the Accept
+  header once `format` is present, per its own docstring) — so
+  `error.invalid_format` can only ever surface as an inline HTML message at
+  200, never as a JSON 400; `error.invalid_locale` surfaces normally through
+  either path since `locale` doesn't gate content negotiation.
+- **Behavior preservation confirmed**: the full pre-existing suite (985
+  tests) passes unchanged throughout. `tests/test_spec_041.py`: 54 tests —
+  declaration load/validation (malformed → `ConfigError`), the shared helper
+  (moment-group priority resolution, scalar coercion, `check_params()`'s
+  unknown-name and value-constraint checks), and the three behavior changes
+  over HTTP. Full suite: 1039.
+
+**Next:** SPEC-040 (the API reference), consuming `endpoint_params.toml` as
+its per-endpoint parameter source.
+
 ## 2026-08-05 — FIX round: DEBT-0004 & DEBT-0005 closed
 
 Lightweight fix-and-analyze round per `design/debt/000-FIX-and-analyze-instruction.md`

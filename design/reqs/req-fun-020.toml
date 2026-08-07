@@ -1,0 +1,53 @@
+id        = "REQ-FUN-020"
+title     = "Single-source parameter declaration for functional endpoints"
+category  = "FUN"
+priority  = "should"
+
+statement = """
+The query parameters of the JSON-capable functional endpoints (/, /moons,
+/planets, /sky, /ephemeris) shall be declared once, in TOML, as a single source
+of truth - each parameter's name, type, required/optional status, default,
+constraints, and a human-readable English description - loaded via config_loader.
+The routes shall parse and validate parameters from this declaration via a shared
+helper, replacing scattered request.args.get() handling, WITHOUT changing which
+parameters are accepted, their validation, or their errors (existing endpoint
+tests pass unchanged). The API reference (REQ-FUN-019) shall generate its
+parameter facts from this declaration. Parameter-validation errors shall be
+produced through the DD-0026 error envelope. Any inconsistency uncovered while
+centralizing shall be surfaced for decision, not silently normalized.
+"""
+
+rationale = """
+Query parameters are the one API contract not declared in a single authoritative
+source, unlike message units, config, the i18n catalog, and the design docs.
+Declaring them once lets the routes, the reference, and the error envelope all
+draw from one place - eliminating drift at the source rather than guarding
+against it downstream (DD-0028), and resolving the reference's parameter-
+generation feasibility. A behavior-preserving refactor protects the live,
+integrated endpoints; surfacing (not silently fixing) inconsistencies keeps the
+refactor honest. English descriptions keep the param prose in a declared artifact
+and feed the developer-facing reference.
+"""
+
+acceptance = """
+1. A TOML parameter declaration exists (loaded via config_loader) covering every
+   query parameter of the five endpoints: name, type, required/optional, default,
+   constraints, and English description; shared params declared once and composed
+   per-endpoint, plus endpoint-specific params.
+2. The routes parse and validate parameters from the declaration via a shared
+   helper; scattered request.args.get() handling is replaced.
+3. Behavior is preserved: accepted params, validation, and errors are unchanged;
+   existing endpoint tests pass unchanged.
+4. Any inconsistency uncovered is reported for owner decision, not silently
+   normalized; the unknown-param strict-vs-lenient choice is surfaced (default
+   lenient).
+5. Parameter-validation errors are emitted through the DD-0026 error envelope.
+6. The declaration is consumable by the reference build (REQ-FUN-019) as its
+   parameter source.
+7. Full suite passes at the new count; pre-commit and validate_specs clean.
+"""
+
+[links]
+implements   = ["DD-0028"]
+relates_to   = ["DD-0003", "DD-0024", "DD-0026", "REQ-FUN-019"]
+specified_by = ["SPEC-041"]

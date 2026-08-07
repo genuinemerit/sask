@@ -423,6 +423,12 @@
 "error.missing_ephemeris_query" = "Se requieren los parámetros de hora de inicio y paso."
 "error.ephemeris_range_invalid" = "Rango de efemérides inválido: {detail}"
 
+# --- SPEC-041 (DD-0028): declaración de parámetros de fuente única ---
+"error.unknown_param" = "Parámetro desconocido: {param}."
+"error.invalid_profile" = "Perfil inválido {value}; usa 'scribal', 'kinematic' o 'both'."
+"error.invalid_format" = "Formato inválido {value}; usa 'json'."
+"error.invalid_locale" = "Configuración regional inválida {value}; usa una de: {values}."
+
 "statement.ephemeris_intro" = "Introduce una <strong>hora de inicio</strong> usando cualquiera de los tipos de entrada de abajo. Para las entradas de día Astro, Fatunik o Terpin, la duración del rango la fija la <strong>Duración (días)</strong> en la sección Paso y Perfil. Usa <strong>Pulso</strong> para un inicio y fin precisos. Haz clic en <strong>Restablecer</strong> para borrar todos los campos antes de cambiar de tipo de entrada."
 
 "sentence.horizon_above" = "sobre"
