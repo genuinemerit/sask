@@ -54,4 +54,12 @@ run_check "validate_i18n" \
 run_check "check_page_staleness" \
     poetry run python3 tools/dev/check_page_staleness.py
 
+# DD-0027/SPEC-040 page-is-code: the committed API reference (HTML + JSON)
+# must match a fresh regeneration from the code/config/prose source
+# (deterministic tier), and every declared endpoint must have a prose
+# description (human-flag tier) — see
+# tools/dev/check_api_reference_staleness.py's own docstring.
+run_check "check_api_reference_staleness" \
+    poetry run python3 tools/dev/check_api_reference_staleness.py
+
 printf '\n[ALL PASS] Pre-commit checks complete.\n'

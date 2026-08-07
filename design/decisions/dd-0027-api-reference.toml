@@ -1,0 +1,187 @@
+id     = "DD-0027"
+title  = "Structured API reference resource for the JSON endpoints"
+status = "accepted"
+date   = "2026-08-05"
+
+[context]
+summary = """
+SPEC-039 (DD-0026) added JSON output to /, /moons, /planets, /sky, /ephemeris,
+but the only prose documentation is a brief A2/B1 pointer in getting-started.md
+("Getting data as JSON") for a casual human reader - explicitly NOT an endpoint/
+parameter reference. When the distance/timeline app integrated against the JSON
+endpoints, it required a good deal of manual coaching to understand the contract;
+a complete, structured, machine-consumable reference would have made that
+integration much smoother. This DD decides how to provide that reference. It is
+the DEBT-0006 dev round.
+"""
+
+motivation = """
+The audience is technical: a developer OR an AI coding assistant integrating a
+tool against the JSON API. That audience needs a COMPLETE, ACCURATE, and
+MACHINE-CONSUMABLE contract, because (a) an AI assistant generates code from the
+reference, so a stale or incomplete reference produces wrong integrations, and
+(b) a machine consumer would rather parse structured data than prose HTML. The
+coaching friction from the real integration is itself the content spec: whatever
+had to be explained by hand is what the reference must make explicit.
+"""
+
+problem = """
+Three questions: WHERE does the reference live (the /help family is HTML-only per
+DD-0026, so serving a help page as JSON would contradict that scoping); HOW is it
+kept from DRIFTING out of sync with the code (critical for the AI audience); and
+HOW is it produced and served so it is both human-readable AND machine-parseable
+without inventing new machinery.
+"""
+
+[decision]
+summary = """
+Provide the API reference as a structured resource at its OWN path (outside the
+HTML-only /help family), built to static HTML and JSON artifacts by a dev command
+(reusing the DD-0023 build-and-commit pattern), served via content negotiation
+(reusing the DD-0026 mechanism). Its structural facts are GENERATED from the
+code and its conceptual prose is hand-authored in a source; a two-tier pre-commit
+staleness check keeps it honest (deterministic parts auto-regenerate; a
+genuinely new endpoint/param flags for a one-line human description). The
+generated artifact is never hand-edited. It is developer-facing and therefore
+English-only.
+"""
+
+location = """
+The reference lives at its OWN path (recommended: /api/reference), NOT under
+/help/<topic>. Reason: DD-0026 explicitly scoped "JSON for help endpoints" OUT
+(help is HTML-only), so serving this as a help page in JSON would contradict that
+scoping; and its audience (developers/AI) and content type (technical reference)
+differ from the player-facing help prose. Placing it at its own path sidesteps
+the contradiction cleanly - it is an "API reference resource," not "a help page
+served as JSON." The /api/ prefix softly foreshadows (but does not commit) the
+future specialized graph/LLM API surface DD-0026 anticipated; this reference
+would simply be its first inhabitant. CONFIRMED: the path is /api/reference.
+"""
+
+static_build_and_render = """
+The reference is INVARIANT (English-only, identical for every request, no per-
+request data), so it is a STATIC GENERATED, COMMITTED artifact - reusing the
+DD-0023 localized-page pattern rather than live-rendering per request:
+- A dev command builds the reference from its structured source into static
+  HTML (for a human developer to read) and static JSON (for a machine to parse).
+- The built artifacts are committed and reviewed (like DD-0023's rendered pages).
+- They are served at the reference path via CONTENT NEGOTIATION (the DD-0026
+  mechanism: HTML by default, JSON via ?format=json / Accept: application/json).
+So the reference DOGFOODS the very content-negotiation it documents, and reuses
+two existing patterns (DD-0023 build-and-commit, DD-0026 negotiation) - inventing
+no new serving or rendering machinery. The build runs only in dev; deploy ships
+the committed static artifacts.
+"""
+
+source_and_drift_guard = """
+The reference has two kinds of content, from two kinds of source, assembled by
+the build:
+- STRUCTURAL FACTS (from the CODE): the JSON-capable endpoint list, each
+  endpoint's valid query parameters, the response shape/field names per endpoint,
+  and the error-code catalog. These are GENERATED from the code at build time -
+  never hand-authored and never hand-edited - so they cannot be "wrong," only
+  stale.
+- CONCEPTUAL PROSE (from a hand-authored SOURCE): the {id, label} convention, the
+  temporal contract, the error-envelope explanation, negotiation/locale
+  mechanics, integration guidance distilled from the real coaching friction, and
+  the human-readable DESCRIPTION of each endpoint/parameter. You edit this
+  SOURCE; you never edit the generated artifact.
+The build combines the code-generated structure with the prose source into the
+committed artifacts.
+
+DRIFT GUARD - a TWO-TIER PRE-COMMIT staleness check, mirroring DD-0023 exactly
+(not at deploy):
+- DETERMINISTIC tier (like DD-0023 en-US): the committed artifact must match a
+  fresh build. Out of sync -> RUN THE BUILD to auto-regenerate the structural
+  facts -> commit. The owner never hand-edits the artifact to fix drift.
+- HUMAN-FLAG tier (like DD-0023 es-ES): when the code introduces a genuinely NEW
+  endpoint or parameter, the build regenerates its structure automatically but
+  cannot invent its DESCRIPTION; it FLAGS "new item X needs a description," and
+  the owner adds one line to the prose SOURCE (authoring, not editing generated
+  output), then rebuilds.
+So: structural drift auto-regenerates; only a new item's description requires a
+human sentence - the same division of labor DD-0023 established for en-US vs.
+es-ES. Parameter source: the per-endpoint parameters are generated from the
+DD-0028 single-source TOML parameter declaration (which the routes also draw
+from), so the reference and the routes share one param source of truth - this is
+option (a), chosen over introspecting scattered request.args.get() calls, and it
+resolves the parameter-generation feasibility. Endpoints, response shapes, and
+error codes are generated from the routes/serializer/error envelope respectively.
+"""
+
+content = """
+The reference must cover, completely:
+- Every JSON-capable endpoint: /, /moons, /planets, /sky, /ephemeris.
+- Shared mechanics: ?format=json and Accept-header negotiation; the locale
+  parameter and its effect (values localize, keys/ids do not).
+- Per-endpoint query parameters (the resolution params: pulse, astro_day,
+  time_of_day, fatunik_*, terpin_*, start_*, end_pulse, duration_days,
+  step_minutes, profile, etc.) - names, meaning, valid ranges, and the ephemeris
+  throttle (step floor, range cap).
+- The response shape per endpoint (or a precise, navigable pointer into it),
+  including that the COMPLETE message unit is returned (e.g. ephemeris includes
+  parameters + summary + series).
+- The {id, label} convention (invariant English id + localized label).
+- The temporal contract (every response carries resolved pulse + atomic date/
+  time; lore-elaborating endpoints add lore-language time).
+- The error envelope and a catalog of its stable codes.
+- Worked request/response EXAMPLES per endpoint - ideally captured from ACTUAL
+  responses so they cannot drift (which also exercises the endpoints).
+"""
+
+developer_facing_english_only = """
+The reference is developer/AI-facing, so it is NOT localized - it is English-
+only, consistent with the origin-based localization boundary (localize what the
+end USER reads, not what the operator/developer reads; the same principle that
+keeps logs and CLI --help English). The reference DOCUMENTS the locale parameter
+and shows localized-value examples, but the reference PROSE itself is not
+translated.
+"""
+
+[consequences]
+positive = """
+- A complete, accurate, machine-consumable contract so tools/AI assistants
+  integrate without hand-coaching.
+- Reuses THREE existing patterns (DD-0023 build-and-commit AND its two-tier
+  staleness check, DD-0026 content negotiation) - minimal new machinery; the
+  reference dogfoods the negotiation it documents.
+- Structural facts are generated from the code and never hand-maintained; drift
+  auto-regenerates at pre-commit. The owner never hand-edits the artifact.
+- Static/committed means reviewable in git and served with no live-render cost;
+  invariant content makes static the right choice.
+- Captured-from-real examples cannot drift and exercise the endpoints.
+"""
+
+negative_or_deferred = """
+- A prose source + a code-introspecting build + a two-tier staleness check is
+  real (if pattern-reusing) work; the main feasibility risk is parameter
+  introspection (see source_and_drift_guard / SPEC-040).
+- Establishing /api/reference softly introduces the /api/ prefix ahead of the
+  future API-surface decision (does not commit its internal structure).
+- Keeping examples captured-from-real requires a capture step in the build.
+- A genuinely new endpoint/param still needs a one-line human-authored
+  description (the sole manual step, analogous to DD-0023 es-ES).
+"""
+
+out_of_scope = """
+- The future specialized graph/LLM API surface itself (DD-0026 deferred; this is
+  only its documentation's possible first neighbor).
+- Localizing the reference (developer-facing, English-only).
+- Documenting help endpoints as JSON (help stays HTML-only, DD-0026).
+- Any change to the JSON endpoints themselves (this documents them).
+"""
+
+[links]
+depends_on = ["DD-0018", "DD-0022", "DD-0023", "DD-0026", "DD-0028"]
+relates_to = ["DD-0024"]
+implemented_by = ["REQ-FUN-019", "SPEC-040"]
+notes = """
+Reuses DD-0023 (build-and-commit static artifacts + its two-tier staleness check)
+and DD-0026 (content negotiation). Origin boundary (DD-0022) makes it English-
+only. Depends on DD-0028: per-endpoint parameters are generated from the DD-0028
+single-source parameter declaration (option (a), chosen), so SPEC-041 (param
+layer) lands BEFORE SPEC-040 (reference). Both DD-0027 forks CONFIRMED by the
+owner: (1) path = /api/reference; (2) drift guard = generate + two-tier pre-commit
+staleness check. Numbering (DD-0027 / REQ-FUN-019 / SPEC-040) confirmed by owner.
+Source of DEBT-0006.
+"""

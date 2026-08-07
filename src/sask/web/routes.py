@@ -9,6 +9,8 @@ locale-facing color/notes/rings text itself via the i18n catalog.
 
 from __future__ import annotations
 
+from pathlib import Path
+
 from flask import (
     Blueprint,
     Response,
@@ -730,6 +732,31 @@ def get_asset(kind: str, id: str) -> Response:
 
     resp = make_response(payload.data)
     resp.content_type = payload.descriptor.content_type
+    return resp
+
+
+# ── API reference (DD-0027, SPEC-040) ───────────────────────────────────────
+#
+# Static, committed, build-and-commit artifacts (DD-0023 pattern) — served
+# as-is via DD-0026 negotiation, never live-rendered. See
+# tools/dev/build_api_reference.py (the build) and
+# tools/dev/check_api_reference_staleness.py (the pre-commit staleness
+# guard). English-only by design (DD-0027) — not affected by g.sask_locale.
+
+
+@bp.route("/api/reference")
+def api_reference() -> Response:
+    ref_dir: Path = current_app.config["SASK_API_REFERENCE_DIR"]
+
+    if _wants_json():
+        payload = (ref_dir / "reference.json").read_text(encoding="utf-8")
+        resp = make_response(payload)
+        resp.content_type = "application/json"
+        return resp
+
+    html_text = (ref_dir / "index.html").read_text(encoding="utf-8")
+    resp = make_response(html_text)
+    resp.content_type = "text/html; charset=utf-8"
     return resp
 
 

@@ -1,5 +1,62 @@
 # Dev log
 
+## 2026-08-07 — SPEC-040: structured API reference (DD-0027, DEBT-0006 closed)
+
+Closes DEBT-0006: the JSON endpoints had no structured, machine-consumable
+reference — a real integration required manual coaching. Depended on
+SPEC-041 landing first, since the reference generates its per-endpoint
+parameter facts from `config/endpoint_params.toml`.
+
+- **`docs/api_reference_src/reference.toml`**: the hand-authored prose
+  source (edited, never the generated artifact) — the {id,label}
+  convention, temporal contract, error-envelope explanation,
+  negotiation/locale mechanics, integration guidance distilled from the
+  design docs' own description of the real coaching friction, and one
+  description per endpoint. Per-parameter descriptions are NOT re-authored
+  here — they're pulled straight from `endpoint_params.toml` (SPEC-041).
+- **`tools/dev/build_api_reference.py`** (dev-only, mirrors
+  `build_i18n_pages.py`'s dev/prod split): generates every structural fact
+  from the code rather than hand-authoring it — endpoint list + parameters
+  from `cfg.endpoint_params`; the error-code catalog from an AST scan of
+  `routes.py`'s five JSON-capable route functions (`index`/`moons`/
+  `planets`/`sky`/`ephemeris`) plus all of `params.py`, deliberately
+  excluding tags reachable only from non-JSON routes (`/help`,
+  `/ephemeris/download`) — 25 codes; response shape per endpoint derived by
+  walking a captured real "basic" example response, rather than a second,
+  separate introspection of `json_render.py`. Examples (basic/localized/
+  error per endpoint) are captured by exercising a real in-process Flask
+  app (`test_client()`, no network) at a fixed reference moment, so they
+  cannot drift and exercise the endpoints as a side effect. Renders
+  self-contained static HTML + JSON to `docs/api_reference/`.
+- **`tools/dev/check_api_reference_staleness.py`**, wired into
+  `pre-commit-check.sh` (and a `check_api_reference_staleness` dev CLI
+  command, mirroring `check_page_staleness`): two-tier, exactly mirroring
+  DD-0023's pattern — deterministic (rebuild in-memory, byte-compare
+  against committed artifacts) and human-flag (`build_reference()` itself
+  raises when a declared endpoint has no prose description, distinguishing
+  "needs a rebuild" from "needs a human sentence").
+- **Serving**: new `/api/reference` route in `routes.py`, reading the two
+  committed static files and serving them via the existing `_wants_json()`
+  negotiation (`_wants_json()` is the only negotiation logic in the
+  codebase — confirmed by reading it — so no new machinery). English-only
+  by construction: the route never reads `g.sask_locale`.
+- Path confirmed per DD-0027: `/api/reference`, outside the HTML-only
+  `/help` family.
+
+`tests/test_spec_040.py`: 27 tests — negotiation, structural completeness
+(all five endpoints, shared params, concepts, the 25-code error catalog,
+excluding the two non-JSON-reachable codes), examples matching response
+shapes, English-only (byte-identical regardless of `?locale=`), and both
+staleness tiers (including a synthetic "new endpoint with no description"
+case for the human-flag tier). `tests/test_spec_038.py` updated: the dev
+CLI's gated command count moved from eight to nine.
+
+Full suite: 1067, all passing. Pre-commit clean. DD-0027 and SPEC-040 set
+to accepted; DEBT-0006 marked resolved (`resolved_by = "SPEC-040"`).
+
+**Next:** deploy/redeploy and remote acceptance testing for SPEC-041 +
+SPEC-040 together.
+
 ## 2026-08-07 — SPEC-041: single-source parameter declaration (DD-0028)
 
 Closes the one API contract that wasn't declared in a single authoritative

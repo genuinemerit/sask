@@ -1,0 +1,183 @@
+id     = "SPEC-040"
+title  = "API reference: structured source, static build, negotiation, drift check"
+status = "accepted"
+
+[implements]
+requirements = ["REQ-FUN-019"]
+decisions    = ["DD-0027"]
+notes = """
+The DEBT-0006 dev round. Reuses DD-0023 (build-and-commit static artifacts +
+staleness/consistency check) and DD-0026 (content negotiation). DEPENDS ON
+SPEC-041 (the DD-0028 parameter declaration), which lands FIRST and supplies the
+reference's per-endpoint parameter facts and descriptions. Both DD-0027 forks are
+confirmed (path /api/reference; generate + two-tier pre-commit staleness).
+Verification points are called out because this SPEC was drafted from the
+established architecture, not from reading the calendar/web source.
+"""
+
+[scope]
+in = """
+A structured reference source (hand-authored prose + code-validated structural
+facts); a dev build command producing static HTML and JSON artifacts; serving
+them at the reference path via DD-0026 content negotiation; a consistency check
+guarding the structural facts against the code; captured/worked examples; and
+tests.
+"""
+
+out = """
+- The future specialized graph/LLM API surface (only its documentation's
+  possible first neighbor).
+- Localizing the reference (English-only).
+- JSON for the /help endpoints (HTML-only, DD-0026 unchanged).
+- Any change to the JSON endpoints themselves.
+- Live per-request rendering (the reference is invariant -> static/committed).
+"""
+
+[deliverables]
+confirmed_choices = """
+Both design forks are CONFIRMED by the owner (do not re-open):
+1. PATH: /api/reference (own path, outside the HTML-only /help family; softly
+   foreshadows a future /api/ namespace without committing its structure).
+2. DRIFT GUARD: GENERATE structural facts from the code + a two-tier PRE-COMMIT
+   staleness check (NOT validate-against-code, NOT hand-written, NOT at deploy).
+   Deterministic structure auto-regenerates via rebuild; a genuinely new
+   endpoint/param flags for a one-line human-authored description. The generated
+   artifact is never hand-edited.
+Parameter source CONFIRMED: option (a) - the reference's per-endpoint parameters
+are generated from the DD-0028 / SPEC-041 single-source TOML parameter
+declaration. SPEC-041 lands FIRST; this SPEC consumes its output.
+"""
+
+verification_points = """
+Confirm against the actual web/api source before finalizing (assumed from
+architecture, not read):
+1. The per-endpoint parameters come from the DD-0028 / SPEC-041 single-source
+   TOML parameter declaration (which lands BEFORE this SPEC) - the reference
+   build reads that declaration for param names, types, ranges, and descriptions.
+   Confirm the declaration is in place and its shape is readable by the build. The
+   endpoint list is enumerated from the URL map.
+2. Where the error envelope's codes are defined - centralized or ad hoc. If not
+   centralized, surface that; the reference documenting them may need them
+   catalogued in one place (a useful forcing function), and the check needs a
+   code list to assert against.
+3. The DD-0026 negotiation implementation, so the reference reuses it (HTML
+   default, JSON via ?format=json / Accept) rather than reimplementing.
+4. The DD-0023 page-build/staleness pattern, so the reference build and its
+   consistency check follow the same shape.
+Report mismatches before proceeding.
+"""
+
+structured_source = """
+The reference is assembled by the build from two inputs:
+- A hand-authored PROSE SOURCE (format consistent with the codebase - e.g. TOML/
+  Markdown as the page-build sources use): the {id, label} convention, the
+  temporal contract, the error-envelope explanation, negotiation/locale mechanics,
+  integration guidance distilled from the real coaching friction (capture what had
+  to be explained by hand to the distance/timeline integration), AND the human-
+  readable DESCRIPTION of each endpoint/parameter. The owner edits THIS.
+- The CODE and the DD-0028 PARAMETER DECLARATION, from which the build GENERATES
+  the structural facts: endpoint list (URL map), per-endpoint parameter names,
+  types, ranges, AND descriptions (from the DD-0028/SPEC-041 TOML declaration -
+  note the declaration already carries the English param descriptions, so those
+  need not be re-authored here), response-shape/field names (serializer), error-
+  code catalog (error envelope). These are never hand-authored in this SPEC.
+The build weaves the generated structure together with the prose descriptions
+keyed to it. A new code item with no matching description is the human-flag case.
+"""
+
+build_command = """
+A dev command (e.g. under tools/dev/, consistent with the page-build command)
+that (1) introspects the code to GENERATE the structural facts, (2) weaves them
+with the prose source's descriptions, and (3) renders the result into static HTML
+(human) and JSON (machine) artifacts, committed to the repo. Runs only in dev;
+not a deploy step. It emits the HUMAN-FLAG when a generated item (new endpoint/
+param) has no description in the prose source. If examples are captured from real
+responses, the build (or a step it calls) exercises the endpoints to capture
+current request/response pairs so examples cannot drift.
+"""
+
+serving = """
+Serve the committed static HTML and JSON artifacts at the reference path via the
+DD-0026 content-negotiation mechanism: HTML by default, JSON via ?format=json or
+Accept: application/json. Reuse the existing negotiation; do not reimplement it.
+"""
+
+staleness_check = """
+A two-tier PRE-COMMIT staleness check (NOT at deploy), mirroring DD-0023 exactly:
+- DETERMINISTIC tier (like en-US): the committed artifacts must match a fresh
+  build of the structural facts. If stale (e.g. a route/param/error-code changed),
+  the check FAILS; the fix is to RUN THE BUILD (auto-regenerate) and commit - the
+  artifact is never hand-edited to reconcile.
+- HUMAN-FLAG tier (like es-ES): if a generated item (new endpoint/param) has no
+  description in the prose source, the check FLAGS it as needing a one-line
+  description; the owner adds it to the prose SOURCE and rebuilds. The check does
+  not auto-write descriptions.
+Wire this into pre-commit (e.g. pre-commit-check.sh) alongside the existing
+staleness checks. Deploy performs no build and no check - it ships committed
+artifacts.
+"""
+
+examples = """
+Worked request/response examples per endpoint. Prefer CAPTURING them from actual
+endpoint responses (guaranteed accurate, cannot drift, exercises the endpoints)
+over hand-writing them. Include at least: a basic query, a localized (es-ES)
+query showing {id, label} and value localization with English keys, the temporal
+fields, and an error example showing the envelope.
+"""
+
+tests = """
+tests/test_spec_040.py:
+- The reference is served as HTML (default) and JSON (?format=json / Accept) from
+  the committed artifacts, at the reference path.
+- The JSON form is valid, parseable, and structurally complete (covers all
+  JSON-capable endpoints, params, shapes, {id,label}, temporal contract, error
+  catalog).
+- Staleness check (two-tier): changing a route param/error code (fixture) makes
+  the deterministic tier fail until a rebuild; a fresh-built artifact passes;
+  a new item with no description triggers the human-flag; the check runs at
+  pre-commit, not deploy.
+- The reference is English-only (no localization applied to its own prose).
+- Examples parse and match the current response shapes.
+Full suite passes at the new count; pre-commit and validate_specs clean.
+"""
+
+design_doc_status = """
+On acceptance set DD-0027, SPEC-040 to "accepted"; mark DEBT-0006 resolved in
+design/debt/tech-debt.toml (resolved_by SPEC-040), recording the chosen path and
+drift-guard. Add a devlog entry (the reference resource, the build command, the
+negotiation reuse, the drift check, and the confirmed choices).
+"""
+
+[acceptance]
+criteria = """
+1. A reference resource at its own path (not /help/) covers all JSON-capable
+   endpoints; the path choice is confirmed.
+2. It is built by a dev command into static committed HTML + JSON artifacts and
+   served via DD-0026 negotiation (HTML default, JSON on request).
+3. It documents negotiation/locale mechanics, per-endpoint parameters + ranges +
+   ephemeris throttle, response shapes (complete unit), {id,label}, the temporal
+   contract, and the error envelope + code catalog.
+4. It includes worked examples per endpoint (ideally captured from real
+   responses).
+5. Structural facts are generated from the code; the two-tier PRE-COMMIT
+   staleness check fails on a stale artifact (fixed by rebuild) and flags a new
+   undocumented item; the artifact is never hand-edited; the check is not at
+   deploy.
+6. The reference is English-only.
+7. The build runs in dev; deploy ships committed static artifacts.
+8. Full suite passes at the new count; pre-commit and validate_specs clean;
+   DEBT-0006 marked resolved.
+"""
+
+uat = """
+[manual] Open the reference in a browser (HTML) and confirm it is complete and
+readable for a developer. Request it with ?format=json and with Accept:
+application/json and confirm valid, complete, machine-parseable JSON. Spot-check
+that documented parameters, response shapes, {id,label}, temporal fields, and
+error codes match what the live endpoints actually return (use the reference to
+make a couple of real calls and confirm the calls behave as documented - the true
+test of the audience use case). Introduce a temporary API change and confirm the
+pre-commit staleness check fails until a rebuild (structure auto-regenerates);
+add a temporary new param and confirm the check flags it as needing a description
+until one is added to the prose source. Confirm deploy performs no build/check.
+"""

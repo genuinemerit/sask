@@ -20,6 +20,7 @@ def create_app(
     config_dir: Path | None = None,
     assets_dir: Path | None = None,
     help_dir: Path | None = None,
+    api_reference_dir: Path | None = None,
 ) -> Flask:
     """Create and configure the Flask application.
 
@@ -28,6 +29,9 @@ def create_app(
     load_config(), which derives its own default (a sibling of config_dir)
     when omitted — see config_loader.load_config's docstring. help_dir
     defaults to <project_root>/docs/help/, same walk-up depth as config_dir.
+    api_reference_dir defaults to <project_root>/docs/api_reference/ (DD-0027,
+    SPEC-040) — the DD-0023-style build-and-commit artifacts served at
+    /api/reference.
     """
     # Called first (SPEC-032): installs the "sask" logger's stdout handler
     # before Flask's own app.logger is first touched, so Flask's automatic
@@ -45,6 +49,13 @@ def create_app(
             Path(__file__).resolve().parent.parent.parent.parent / "docs" / "help"
         )
 
+    if api_reference_dir is None:
+        api_reference_dir = (
+            Path(__file__).resolve().parent.parent.parent.parent
+            / "docs"
+            / "api_reference"
+        )
+
     template_dir = Path(__file__).resolve().parent / "templates"
     app = Flask(__name__, template_folder=str(template_dir))
 
@@ -59,6 +70,7 @@ def create_app(
     app.config["SASK_HELP_TOPICS"] = discover_topics(help_dir)
     app.config["SASK_HELP_INDEX_PATH"] = index_path(help_dir)
     app.config["SASK_HELP_PARALLEL_DOCS"] = discover_parallel_docs(help_dir)
+    app.config["SASK_API_REFERENCE_DIR"] = api_reference_dir
 
     @app.before_request
     def _bind_request_context() -> None:

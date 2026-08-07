@@ -36,6 +36,16 @@ def check_page_staleness() -> None:
     run_tool([sys.executable], _TOOLS_DEV / "check_page_staleness.py")
 
 
+def check_api_reference_staleness() -> None:
+    """Guard that the committed API reference stays current (DD-0027).
+
+    Example usage:
+    `sask check_api_reference_staleness`
+    """
+    require_dev()
+    run_tool([sys.executable], _TOOLS_DEV / "check_api_reference_staleness.py")
+
+
 def pre_commit_check() -> None:
     """Run every pre-commit check (ruff, shellcheck, pymarkdown, design docs, i18n).
 

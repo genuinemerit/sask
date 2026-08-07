@@ -1,0 +1,63 @@
+id        = "REQ-FUN-019"
+title     = "Structured, machine-consumable API reference"
+category  = "FUN"
+priority  = "should"
+
+statement = """
+sask shall provide a complete, structured API reference for its JSON-capable
+endpoints (/, /moons, /planets, /sky, /ephemeris), targeted at a developer or
+AI-coding-assistant audience. The reference shall live at its own path (not under
+the HTML-only /help family), shall be requestable as both human-readable HTML and
+machine-parseable JSON via the DD-0026 content-negotiation mechanism, and shall
+be produced as a static, committed artifact built by a dev command (reusing the
+DD-0023 build-and-commit pattern). It shall document: every JSON-capable
+endpoint; the negotiation and locale mechanics; each endpoint's query parameters
+(with meaning and valid ranges, including the ephemeris throttle); the response
+shape per endpoint (complete message unit); the {id, label} convention; the
+temporal contract; the error envelope and its code catalog; and worked
+request/response examples. Its structural facts (endpoints, parameters, response
+shapes, error codes) shall be GENERATED from the code (never hand-edited) and its
+prose hand-authored in a source; a two-tier pre-commit staleness check (NOT at
+deploy) shall keep it current - deterministic structure auto-regenerates by
+rebuild, and a genuinely new endpoint/param flags for a one-line human
+description. The reference is developer-facing and English-only (not localized).
+"""
+
+rationale = """
+The JSON endpoints exist (DD-0026) but their only prose documentation is a casual
+human pointer, and a real integration required significant manual coaching
+(DEBT-0006). A machine-consumable reference lets tools and AI assistants integrate
+accurately without hand-holding. Serving it as HTML and JSON via the existing
+negotiation, and building it as a static committed artifact via the existing
+page-build pattern, reuses machinery already in the codebase. A consistency check
+guards the structural facts against drift - the failure mode that most harms an
+AI audience (which generates code from the reference). English-only follows the
+origin-based localization boundary (developer-facing text is not localized).
+"""
+
+acceptance = """
+1. A reference resource exists at its own path (not /help/<topic>) covering all
+   JSON-capable endpoints.
+2. It is requestable as HTML (default) and JSON (?format=json / Accept header),
+   via the DD-0026 negotiation, from static committed artifacts built by a dev
+   command.
+3. It documents negotiation + locale mechanics; per-endpoint parameters (meaning,
+   ranges, ephemeris throttle); response shape per endpoint (complete unit);
+   the {id, label} convention; the temporal contract; and the error envelope +
+   code catalog.
+4. It includes worked request/response examples per endpoint (ideally captured
+   from actual responses).
+5. Structural facts are generated from the code; a two-tier PRE-COMMIT staleness
+   check fails when the committed artifact is stale (deterministic parts fixed by
+   rebuild) and flags a genuinely new endpoint/param as needing a description;
+   the artifact is never hand-edited.
+6. The reference is English-only (developer-facing), and documents - but is not
+   itself subject to - value localization.
+7. The build runs in dev; deploy ships the committed static artifacts.
+8. Full suite passes at the new count; pre-commit and validate_specs clean.
+"""
+
+[links]
+implements   = ["DD-0027"]
+relates_to   = ["DD-0022", "DD-0023", "DD-0026"]
+specified_by = ["SPEC-040"]

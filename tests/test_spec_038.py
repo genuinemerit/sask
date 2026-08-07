@@ -154,12 +154,13 @@ def test_every_registered_group_carries_a_tier_tag():
         assert group.rich_help_panel in {"Player", "Admin", "Dev"}, group.name
 
 
-def test_dev_tier_commands_are_exactly_the_eight_gated_ones():
+def test_dev_tier_commands_are_exactly_the_nine_gated_ones():
     dev_names = {
         cmd.name for cmd in cli_app.registered_commands if cmd.rich_help_panel == "Dev"
     }
     assert dev_names == {
         "check_page_staleness",
+        "check_api_reference_staleness",
         "pre-commit-check",
         "run-tests",
         "start_web",
@@ -200,6 +201,15 @@ def test_check_page_staleness_delegates_to_the_existing_script(monkeypatch):
     launcher, script, kw = calls[0]
     assert launcher == [sys.executable]
     assert script == dev_tools._TOOLS_DEV / "check_page_staleness.py"
+    assert kw.get("args") in (None, [])
+
+
+def test_check_api_reference_staleness_delegates_to_the_existing_script(monkeypatch):
+    calls = _patch_dev_gate(monkeypatch)
+    dev_tools.check_api_reference_staleness()
+    launcher, script, kw = calls[0]
+    assert launcher == [sys.executable]
+    assert script == dev_tools._TOOLS_DEV / "check_api_reference_staleness.py"
     assert kw.get("args") in (None, [])
 
 

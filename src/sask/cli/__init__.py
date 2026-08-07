@@ -111,6 +111,9 @@ _dev_hidden = not _IS_DEV
 app.command("check_page_staleness", hidden=_dev_hidden, rich_help_panel="Dev")(
     dev_tools.check_page_staleness
 )
+app.command("check_api_reference_staleness", hidden=_dev_hidden, rich_help_panel="Dev")(
+    dev_tools.check_api_reference_staleness
+)
 app.command("pre-commit-check", hidden=_dev_hidden, rich_help_panel="Dev")(
     dev_tools.pre_commit_check
 )

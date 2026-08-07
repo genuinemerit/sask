@@ -149,7 +149,7 @@ deliberate decision. Coverage remains informational, no gate added.
 [[debt]]
 id               = "DEBT-0006"
 title            = "Structured API reference page for /moons /planets /sky /ephemeris /(index) JSON (developer/AI-assistant audience)"
-status           = "open"
+status           = "resolved"
 raised           = "2026-08-03"
 source           = "User recommendation during SPEC-039 prod acceptance testing"
 area             = "api"
@@ -188,3 +188,4 @@ any other doc) vs. generated/derived from json_render.py's own serializer
 signatures and this SPEC's schema rules (more work up front, harder to let
 go stale) -- worth deciding before writing it, not after.
 """
+resolved_by      = "SPEC-040"

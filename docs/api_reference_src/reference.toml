@@ -1,0 +1,141 @@
+# /docs/api_reference_src/reference.toml - hand-authored prose source for the
+# API reference (DD-0027, SPEC-040). Structural facts (endpoint list,
+# parameters, response shapes, error codes, examples) are GENERATED from the
+# code by tools/dev/build_api_reference.py and are NOT authored here. This
+# file supplies only: the fixed conceptual sections, and one description per
+# endpoint (per-parameter descriptions already live in
+# config/endpoint_params.toml, SPEC-041 -- not re-authored here).
+#
+# Edit THIS file, never the built docs/api_reference/{index.html,
+# reference.json} artifacts -- see tools/dev/check_api_reference_staleness.py.
+
+[concepts]
+
+id_label = """
+Any field representing a localizable domain value (a body name, eclipse
+type, season, event, House, fixed star, or lunar-calendar id) renders as an
+object with two keys: `id`, an invariant, English, machine-stable identifier
+safe to use as a database key, a switch/case value, or a UI class name; and
+`label`, the human-readable text resolved for the request's locale. Only
+`label` changes across locales -- `id` never does. Free-text fields the
+engine already resolved to a display string (notes, rings description,
+night_summary, image_prompt, lore date/time, and a scene body's
+direction/color/phase) are plain localized strings with no separate id,
+since the underlying message unit does not carry one to switch on.
+"""
+
+temporal_contract = """
+Every response carries the resolved moment expressed in every calendar this
+system tracks -- as `query` (on /, /moons, /planets, /sky) or as
+`parameters.start` / `parameters.end` (on /ephemeris): `pulse` (the atomic
+integer time unit), `astro_day` and `astro_time` (the invariant civil
+calendar), `orbital_position`, and both `fatunik_date` and `terpin_date`
+(the two in-world civil calendars). This is always present regardless of
+which input form the request supplied (pulse, astro_day, or a calendar
+date) -- the server resolves the moment once and reports every
+representation, so a client never needs to convert calendars itself. /sky
+and /ephemeris additionally carry lore-language time/date strings when
+lore_time is enabled in server config.
+"""
+
+error_envelope = """
+A failed request -- malformed input, a value outside a declared constraint,
+an unknown parameter, or the ephemeris throttle -- returns HTTP 400 with a
+JSON body shaped `{"error": {"code": "...", "message": "..."}}`. `code` is
+a stable, English, locale-invariant identifier safe to match on in client
+code, drawn from the same i18n tag that produces `message` with its
+`error.` prefix stripped. `message` is the human-readable, locale-resolved
+explanation. See the Error Codes section below for the complete catalog of
+codes this API can return.
+"""
+
+negotiation = """
+Response format is chosen by content negotiation: pass `?format=json` to
+request a JSON response, or send an `Accept: application/json` header with
+no `format` param present. Omitting both, or an Accept header that doesn't
+prefer JSON, returns the HTML page. `?format=json` wins outright whenever
+present, taking priority over the Accept header even when its own value
+isn't recognized. `format` is a declared parameter (available on every
+endpoint) whose only valid value is `json`; any other explicit value is a
+validation error -- but because a non-`json` format value is itself read
+as "this request does not want JSON," that error surfaces on the HTML page
+(the message shown inline), never as a JSON error body. If you need format
+mistakes to be script-visible, omit `format` and negotiate purely via the
+`Accept` header.
+"""
+
+locale = """
+Pass `?locale=` naming one of the served locales to select the response's
+language (see the Locales section below for the current list). Locale
+affects VALUES only: `label` text, free-text descriptive fields, and error
+messages resolve in the requested locale, while every `id`, object key, and
+enum value stays the same fixed English string regardless of locale -- a
+client can index into the same key path and switch on the same ids whether
+it requested any served locale. `locale` is a declared parameter (available
+on every endpoint); a value naming a locale sask doesn't serve is a
+validation error (`error.invalid_locale`).
+"""
+
+integration_guidance = """
+Distilled from real integration friction (DEBT-0006):
+
+1. Query by whichever calendar input you already have -- `pulse`,
+   `astro_day` (+ optional `time_of_day`), or a Fatunik/Terpin date triple
+   -- the server resolves ONE moment and reports it back in every
+   representation, so you never need to convert calendars client-side.
+2. /ephemeris throttles both ends: `step_minutes` cannot go below the
+   server's configured step floor, and the total range cannot exceed its
+   configured range cap -- requesting outside those bounds is a validation
+   error (`error.ephemeris_range_invalid`), never a silently-clamped
+   result. See the /ephemeris parameter descriptions below for this
+   deploy's actual limits.
+3. /ephemeris's range end is either a raw `end_pulse` OR a `duration_days`
+   relative to `start` -- never a full calendar-date end, unlike `start`,
+   which accepts any of the four moment forms.
+4. Build your UI or downstream logic against `id`, never against `label`
+   text -- `label` changes with locale, `id` never does.
+5. An empty-string query parameter value is treated identically to an
+   absent parameter everywhere in this API -- `?pulse=` is the same as
+   omitting `pulse`.
+6. `/` only accepts `pulse` as input (not astro_day or a calendar date) --
+   unlike /moons, /planets, and /sky, which accept all four moment forms.
+"""
+
+[endpoints."/"]
+description = """
+Resolves a single moment (via `pulse` only -- this endpoint does not accept
+astro_day or calendar-date input) and returns its temporal contract: the
+pulse, Astro day/time, orbital position, and both civil calendar dates.
+"""
+
+[endpoints."/moons"]
+description = """
+Resolves a single moment (via `pulse`, `astro_day` + optional
+`time_of_day`, or a Fatunik/Terpin date) and returns the star Fatune's sky
+position plus every moon's complete body state and sky position at that
+moment.
+"""
+
+[endpoints."/planets"]
+description = """
+Same moment resolution as /moons. Returns every planet's complete body
+state and sky position (including rings and visible-moons metadata) at
+that moment, alongside Fatune's sky position.
+"""
+
+[endpoints."/sky"]
+description = """
+Same moment resolution as /moons and /planets. Returns the full sky scene
+at that moment: which bodies and fixed stars are up, the active House, the
+season, co-fullness status, and (when lore_time is enabled) lore-language
+time and date.
+"""
+
+[endpoints."/ephemeris"]
+description = """
+Resolves a start moment (the full moment resolution, prefixed `start_`)
+and a range end (either a raw `end_pulse` or a `duration_days` relative to
+start), then returns a time series of sky scenes stepped by
+`step_minutes` across that range, in a `scribal` (lore-language scenes),
+`kinematic` (compact per-body numeric data), or `both` profile.
+"""
