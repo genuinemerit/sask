@@ -70,3 +70,8 @@ http://127.0.0.1:5000/sky?pulse=104548096103&format=json&locale=es-ES
 The field names in the JSON always stay in English, even in Spanish. Only
 the text values (like a season name) change language. This keeps the data
 easy to read in code, no matter which language you ask for.
+
+For the complete reference of the JSON reply format — every parameter,
+every field, and worked examples — see [/api/reference](/api/reference)
+(as a web page) or [/api/reference?format=json](/api/reference?format=json)
+(as JSON). The reference itself is available in English only.

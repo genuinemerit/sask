@@ -68,6 +68,12 @@ A language toggle sets the locale (en-US/es-ES) for tagged interface text,
 localized engine results (e.g. season names), and parallel-translated help
 pages, defaulting from the browser's `Accept-Language` (see DD-0022).
 
+`/`, `/moons`, `/planets`, `/sky`, and `/ephemeris` also serve their data as
+JSON — add `?format=json` or send `Accept: application/json` (see DD-0026).
+`/api/reference` is the complete, structured reference for that JSON
+contract (every parameter, response shape, and the error-code catalog),
+requestable as HTML or JSON the same way; it is English-only (see DD-0027).
+
 **Start the server:**
 
 ```bash

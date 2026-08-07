@@ -74,3 +74,9 @@ Los nombres de los campos en el JSON siempre quedan en inglés, incluso en
 español. Solo cambian de idioma los valores de texto (como el nombre de
 una estación). Así los datos son fáciles de leer en código, sin importar
 el idioma que pidas.
+
+Para la referencia completa del formato de respuesta JSON — todos los
+parámetros, todos los campos y ejemplos resueltos — consulta
+[/api/reference](/api/reference) (como página web) o
+[/api/reference?format=json](/api/reference?format=json) (como JSON). La
+referencia en sí solo está disponible en inglés.
