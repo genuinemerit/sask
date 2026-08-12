@@ -116,6 +116,12 @@ nobody watching is the wrong default at this scale.
   (REQ-OPS-014). If your own source IP changes, `bash tools/ops/provision.sh
   -y` (or any `redeploy.sh`/`recreate-droplet.sh` run) refreshes the
   firewall's allowed-SSH-IP rule automatically.
+- If `ssh sask-droplet` hangs and times out (while the web app itself is
+  still reachable), that's the symptom of the above — run
+  `bash tools/ops/check-ip-drift.sh` to confirm your current IP against
+  what's actually in the firewall (reads local tofu state, no token
+  needed) before doing any deeper forensics. `connect.sh` prints this hint
+  automatically on any SSH failure.
 - `tools/ops/destroy.sh` (full teardown) and `tools/ops/recreate-droplet.sh`
   (droplet only) are deliberately different scripts — don't conflate
   them. `redeploy.sh` always uses the latter.

@@ -1,5 +1,39 @@
 # Dev log
 
+## 2026-08-12 — SSH lockout forensics: IP-drift diagnostic tooling added
+
+`ssh sask-droplet` timed out (ping to the droplet's IP also got no reply)
+while the web app itself served fine from `https://sask.davidstitt.net/`.
+Forensics: a TCP probe showed port 443 open, port 22 filtered — the
+signature of a firewall drop, not a dead `sshd` (which would refuse the
+connection immediately rather than hang). `infra/tofu/main.tf`'s DO Cloud
+Firewall scopes the SSH inbound rule to the developer's IP as of the last
+`tofu apply` (`data.http.developer_ip`) — a static snapshot, not
+dynamic. The dev host's public IP had changed since the last apply
+(`188.26.195.69` → `79.117.245.16`), so DO was silently dropping inbound
+SSH from the new IP while `80`/`443` stayed open to `0.0.0.0/0`. This is
+the exact failure mode REQ-OPS-014 already names and `provision.sh`
+already fixes — `tofu plan` confirmed a single-attribute diff (the
+firewall rule's `source_addresses`), `tofu apply` restored access in
+~10s. (`tofu plan`/`apply` run bare in `infra/tofu/` also 401'd once
+first — `DIGITALOCEAN_TOKEN` only reaches the shell via `provision.sh`
+sourcing `~/.config/sask/infra.env`; that's expected, not a bug.)
+
+Added tooling so the next occurrence doesn't need a manual re-derivation:
+
+- `tools/ops/check-ip-drift.sh` (new) — compares the current public IP
+  against the port-22 rule actually baked into local tofu state (no
+  `DIGITALOCEAN_TOKEN` needed) and reports drift with the fix command.
+- `tools/ops/connect.sh` — now prints a pointer to the above on any SSH
+  failure instead of just propagating a bare `exec ssh` exit code.
+- `docs/deploy-runbook.md` — documented both, next to the existing
+  IP-drift bullet.
+
+No design/requirement change — REQ-OPS-014 already anticipated this
+exact scenario; this just shortens time-to-diagnosis.
+
+**Next:** none queued.
+
 ## 2026-08-07 — Prod CSP fix: inline `<style>` blocks were unstyled everywhere
 
 Found during SPEC-040/041 prod UAT (browser visual check, not caught by any
